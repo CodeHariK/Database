@@ -1,17 +1,6 @@
 const std = @import("std");
 const types = @import("types.zig");
 
-pub fn subArrayUntil(data: []const u8, c: u8) []const u8 {
-    var i: usize = 0;
-    for (data) |value| {
-        if (value == c) {
-            return data[0..i];
-        }
-        i += 1;
-    }
-    return data;
-}
-
 const InputBuffer = struct {
     buffer: []u8,
 
@@ -43,14 +32,14 @@ const InputBuffer = struct {
             std.process.exit(1); // Exit with failure
         }
 
-        const s = subArrayUntil(self.buffer, 0);
+        const s = types.subArrayUntil(self.buffer, 0);
         self.buffer[s.len - 1] = 0;
 
         printInput(self, ".");
     }
 
     pub fn printInput(self: *InputBuffer, msg: []const u8) void {
-        const s = subArrayUntil(self.buffer, 0);
+        const s = types.subArrayUntil(self.buffer, 0);
         std.debug.print("{s} {} {s}\n", .{ msg, s.len, s });
     }
 
@@ -66,28 +55,37 @@ const InputBuffer = struct {
     // Prepares a statement (e.g., parses "insert" or "select")
     pub fn prepareStatement(self: *InputBuffer, statement: *types.Statement) types.PrepareResult {
         if (std.mem.startsWith(u8, self.buffer, "insert")) {
-            statement.typ = types.StatementType.Insert;
+            statement.type = types.StatementType.Insert;
+
+            // // Using std.fmt.Scanner to extract values
+            // var scanner = std.fmt.Scanner{
+            //     .input = self.buffer,
+            // };
+
+            // const id = try scanner.readInt(u32);
+            // const username = try scanner.readUntilDelimiterOrEof();
+            // const email = try scanner.readUntilDelimiterOrEof();
+
+            // // Copy parsed values into the statement
+            // std.mem.copy(u8, &statement.row_to_insert.username, username);
+            // std.mem.copy(u8, &statement.row_to_insert.email, email);
+            // statement.row_to_insert.id = id;
+
             return types.PrepareResult.Success;
         } else if (std.mem.eql(u8, self.buffer, "select")) {
-            statement.typ = types.StatementType.Select;
+            statement.type = types.StatementType.Select;
             return types.PrepareResult.Success;
         }
 
         return types.PrepareResult.UnrecognizedStatement;
-    }
-
-    // Executes a prepared statement
-    pub fn executeStatement(statement: *types.Statement) void {
-        switch (statement.typ) {
-            types.StatementType.Insert => std.debug.print("This is where we would do an insert.\n", .{}),
-            types.StatementType.Select => std.debug.print("This is where we would do a select.\n", .{}),
-        }
     }
 };
 
 pub fn main() !void {
     var allocator = std.heap.page_allocator;
     const stdin = std.io.getStdIn().reader();
+
+    var table = try types.Table.new(&allocator);
 
     // Create a new input buffer
     var input_buffer = try InputBuffer.new(&allocator, 128);
@@ -110,10 +108,10 @@ pub fn main() !void {
             }
         }
 
-        var statement = types.Statement{ .typ = types.StatementType.Insert };
-        // Switch for prepare_statement
+        var statement: types.Statement = undefined;
         switch (input_buffer.prepareStatement(&statement)) {
             types.PrepareResult.Success => {},
+            types.PrepareResult.SyntaxError => std.debug.print("Syntax error. Could not parse statement.\n", .{}),
             types.PrepareResult.UnrecognizedStatement => {
                 input_buffer.printInput("Unrecognized keyword at start of ");
                 continue;
@@ -121,7 +119,10 @@ pub fn main() !void {
         }
 
         // Execute the statement
-        InputBuffer.executeStatement(&statement);
+        switch (table.executeStatement(&statement)) {
+            types.ExecuteResult.Success => {},
+            types.ExecuteResult.TableFull => std.debug.print("Error: Table full.\n", .{}),
+        }
         std.debug.print("Executed.\n", .{});
     }
 }
