@@ -1,9 +1,19 @@
 const std = @import("std");
+const types = @import("types.zig");
+
+pub fn subArrayUntil(data: []const u8, c: u8) []const u8 {
+    var i: usize = 0;
+    for (data) |value| {
+        if (value == c) {
+            return data[0..i];
+        }
+        i += 1;
+    }
+    return data;
+}
 
 const InputBuffer = struct {
-    buffer: []u8, // A slice representing the buffer (similar to `char*` in C)
-    buffer_length: usize, // Length of the buffer
-    input_length: usize, // Length of the actual input
+    buffer: []u8,
 
     // Create a new input buffer
     pub fn new(allocator: *std.mem.Allocator, initial_size: usize) !*InputBuffer {
@@ -12,8 +22,6 @@ const InputBuffer = struct {
 
         // Allocate memory for the buffer
         input_buffer.buffer = try allocator.alloc(u8, initial_size);
-        input_buffer.buffer_length = initial_size;
-        input_buffer.input_length = 0;
 
         return input_buffer;
     }
@@ -26,6 +34,8 @@ const InputBuffer = struct {
 
     // Read input from stdin into the buffer
     pub fn read_input(self: *InputBuffer, stdin: anytype) !void {
+        @memset(self.buffer, 0);
+
         // Read input into the buffer
         const slice = try stdin.readUntilDelimiterOrEof(self.buffer, '\n');
         if (slice == null) {
@@ -33,9 +43,45 @@ const InputBuffer = struct {
             std.process.exit(1); // Exit with failure
         }
 
-        const valid_slice = slice.?; // Unwrap the optional
-        self.input_length = valid_slice.len;
-        self.buffer[self.input_length] = 0; // Null-terminate the string
+        const s = subArrayUntil(self.buffer, 0);
+        self.buffer[s.len - 1] = 0;
+
+        printInput(self, ".");
+    }
+
+    pub fn printInput(self: *InputBuffer, msg: []const u8) void {
+        const s = subArrayUntil(self.buffer, 0);
+        std.debug.print("{s} {} {s}\n", .{ msg, s.len, s });
+    }
+
+    // Handles meta commands like ".exit"
+    pub fn doMetaCommand(self: *InputBuffer) types.MetaCommandResult {
+        if (std.mem.startsWith(u8, self.buffer, ".exit")) {
+            std.process.exit(0);
+        } else {
+            return types.MetaCommandResult.UnrecognizedCommand;
+        }
+    }
+
+    // Prepares a statement (e.g., parses "insert" or "select")
+    pub fn prepareStatement(self: *InputBuffer, statement: *types.Statement) types.PrepareResult {
+        if (std.mem.startsWith(u8, self.buffer, "insert")) {
+            statement.typ = types.StatementType.Insert;
+            return types.PrepareResult.Success;
+        } else if (std.mem.eql(u8, self.buffer, "select")) {
+            statement.typ = types.StatementType.Select;
+            return types.PrepareResult.Success;
+        }
+
+        return types.PrepareResult.UnrecognizedStatement;
+    }
+
+    // Executes a prepared statement
+    pub fn executeStatement(statement: *types.Statement) void {
+        switch (statement.typ) {
+            types.StatementType.Insert => std.debug.print("This is where we would do an insert.\n", .{}),
+            types.StatementType.Select => std.debug.print("This is where we would do a select.\n", .{}),
+        }
     }
 };
 
@@ -47,34 +93,36 @@ pub fn main() !void {
     var input_buffer = try InputBuffer.new(&allocator, 128);
     defer input_buffer.free(&allocator);
 
-    // Print details about the input buffer
-    std.debug.print(
-        "Buffer: {s}, Buffer Length: {}, Input Length: {}\n",
-        .{
-            input_buffer.buffer,
-            input_buffer.buffer_length,
-            input_buffer.input_length,
-        },
-    );
-
     // Main loop
     while (true) {
-        // Print the prompt
         std.debug.print(">>> ", .{});
 
         // Read user input
         try input_buffer.read_input(&stdin);
 
-        // Convert input buffer to a null-terminated string for comparison
-        const input_str = input_buffer.buffer[0..input_buffer.input_length];
-
-        // Check if input is ".exit"
-        if (std.mem.eql(u8, input_str, ".exit")) {
-            std.debug.print("Exiting...\n", .{});
-            break;
-        } else {
-            std.debug.print("Unrecognized command '{s}'.\n", .{input_str});
+        if (input_buffer.buffer[0] == '.') {
+            switch (input_buffer.doMetaCommand()) {
+                types.MetaCommandResult.Success => continue,
+                types.MetaCommandResult.UnrecognizedCommand => {
+                    input_buffer.printInput("Unrecognized command ");
+                    continue;
+                },
+            }
         }
+
+        var statement = types.Statement{ .typ = types.StatementType.Insert };
+        // Switch for prepare_statement
+        switch (input_buffer.prepareStatement(&statement)) {
+            types.PrepareResult.Success => {},
+            types.PrepareResult.UnrecognizedStatement => {
+                input_buffer.printInput("Unrecognized keyword at start of ");
+                continue;
+            },
+        }
+
+        // Execute the statement
+        InputBuffer.executeStatement(&statement);
+        std.debug.print("Executed.\n", .{});
     }
 }
 
