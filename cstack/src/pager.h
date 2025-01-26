@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "db.h"
+#include "types.h"
 
 typedef struct
 {

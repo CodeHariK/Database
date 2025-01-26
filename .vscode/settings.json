@@ -6,6 +6,15 @@
         "*.mdx": "markdown",
         "stdio.h": "c",
         "string.h": "c",
-        "db.h": "c"
+        "db.h": "c",
+        "statement.h": "c",
+        "inputbuffer.h": "c",
+        "table.h": "c",
+        "pager.h": "c",
+        "fcntl.h": "c",
+        "unistd.h": "c",
+        "errno.h": "c",
+        "stdlib.h": "c",
+        "stdbool.h": "c"
     }
 }

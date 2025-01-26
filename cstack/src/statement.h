@@ -1,4 +1,8 @@
+#include <stdbool.h>
+#include <string.h>
+
 #include "inputbuffer.h"
+#include "cursor.h"
 
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
@@ -9,7 +13,9 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
 
     Row *row_to_insert = &(statement->row_to_insert);
 
-    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    Cursor *cursor = table_end(table);
+
+    serialize_row(row_to_insert, cursor_value(cursor));
     table->num_rows += 1;
 
     return EXECUTE_SUCCESS;
@@ -17,12 +23,18 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
 
 ExecuteResult execute_select(Statement *statement, Table *table)
 {
+    Cursor *cursor = table_start(table);
+
     Row row;
-    for (uint32_t i = 0; i < table->num_rows; i++)
+    while (!(cursor->end_of_table))
     {
-        deserialize_row(row_slot(table, i), &row);
+        deserialize_row(cursor_value(cursor), &row);
         print_row(&row);
+        cursor_advance(cursor);
     }
+
+    free(cursor);
+
     return EXECUTE_SUCCESS;
 }
 
@@ -43,7 +55,7 @@ PrepareResult prepare_insert(InputBuffer *input_buffer, Statement *statement)
 {
     statement->type = STATEMENT_INSERT;
 
-    char *keyword = strtok(input_buffer->buffer, " ");
+    strtok(input_buffer->buffer, " ");
     char *id_string = strtok(NULL, " ");
     char *username = strtok(NULL, " ");
     char *email = strtok(NULL, " ");

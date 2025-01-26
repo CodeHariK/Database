@@ -1,5 +1,14 @@
-zigbuild:
-	zig build run
+CC = gcc
+CFLAGS = -Wall -std=c11
+
+SRC = src/main.c
+TARGET = db
 
 cbuild:
-	gcc src/db.c -o db && ./db mydb.db
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)  && ./db mydb.db
+
+clean:
+	rm -f $(TARGET)
+
+zigbuild:
+	zig build run

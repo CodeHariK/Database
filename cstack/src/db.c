@@ -1,14 +1,7 @@
 #include "statement.h"
 
-int main(int argc, char *argv[])
+void db(char *filename)
 {
-    if (argc < 2)
-    {
-        printf("Must supply a database filename.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    char *filename = argv[1];
     Table *table = db_open(filename);
 
     InputBuffer *input_buffer = new_input_buffer();
