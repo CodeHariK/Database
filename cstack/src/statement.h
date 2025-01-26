@@ -8,13 +8,12 @@
 
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
-    void *node = get_page(table->pager, table->root_page_num);
-    uint32_t num_cells = (*leaf_node_num_cells(node));
-
     Row *row_to_insert = &(statement->row_to_insert);
-
     uint32_t key_to_insert = row_to_insert->id;
     Cursor *cursor = table_find(table, key_to_insert);
+
+    void *node = get_page(table->pager, cursor->page_num);
+    uint32_t num_cells = *leaf_node_num_cells(node);
 
     if (cursor->cell_num < num_cells)
     {
@@ -26,6 +25,8 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
     }
 
     leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
+
+    free(cursor);
 
     return EXECUTE_SUCCESS;
 }
@@ -49,14 +50,12 @@ ExecuteResult execute_select(Statement *statement, Table *table)
 
 ExecuteResult execute_statement(Statement *statement, Table *table)
 {
+    switch (statement->type)
     {
-        switch (statement->type)
-        {
-        case (STATEMENT_INSERT):
-            return execute_insert(statement, table);
-        case (STATEMENT_SELECT):
-            return execute_select(statement, table);
-        }
+    case (STATEMENT_INSERT):
+        return execute_insert(statement, table);
+    case (STATEMENT_SELECT):
+        return execute_select(statement, table);
     }
 }
 
@@ -64,7 +63,7 @@ PrepareResult prepare_insert(InputBuffer *input_buffer, Statement *statement)
 {
     statement->type = STATEMENT_INSERT;
 
-    strtok(input_buffer->buffer, " ");
+    char *keyword = strtok(input_buffer->buffer, " ");
     char *id_string = strtok(NULL, " ");
     char *username = strtok(NULL, " ");
     char *email = strtok(NULL, " ");
@@ -95,8 +94,7 @@ PrepareResult prepare_insert(InputBuffer *input_buffer, Statement *statement)
     return PREPARE_SUCCESS;
 }
 
-PrepareResult prepare_statement(InputBuffer *input_buffer,
-                                Statement *statement)
+PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement)
 {
     if (strncmp(input_buffer->buffer, "insert", 6) == 0)
     {

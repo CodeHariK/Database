@@ -6,19 +6,13 @@
 
 #include "types.h"
 
-typedef struct
-{
-    int file_descriptor;
-    uint32_t file_length;
-    uint32_t num_pages;
-    void *pages[TABLE_MAX_PAGES];
-} Pager;
-
 Pager *pager_open(const char *filename)
 {
-    int fd = open(filename, O_RDWR | O_CREAT,
-                  S_IWUSR |   // User write permission
-                      S_IRUSR // User read permission
+    int fd = open(filename,
+                  O_RDWR |     // Read/Write mode
+                      O_CREAT, // Create file if it does not exist
+                  S_IWUSR |    // User write permission
+                      S_IRUSR  // User read permission
     );
 
     if (fd == -1)
@@ -64,7 +58,8 @@ void pager_flush(Pager *pager, uint32_t page_num)
         exit(EXIT_FAILURE);
     }
 
-    ssize_t bytes_written = write(pager->file_descriptor, pager->pages[page_num], PAGE_SIZE);
+    ssize_t bytes_written =
+        write(pager->file_descriptor, pager->pages[page_num], PAGE_SIZE);
 
     if (bytes_written == -1)
     {
