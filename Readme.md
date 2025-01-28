@@ -46,8 +46,65 @@ Common data structures for indexing include B-Trees and LSM-Trees.
 
 #### Data structure
 
+On-disk data structures are often used when the amounts of data are so large that
+keeping an entire dataset in memory is impossible or not feasible. Only a fraction of
+the data can be cached in memory at any time, and the rest has to be stored on disk in
+a manner that allows efficiently accessing it.
+
+On spinning disks, seeks increase costs of random reads because they require disk
+rotation and mechanical head movements to position the read/write head to the
+desired location. However, once the expensive part is done, reading or writing contig‐
+uous bytes (i.e., sequential operations) is relatively cheap.
+The smallest transfer unit of a spinning drive is a sector, so when some operation is
+performed, at least an entire sector can be read or written. Sector sizes typically range
+from 512 bytes to 4 Kb.
+Head positioning is the most expensive part of an operation on the HDD. This is one
+of the reasons we often hear about the positive effects of sequential I/O: reading and
+writing contiguous memory segments from disk.
+
+In SSDs, we don’t have a strong emphasis on random versus sequential I/O, as in
+HDDs, because the difference in latencies between random and sequential reads is
+not as large. There is still some difference caused by prefetching, reading contiguous
+pages, and internal parallelism
+
+Writing only full blocks, and combining subsequent writes to the same block, can
+help to reduce the number of required I/O operations.
+
+In summary, on-disk structures are designed with their target storage specifics in
+mind and generally optimize for fewer disk accesses. We can do this by improving
+locality, optimizing the internal representation of the structure, and reducing the
+number of out-of-page pointers.
+
 ##### Hashtable 
 no sorting or ordering, resizing problems
+
+##### Binary search tree
+Unbalanced trees have a worst-case complexity of O(N).
+Balanced trees give us an average O(log2 N). At the same time, due to low fanout
+(fanout is the maximum allowed number of children per node), we have to perform
+balancing, relocate nodes, and update pointers rather frequently. Increased mainte‐
+nance costs make BSTs impractical as on-disk data structures
+
+If we wanted to maintain a BST on disk, we’d face several problems. One problem is
+locality: since elements are added in random order, there’s no guarantee that a newly
+created node is written close to its parent, which means that node child pointers may
+span across several disk pages. We can improve the situation to a certain extent by
+modifying the tree layout and using paged binary trees 
+
+Another problem, closely related to the cost of following child pointers, is tree height.
+Since binary trees have a fanout of just two, height is a binary logarithm of the num‐
+ber of the elements in the tree, and we have to perform O(log2 N) seeks to locate the
+searched element and, subsequently, perform the same number of disk transfers. 2-3-
+Trees and other low-fanout trees have a similar limitation: while they are useful as
+in-memory data structures, small node size makes them impractical for external storage
+
+A naive on-disk BST implementation would require as many disk seeks as compari‐
+sons, since there’s no built-in concept of locality. 
+
+Considering these factors, a version of the tree that would be better suited for disk
+implementation has to exhibit the following properties:
+• High fanout to improve locality of the neighboring keys.
+• Low height to reduce the number of seeks during traversal.
 
 ##### Balanced binary trees BTree 
 Queried and updated in O(log(n)) and can be range-queried. A BTree is roughly a balanced n-ary tree
