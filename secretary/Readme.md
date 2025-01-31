@@ -1,4 +1,4 @@
-[![Secretory Bird](https://img.youtube.com/vi/difrBNjGwLo/maxresdefault.jpg)](https://www.youtube.com/watch?v=difrBNjGwLo)
+[![Secretary Bird](https://img.youtube.com/vi/difrBNjGwLo/maxresdefault.jpg)](https://www.youtube.com/watch?v=difrBNjGwLo)
 
 There are 3 types of data : Internal nodes, Leaf Nodes and Records
 
