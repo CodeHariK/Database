@@ -13,18 +13,20 @@ type Secretary struct {
 type BPlusTree struct {
 	collectionName string
 
-	root  *InternalNode // Root node of the tree
-	order uint8         // Order of the tree (maximum number of children)
-
 	blockStoreInternal BlockStore
 	blockStoreLeaf     BlockStore
 	blockStoreRecords  [32]BlockStore
 
+	root *Node // Root node of the tree
+
+	order                 uint8  // Max = 255, Order of the tree (maximum number of children)
+	keySize               uint8  // 8 or 16 bytes
+	blockSize             uint32 // ~1MB
+	blockFactorPercentage uint8
+	nodeGroupLength       uint32
+
 	averageRecordSize uint32 // MaxRecordSize = 4GB
 	RecordCount       uint64 // Total records in the tree
-
-	blockFactorPercentage uint8
-	nodeGroupLength       uint8
 }
 
 type BlockStore struct {
@@ -42,33 +44,38 @@ type BlockStore struct {
 	mu sync.Mutex
 }
 
-type InternalNode struct {
-	parent *InternalNode // Parent node pointer
-	next   *InternalNode // Pointer to next leaf node (for leaf nodes)
-	prev   *InternalNode // Pointer to next leaf node (for leaf nodes)
+type Node struct {
+	parent *Node
+	next   *Node
+	prev   *Node
 
-	children []*InternalNode // Child pointers (for internal nodes)
+	children []*Node
 
 	records []Record
 }
 
-type InternalNodeSerialised struct {
-	offset       uint64
-	parentOffset uint64
-	nextOffset   uint64
-	prevOffset   uint64
+type NodeSerialised struct {
+	offset       DataLocation
+	parentOffset DataLocation
+	nextOffset   DataLocation
+	prevOffset   DataLocation
 
-	keyOffsets []KeyOffset // fixed "order" number of children
+	keyOffsets []DataLocation // (8 bytes) 8 bits if Record for blockLevel, 48 bits for blockOffset
+	Keys       [][]byte       // (8 bytes or 16 bytes)
 }
 
-type KeyOffset struct {
-	Offset uint64 // (8 bytes) 8 bits if Record for blockLevel, 48 bits for blockOffset
-	Key    uint64 // (8 bytes)
-}
+// Record
+// 48 bit Offset
+// 16 bit BlockLevel
+//
+// Node
+// 48 bit BlockID (Max blocks in file = 2^48)
+// 16 bit NodeIndex if Node (Max nodes in block = 2^16)
+type DataLocation int64
 
 type Record struct {
-	Offset uint64 // (8 bytes) 8 bits if Record for blockLevel, 48 bits for blockOffset
-	Key    uint64 // (8 bytes)
-	Size   uint32 // (4 bytes) Max size = 4GB
+	Offset DataLocation // (8 bytes)
+	Size   uint32       // (4 bytes) Max size = 4GB
+	Key    []byte       // (8 bytes or 16 bytes)
 	Value  []byte
 }
