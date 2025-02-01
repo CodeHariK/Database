@@ -42,49 +42,33 @@ type BlockStore struct {
 	mu sync.Mutex
 }
 
-type NodeGroupBlock struct {
-	/*
-		NodeGroupID (4)  |  RecordCount (4)  |  UsedSpace (4)
-		Records
-	*/
-	nodeGroup   NodeGroup
-	RecordCount uint32 // 4 bytes
-	UsedSpace   uint32 // 4 bytes
-
-	Records *[]Record
-}
-
-type NodeGroup struct {
-	id         uint32
-	blockLevel int8 // 8 blockSize level
-	leafIDs    []uint32
-}
-
 type InternalNode struct {
 	parent *InternalNode // Parent node pointer
 	next   *InternalNode // Pointer to next leaf node (for leaf nodes)
 	prev   *InternalNode // Pointer to next leaf node (for leaf nodes)
 
 	children []*InternalNode // Child pointers (for internal nodes)
+
+	records []Record
 }
 
-type LeafNode struct {
-	isLeaf      bool
-	nodeGroupId uint32
+type InternalNodeSerialised struct {
+	offset       uint64
+	parentOffset uint64
+	nextOffset   uint64
+	prevOffset   uint64
 
-	//
-	parent *InternalNode // Parent node pointer
-	next   *InternalNode // Pointer to next leaf node (for leaf nodes)
-	prev   *InternalNode // Pointer to next leaf node (for leaf nodes)
+	keyOffsets []KeyOffset // fixed "order" number of children
+}
 
-	records *[]Record // Cached records
+type KeyOffset struct {
+	Offset uint64 // (8 bytes) 8 bits if Record for blockLevel, 48 bits for blockOffset
+	Key    uint64 // (8 bytes)
 }
 
 type Record struct {
-	NodeId  uint32
-	BlockID uint32
-	Offset  uint32
-	Size    uint32
-	Key     uint64
-	Value   []byte
+	Offset uint64 // (8 bytes) 8 bits if Record for blockLevel, 48 bits for blockOffset
+	Key    uint64 // (8 bytes)
+	Size   uint32 // (4 bytes) Max size = 4GB
+	Value  []byte
 }
