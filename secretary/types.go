@@ -30,7 +30,7 @@ type Secretary struct {
 /*
 **HEADER AND NODES**
 
-------128 bytes------
+------64 bytes------
 SECRETARY				(9 bytes) 9
 order 					(uint8)   10
 order          			(uint8)   11
@@ -69,7 +69,8 @@ type bTree struct {
 type BatchStore struct {
 	file *os.File
 
-	level uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
+	headerSize uint8
+	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
 
 	batchSize uint32 // Maximum batch size = 4GB
 

@@ -26,7 +26,7 @@ func NewBTree(
 		return nil, fmt.Errorf("Collection name is not valid, should be a-z 0-9 and with >4 & <100 characters")
 	}
 
-	if dirNotExist := utils.EnsureDir(safeCollectionName); dirNotExist != nil {
+	if dirNotExist := utils.EnsureDir(fmt.Sprintf("SECRETARY/%s", safeCollectionName)); dirNotExist != nil {
 		return nil, fmt.Errorf(safeCollectionName, dirNotExist.Error())
 	}
 
@@ -43,7 +43,7 @@ func NewBTree(
 		batchLength:    batchLength,
 	}
 
-	nodeBatchStore, err := tree.NewBatchStore(safeCollectionName, "secretary", 0)
+	nodeBatchStore, err := tree.NewBatchStore("index", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func NewBTree(
 
 	recordBatchStores := make([]*BatchStore, batchNumLevel)
 	for i := range recordBatchStores {
-		store, err := tree.NewBatchStore(safeCollectionName, "record", uint8(i))
+		store, err := tree.NewBatchStore("record", uint8(i))
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func (tree *bTree) Serialize() ([]byte, error) {
 	return data, nil
 }
 
-func DeserializeBPlusTree(data []byte) (*bTree, error) {
+func DeserializeBTree(data []byte) (*bTree, error) {
 	if len(data) != SECRETARY_HEADER_LENGTH {
 		return nil, errors.New("invalid data length")
 	}
@@ -140,4 +140,13 @@ func DeserializeBPlusTree(data []byte) (*bTree, error) {
 		tree.batchLength,
 		tree.batchBaseSize,
 	)
+}
+
+func (tree *bTree) SaveHeader() error {
+	header, err := tree.Serialize()
+	if err != nil {
+		return err
+	}
+
+	return tree.nodeBatchStore.WriteAtOffset(0, header)
 }

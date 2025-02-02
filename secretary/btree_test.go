@@ -4,10 +4,9 @@ import (
 	"testing"
 )
 
-// TestBTreeSerialization tests the serialization and deserialization of BPlusTree
-func TestBTreeSerialization(t *testing.T) {
+func testBTree(t *testing.T, collectionName string) *bTree {
 	originalTree, err := NewBTree(
-		"Test+Collection",
+		collectionName,
 		10,
 		16,
 		32,
@@ -18,6 +17,12 @@ func TestBTreeSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal("NewBTree Failed")
 	}
+	return originalTree
+}
+
+// TestBTreeSerialization tests the serialization and deserialization of BPlusTree
+func TestBTreeSerialization(t *testing.T) {
+	originalTree := testBTree(t, "TestBTreeSerialization")
 
 	// Serialize the tree
 	serializedData, err := originalTree.Serialize()
@@ -30,7 +35,7 @@ func TestBTreeSerialization(t *testing.T) {
 	}
 
 	// Deserialize the tree
-	deserializedTree, err := DeserializeBPlusTree(serializedData)
+	deserializedTree, err := DeserializeBTree(serializedData)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
@@ -63,3 +68,30 @@ func TestBTreeSerialization(t *testing.T) {
 		t.Errorf("Expected collectionName '%s', got '%s'", expectedCollectionName, actualCollectionName)
 	}
 }
+
+// func TestSaveHeader(t *testing.T) {
+// 	tree := testBTree(t)
+
+// 	// Save header
+// 	err := tree.SaveHeader()
+// 	if err != nil {
+// 		t.Fatalf("SaveHeader failed: %v", err)
+// 	}
+
+// 	// Retrieve data from mock store
+// 	savedData, err := tree.nodeBatchStore.ReadAtOffset(0)
+// 	if err != nil {
+// 		t.Fatalf("Failed to read written data: %v", err)
+// 	}
+
+// 	// Serialize again for comparison
+// 	expectedData, err := tree.Serialize()
+// 	if err != nil {
+// 		t.Fatalf("Failed to serialize expected data: %v", err)
+// 	}
+
+// 	// Compare written data with expected serialized header
+// 	if !bytes.Equal(savedData, expectedData) {
+// 		t.Errorf("Saved header does not match expected serialized data")
+// 	}
+// }
