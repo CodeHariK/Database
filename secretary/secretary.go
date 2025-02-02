@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -103,21 +104,91 @@ const (
 	MAX_ORDER = uint8(40) // Maximum allowed order for the B+ Tree
 )
 
-func NewBPlusTree(collectionName string, order uint8, blockFactorPercentage uint8, nodeGroupLength uint8) (*BPlusTree, error) {
+func NewBPlusTree(
+	collectionName string, order uint8, numLevel uint8,
+	batchNumLevel uint8, batchIncrement uint8, batchLength uint8, batchBaseSize uint32,
+) (*BPlusTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
-		return nil, fmt.Errorf("order must be between %d and %d", MIN_ORDER, MAX_ORDER)
+		log.Fatalf("order must be between %d and %d", MIN_ORDER, MAX_ORDER)
 	}
 
-	return &BPlusTree{
-		collectionName: collectionName,
+	if batchIncrement < 110 || batchIncrement > 200 {
+		log.Fatalf("batchSizePercentage must be between 110 and 200")
+	}
 
-		blockStoreInternal: internalFile,
-		blockStoreLeaf:     leafFile,
-		blockStoreRecords:  recordFile,
+	safeCollectionName := utils.RemoveNonAlphanumeric(collectionName)
+	if safeCollectionName == "" {
+		log.Fatalf("collection name not valid, should be a-z 0-9")
+	}
 
-		root:                  nil,
-		order:                 order,
-		blockFactorPercentage: blockFactorPercentage,
-		nodeGroupLength:       nodeGroupLength,
+	if dirNotExist := utils.EnsureDir(safeCollectionName); dirNotExist != nil {
+		log.Fatalf(safeCollectionName, dirNotExist.Error())
+	}
+
+	tree := &BPlusTree{
+		collectionName: safeCollectionName,
+
+		root:  nil,
+		order: order,
+
+		batchNumLevel:  batchNumLevel,
+		batchBaseSize:  batchBaseSize,
+		batchIncrement: batchIncrement,
+		batchLength:    batchLength,
+	}
+
+	batchStores := make([]*BatchStore, numLevel)
+	for i := range batchStores {
+		store, err := tree.NewBatchStore(safeCollectionName, 0)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		batchStores[i] = store
+	}
+
+	return tree, nil
+}
+
+// Opens or creates a file and sets up the BatchStore
+func (tree *BPlusTree) NewBatchStore(filePath string, level uint8) (*BatchStore, error) {
+	size := uint32(tree.batchBaseSize)*uint32(tree.batchIncrement/100) ^ uint32(level)
+
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BatchStore{
+		file:  file,
+		level: level,
+		size:  size,
 	}, nil
+}
+
+// AllocateBlock writes zeroed data in chunks of pageSize for alignment
+func (store *BatchStore) AllocateBlock() (int64, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	// Get current file size
+	fileInfo, err := store.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	offset := fileInfo.Size()
+
+	// Align to the next page boundary
+	if (uint32(offset) % store.size) == 0 {
+		log.Fatalf("Error : File %d not aligned", store.level)
+	}
+
+	// Expand file by writing zeros
+	zeroBuf := make([]byte, store.size)
+	_, err = store.file.WriteAt(zeroBuf, offset)
+	if err != nil {
+		return 0, err
+	}
+
+	return offset, nil
 }
