@@ -1,9 +1,12 @@
 package utils
 
-import "regexp"
+import (
+	"regexp"
+)
 
-// RemoveNonAlphanumeric removes all characters except letters and digits
-func RemoveNonAlphanumeric(input string) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
-	return re.ReplaceAllString(input, "")
+var SAFE_COLLECTION_REGEX = regexp.MustCompile(`[^a-zA-Z0-9._]`)
+
+// SafeCollectionString removes all characters except letters and digits, lowercase
+func SafeCollectionString(input string) string {
+	return SAFE_COLLECTION_REGEX.ReplaceAllString(input, "")
 }

@@ -5,15 +5,56 @@ import (
 	"sync"
 )
 
+const (
+	SECRETARY                  = "SECRETARY"
+	SECRETARY_HEADER_LENGTH    = 64
+	MAX_COLLECTION_NAME_LENGTH = 30
+
+	MIN_ORDER = uint8(3)   // Minimum allowed order for the B+ Tree
+	MAX_ORDER = uint8(200) // Maximum allowed order for the B+ Tree
+
+	BYTE_8  = 1<<8 - 1
+	BYTE_16 = 1<<16 - 1
+
+	RECORD_BATCH_OFFSET_AND = 1<<56 - 1
+	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 56
+
+	NODE_BATCH_OFFSET_AND = 1<<48 - 1
+	NODE_INDEX_AND        = (BYTE_16 - 1) << 48
+)
+
 type Secretary struct {
-	tree map[string]*BPlusTree
+	tree map[string]*bTree
 }
 
-type BPlusTree struct {
-	collectionName string
+/*
+**HEADER AND NODES**
 
-	nodeBatchStore    BatchStore
-	recordBatchStores []BatchStore
+------128 bytes------
+SECRETARY				(9 bytes) 9
+order 					(uint8)   10
+order          			(uint8)   11
+keySize        			(uint8)   12
+batchNumLevel  			(uint8)   13
+batchBaseSize  			(uint32)  17
+batchIncrement 			(uint8)   18
+batchLength    			(uint8)   19
+collectionName			(string)
+---------------------
+1  			Root
+order		Internal
+order ^ 2	Internal
+order ^ 3	Internal
+order ^ 4	Internal
+...
+order ^ n	Leaf
+---------------------
+*/
+type bTree struct {
+	collectionName string // Max 30Char
+
+	nodeBatchStore    *BatchStore
+	recordBatchStores []*BatchStore
 
 	root *Node // Root node of the tree
 
@@ -30,7 +71,7 @@ type BatchStore struct {
 
 	level uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
 
-	size uint32 // Maximum batch size = 4GB
+	batchSize uint32 // Maximum batch size = 4GB
 
 	mu sync.Mutex
 }
@@ -68,17 +109,6 @@ type Node struct {
 func (n *Node) IsLeaf() bool {
 	return len(n.children) == 0
 }
-
-const (
-	BYTE_8  = 1<<8 - 1
-	BYTE_16 = 1<<16 - 1
-
-	RECORD_BATCH_OFFSET_AND = 1<<56 - 1
-	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 56
-
-	NODE_BATCH_OFFSET_AND = 1<<48 - 1
-	NODE_INDEX_AND        = (BYTE_16 - 1) << 48
-)
 
 // Record
 // 56 bit Offset
