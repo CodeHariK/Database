@@ -72,11 +72,11 @@ func (store *BatchStore) AllocateBatch(numBatch int32) error {
 	return nil
 }
 
-// WriteAtOffset writes data at the specified offset in the file.
+// WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
-func (store *BatchStore) WriteAtOffset(offset int64, data []byte) error {
+func (store *BatchStore) WriteAt(offset int64, data []byte) error {
 	// Ensure data size does not exceed batchSize
-	if ((int64(len(data)) + offset) / int64(store.batchSize)) != (offset / int64(store.batchSize)) {
+	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.batchSize)) != ((offset - int64(store.headerSize)) / int64(store.batchSize)) {
 		return fmt.Errorf("Error: Data size %d exceeds batch size %d at offset %d", len(data), store.batchSize, offset)
 	}
 
@@ -109,8 +109,8 @@ func (store *BatchStore) WriteAtOffset(offset int64, data []byte) error {
 	return nil
 }
 
-// ReadAtOffset reads data from the specified offset in the file
-func (store *BatchStore) ReadAtOffset(offset int64, size int32) ([]byte, error) {
+// ReadAt reads data from the specified offset in the file
+func (store *BatchStore) ReadAt(offset int64, size int32) ([]byte, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 

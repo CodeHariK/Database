@@ -1,6 +1,7 @@
 package secretary
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -69,29 +70,29 @@ func TestBTreeSerialization(t *testing.T) {
 	}
 }
 
-// func TestSaveHeader(t *testing.T) {
-// 	tree := testBTree(t)
+func TestSaveHeader(t *testing.T) {
+	tree := testBTree(t, "TestSaveHeader")
 
-// 	// Save header
-// 	err := tree.SaveHeader()
-// 	if err != nil {
-// 		t.Fatalf("SaveHeader failed: %v", err)
-// 	}
+	// Save header
+	err := tree.SaveHeader()
+	if err != nil {
+		t.Fatalf("SaveHeader failed: %v", err)
+	}
 
-// 	// Retrieve data from mock store
-// 	savedData, err := tree.nodeBatchStore.ReadAtOffset(0)
-// 	if err != nil {
-// 		t.Fatalf("Failed to read written data: %v", err)
-// 	}
+	// Retrieve data from mock store
+	savedData, err := tree.nodeBatchStore.ReadAt(0, SECRETARY_HEADER_LENGTH)
+	if err != nil {
+		t.Fatalf("Failed to read written data: %v", err)
+	}
 
-// 	// Serialize again for comparison
-// 	expectedData, err := tree.Serialize()
-// 	if err != nil {
-// 		t.Fatalf("Failed to serialize expected data: %v", err)
-// 	}
+	// Serialize again for comparison
+	expectedData, err := tree.Serialize()
+	if err != nil {
+		t.Fatalf("Failed to serialize expected data: %v", err)
+	}
 
-// 	// Compare written data with expected serialized header
-// 	if !bytes.Equal(savedData, expectedData) {
-// 		t.Errorf("Saved header does not match expected serialized data")
-// 	}
-// }
+	// Compare written data with expected serialized header
+	if !bytes.Equal(savedData, expectedData) {
+		t.Errorf("Saved header does not match expected serialized data")
+	}
+}

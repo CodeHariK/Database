@@ -148,5 +148,5 @@ func (tree *bTree) SaveHeader() error {
 		return err
 	}
 
-	return tree.nodeBatchStore.WriteAtOffset(0, header)
+	return tree.nodeBatchStore.WriteAt(0, header)
 }

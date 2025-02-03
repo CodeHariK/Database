@@ -33,12 +33,11 @@ type Secretary struct {
 ------64 bytes------
 SECRETARY				(9 bytes) 9
 order 					(uint8)   10
-order          			(uint8)   11
-keySize        			(uint8)   12
-batchNumLevel  			(uint8)   13
-batchBaseSize  			(uint32)  17
-batchIncrement 			(uint8)   18
-batchLength    			(uint8)   19
+keySize        			(uint8)   11
+batchNumLevel  			(uint8)   12
+batchBaseSize  			(uint32)  16
+batchIncrement 			(uint8)   17
+batchLength    			(uint8)   18
 collectionName			(string)
 ---------------------
 1  			Root
