@@ -1,17 +1,19 @@
 package secretary
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
 	"fmt"
 
 	"github.com/codeharik/secretary/utils"
 )
 
 func NewBTree(
-	collectionName string, order uint8, keySize uint8,
-	batchNumLevel uint8, batchIncrement uint8, batchLength uint8, batchBaseSize uint32,
+	collectionName string,
+	order uint8,
+	keySize uint8,
+	batchNumLevel uint8,
+	batchBaseSize uint32,
+	batchIncrement uint8,
+	batchLength uint8,
 ) (*bTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
 		return nil, fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
@@ -31,16 +33,16 @@ func NewBTree(
 	}
 
 	tree := &bTree{
-		collectionName: safeCollectionName,
+		CollectionName: safeCollectionName,
 
 		root: nil,
 
-		order:          order,
-		keySize:        keySize,
-		batchNumLevel:  batchNumLevel,
-		batchBaseSize:  batchBaseSize,
-		batchIncrement: batchIncrement,
-		batchLength:    batchLength,
+		Order:          order,
+		KeySize:        keySize,
+		BatchNumLevel:  batchNumLevel,
+		BatchBaseSize:  batchBaseSize,
+		BatchIncrement: batchIncrement,
+		BatchLength:    batchLength,
 	}
 
 	nodeBatchStore, err := tree.NewBatchStore("index", 0)
@@ -64,86 +66,23 @@ func NewBTree(
 	return tree, nil
 }
 
-func (tree *bTree) Serialize() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	// Write "SECRETARY" identifier
-	identifier := []byte(SECRETARY)
-	buf.Write(identifier)
-
-	// Write fields in order
-	binary.Write(buf, binary.LittleEndian, tree.order)
-	binary.Write(buf, binary.LittleEndian, tree.keySize)
-	binary.Write(buf, binary.LittleEndian, tree.batchNumLevel)
-	binary.Write(buf, binary.LittleEndian, tree.batchBaseSize)
-	binary.Write(buf, binary.LittleEndian, tree.batchIncrement)
-	binary.Write(buf, binary.LittleEndian, tree.batchLength)
-
-	// Serialize collectionName (fixed 100 bytes)
-	nameBytes := make([]byte, MAX_COLLECTION_NAME_LENGTH)
-	copy(nameBytes, tree.collectionName)
-	buf.Write(nameBytes)
-
-	// Ensure exactly 128 bytes
-	data := buf.Bytes()
-	if len(data) > SECRETARY_HEADER_LENGTH {
-		return nil, errors.New("serialization exceeded 64 bytes")
-	}
-
-	// Pad if necessary
-	for len(data) < SECRETARY_HEADER_LENGTH {
-		data = append(data, 0)
-	}
-
-	return data, nil
-}
-
-func DeserializeBTree(data []byte) (*bTree, error) {
-	if len(data) != SECRETARY_HEADER_LENGTH {
-		return nil, errors.New("invalid data length")
-	}
-
-	reader := bytes.NewReader(data)
-
-	// Read identifier
-	identifier := make([]byte, 9)
-	if _, err := reader.Read(identifier); err != nil {
+func (tree *bTree) createHeader() ([]byte, error) {
+	header, err := utils.SerializeBinaryStruct(*tree)
+	if err != nil {
 		return nil, err
 	}
-	if string(identifier) != SECRETARY {
-		return nil, errors.New("invalid identifier")
+
+	header = append([]byte("SECRETARY"), header...)
+
+	if len(header) < SECRETARY_HEADER_LENGTH {
+		header = append(header, make([]byte, SECRETARY_HEADER_LENGTH-len(header))...)
 	}
 
-	tree := &bTree{}
-
-	// Read fields
-	binary.Read(reader, binary.LittleEndian, &tree.order)
-	binary.Read(reader, binary.LittleEndian, &tree.keySize)
-	binary.Read(reader, binary.LittleEndian, &tree.batchNumLevel)
-	binary.Read(reader, binary.LittleEndian, &tree.batchBaseSize)
-	binary.Read(reader, binary.LittleEndian, &tree.batchIncrement)
-	binary.Read(reader, binary.LittleEndian, &tree.batchLength)
-
-	// Read collectionName (fixed 100 bytes, trim nulls)
-	nameBytes := make([]byte, MAX_COLLECTION_NAME_LENGTH)
-	if _, err := reader.Read(nameBytes); err != nil {
-		return nil, err
-	}
-	tree.collectionName = string(bytes.Trim(nameBytes, "\x00"))
-
-	return NewBTree(
-		tree.collectionName,
-		tree.order,
-		tree.keySize,
-		tree.batchNumLevel,
-		tree.batchIncrement,
-		tree.batchLength,
-		tree.batchBaseSize,
-	)
+	return header, nil
 }
 
 func (tree *bTree) SaveHeader() error {
-	header, err := tree.Serialize()
+	header, err := tree.createHeader()
 	if err != nil {
 		return err
 	}

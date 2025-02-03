@@ -50,19 +50,19 @@ order ^ n	Leaf
 ---------------------
 */
 type bTree struct {
-	collectionName string // Max 30Char
+	CollectionName string `bin:"collectionName" max:"30"` // Max 30Char
 
 	nodeBatchStore    *BatchStore
 	recordBatchStores []*BatchStore
 
 	root *Node // Root node of the tree
 
-	order          uint8  // Max = 255, Order of the tree (maximum number of children)
-	keySize        uint8  // 8 or 16 bytes
-	batchNumLevel  uint8  // 32, Max 256 levels
-	batchBaseSize  uint32 // 1024B
-	batchIncrement uint8  // 125 => 1.25
-	batchLength    uint8  // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
+	Order          uint8  `bin:"order"`          // Max = 255, Order of the tree (maximum number of children)
+	KeySize        uint8  `bin:"keySize"`        // 8 or 16 bytes
+	BatchNumLevel  uint8  `bin:"batchNumLevel"`  // 32, Max 256 levels
+	BatchBaseSize  uint32 `bin:"batchBaseSize"`  // 1024B
+	BatchIncrement uint8  `bin:"batchIncrement"` // 125 => 1.25
+	BatchLength    uint8  `bin:"batchLength"`    // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
 }
 
 type BatchStore struct {

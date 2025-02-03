@@ -8,16 +8,16 @@ import (
 
 // Opens or creates a file and sets up the BatchStore
 func (tree *bTree) NewBatchStore(fileType string, level uint8) (*BatchStore, error) {
-	batchSize := uint32(float64(tree.batchBaseSize) * math.Pow(float64(tree.batchIncrement)/100, float64(level)))
+	batchSize := uint32(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
 
 	headerSize := 0
 
-	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.collectionName, fileType, level, batchSize)
+	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, batchSize)
 	if fileType == "index" {
 
 		headerSize = SECRETARY_HEADER_LENGTH
 
-		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.collectionName, fileType)
+		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.CollectionName, fileType)
 
 	}
 
