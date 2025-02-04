@@ -15,7 +15,8 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, err
 	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, batchSize)
 	if fileType == "index" {
 
-		headerSize = SECRETARY_HEADER_LENGTH
+		headerSize = SECRETARY_HEADER_LENGTH + int(tree.nodeSize)
+		batchSize = 1024 * 1024
 
 		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.CollectionName, fileType)
 
@@ -27,7 +28,7 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, err
 			return nil, err
 		}
 		file.Close()
-		fmt.Printf("Create File : %s\n", path)
+		// fmt.Printf("Create File : %s\n", path)
 	}
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
@@ -35,12 +36,12 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, err
 		return nil, err
 	}
 
-	fmt.Printf("Open File : %s\n", path)
+	// fmt.Printf("Open File : %s\n", path)
 
 	return &batchStore{
 		file:       file,
 		level:      level,
-		headerSize: uint8(headerSize),
+		headerSize: headerSize,
 		batchSize:  batchSize,
 	}, nil
 }

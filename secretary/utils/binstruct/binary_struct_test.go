@@ -1,9 +1,11 @@
-package utils
+package binstruct
 
 import (
 	"bytes"
 	"encoding/json"
 	"testing"
+
+	"github.com/codeharik/secretary/utils"
 )
 
 // Define struct with different types
@@ -72,13 +74,13 @@ func TestBinaryStructSerialize(t *testing.T) {
 			true,
 			testStruct{
 				Fint64_array:    []int64{125, 2000},
-				Fint32_array_20: GenerateRandomSlice[int32](20),
+				Fint32_array_20: utils.GenerateRandomSlice[int32](20),
 			},
 		},
 		"Array truncate": {
 			false,
 			testStruct{
-				Fint32_array_20: GenerateRandomSlice[int32](21),
+				Fint32_array_20: utils.GenerateRandomSlice[int32](21),
 			},
 		},
 	}
@@ -87,17 +89,17 @@ func TestBinaryStructSerialize(t *testing.T) {
 
 		t.Logf("\n----------------------------------------\nOriginal: %+v", test.s)
 
-		binaryData, _ := BinaryStructSerialize(test.s)
+		binaryData, _ := Serialize(test.s)
 		t.Logf("\n\nSerializ: %+v\n", binaryData)
 
 		var d testStruct
-		BinaryStructDeserialize(binaryData, &d)
+		Deserialize(binaryData, &d)
 		t.Logf("\n\nDeserial: %+v\n", d)
 
-		hashS, _ := md5Struct(test.s)
-		hashD, _ := md5Struct(d)
+		hashS, _ := utils.Md5Struct(test.s)
+		hashD, _ := utils.Md5Struct(d)
 
-		eq, err := BinaryStructCompare(test.s, d)
+		eq, err := Compare(test.s, d)
 		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
 			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
 		}
@@ -162,7 +164,7 @@ func TestCompareBinaryStruct(t *testing.T) {
 
 		t.Logf("\n----------------------------------------\nA: %+v\nB: %+v", test.a, test.b)
 
-		equal, err := BinaryStructCompare(test.a, test.b)
+		equal, err := Compare(test.a, test.b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,18 +196,18 @@ func TestMarshalJSONBinaryStruct(t *testing.T) {
 
 	t.Logf("\n----------------------------------------\nOriginal: %+v", h)
 
-	binaryData, _ := BinaryStructSerialize(h)
+	binaryData, _ := Serialize(h)
 	t.Logf("\n\nSerializ: %+v\n", binaryData)
 
 	var d testStruct
-	BinaryStructDeserialize(binaryData, &d)
+	Deserialize(binaryData, &d)
 	t.Logf("\n\nDeserial: %+v\n", d)
 
-	jsonH, err := BinaryStructMarshalJSON(h)
+	jsonH, err := MarshalJSON(h)
 	if err != nil {
 		t.Fatal(err)
 	}
-	jsonD, err := BinaryStructMarshalJSON(d)
+	jsonD, err := MarshalJSON(d)
 	if err != nil {
 		t.Fatal(err)
 	}

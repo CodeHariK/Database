@@ -7,7 +7,7 @@ import (
 )
 
 // Function to compute MD5 hash of a struct
-func md5Struct(data interface{}) (string, error) {
+func Md5Struct(data interface{}) (string, error) {
 	// Serialize the struct to JSON
 	serialized, err := json.Marshal(data)
 	if err != nil {

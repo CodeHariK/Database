@@ -10,8 +10,12 @@ const (
 	SECRETARY_HEADER_LENGTH    = 64
 	MAX_COLLECTION_NAME_LENGTH = 30
 
-	MIN_ORDER = uint8(3)   // Minimum allowed order for the B+ Tree
-	MAX_ORDER = uint8(200) // Maximum allowed order for the B+ Tree
+	MIN_ORDER = 3   // Minimum allowed order for the B+ Tree
+	MAX_ORDER = 200 // Maximum allowed order for the B+ Tree
+
+	KEY_SIZE        = 16
+	KEY_OFFSET_SIZE = 8
+	POINTER_SIZE    = 8
 
 	BYTE_8  = 1<<8 - 1
 	BYTE_16 = 1<<16 - 1
@@ -33,14 +37,14 @@ type Secretary struct {
 ------64 bytes------
 SECRETARY				(9 bytes) 9
 order 					(uint8)   10
-keySize        			(uint8)   11
-batchNumLevel  			(uint8)   12
-batchBaseSize  			(uint32)  16
-batchIncrement 			(uint8)   17
-batchLength    			(uint8)   18
+batchNumLevel  			(uint8)   11
+batchBaseSize  			(uint32)  15
+batchIncrement 			(uint8)   16
+batchLength    			(uint8)   17
 collectionName			(string)
 ---------------------
-1  			Root
+1  			Root		(5*1024 = 5120)
+---------------------
 order		Internal
 order ^ 2	Internal
 order ^ 3	Internal
@@ -58,17 +62,18 @@ type bTree struct {
 	root *node // Root node of the tree
 
 	Order          uint8  `bin:"order"`          // Max = 255, Order of the tree (maximum number of children)
-	KeySize        uint8  `bin:"keySize"`        // 8 or 16 bytes
 	BatchNumLevel  uint8  `bin:"batchNumLevel"`  // 32, Max 256 levels
-	BatchBaseSize  uint32 `bin:"batchBaseSize"`  // 1024B
+	BatchBaseSize  uint32 `bin:"batchBaseSize"`  // 1024MB
 	BatchIncrement uint8  `bin:"batchIncrement"` // 125 => 1.25
 	BatchLength    uint8  `bin:"batchLength"`    // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
+
+	nodeSize uint32
 }
 
 type batchStore struct {
 	file *os.File
 
-	headerSize uint8
+	headerSize int
 	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
 
 	batchSize uint32 // Maximum batch size = 4GB
@@ -86,7 +91,7 @@ type batchStore struct {
 | (8 bytes each)                                                    |
 +----------------+----------------+----------------+----------------+
 | Keys...                                                           |
-| (8 or 16 bytes each)                                              |
+| (16 bytes each)                                              |
 +----------------+----------------+----------------+----------------+
 */
 type node struct {
@@ -101,10 +106,9 @@ type node struct {
 	NextOffset   DataLocation `bin:"NextOffset"`
 	PrevOffset   DataLocation `bin:"PrevOffset"`
 
-	NumKeys uint8 `bin:"NumKeys"`
-	// KeyOffsets []DataLocation `bin:"KeyOffsets"` // (8 bytes)
-	KeyOffsets []int64  `bin:"KeyOffsets"` // (8 bytes)
-	Keys       [][]byte // (8 bytes or 16 bytes)
+	NumKeys    uint8          `bin:"NumKeys"`
+	KeyOffsets []DataLocation `bin:"KeyOffsets"` // (8 bytes)
+	Keys       [][]byte       `bin:"Keys"`       // (16 bytes)
 }
 
 func (n *node) IsLeaf() bool {
@@ -119,6 +123,8 @@ func (n *node) IsLeaf() bool {
 // 48 bit BatchOffset (Max batch in file = 2^48)
 // 16 bit NodeIndex	   (Max nodes in batch = 2^16)
 type DataLocation uint64
+
+type Key16Byte [16]byte
 
 type Record struct {
 	Offset DataLocation // (8 bytes)

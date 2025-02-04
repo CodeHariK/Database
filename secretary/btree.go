@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/codeharik/secretary/utils"
+	"github.com/codeharik/secretary/utils/binstruct"
 )
 
 func NewBTree(
 	collectionName string,
 	order uint8,
-	keySize uint8,
 	batchNumLevel uint8,
 	batchBaseSize uint32,
 	batchIncrement uint8,
@@ -22,9 +22,8 @@ func NewBTree(
 	if batchIncrement < 110 || batchIncrement > 200 {
 		return nil, fmt.Errorf("Batch Increment must be between 110 and 200")
 	}
-	if keySize != 8 && keySize != 16 {
-		return nil, fmt.Errorf("Key Size must be 8 or 16")
-	}
+
+	nodeSize := uint32(order)*(KEY_SIZE+KEY_OFFSET_SIZE) + 3*POINTER_SIZE + 1
 
 	safeCollectionName := utils.SafeCollectionString(collectionName)
 	if len(safeCollectionName) < 5 || len(safeCollectionName) > MAX_COLLECTION_NAME_LENGTH {
@@ -38,14 +37,15 @@ func NewBTree(
 	tree := &bTree{
 		CollectionName: safeCollectionName,
 
-		root: nil,
+		root: &node{},
 
 		Order:          order,
-		KeySize:        keySize,
 		BatchNumLevel:  batchNumLevel,
 		BatchBaseSize:  batchBaseSize,
 		BatchIncrement: batchIncrement,
 		BatchLength:    batchLength,
+
+		nodeSize: uint32(nodeSize),
 	}
 
 	nodeBatchStore, err := tree.NewBatchStore("index", 0)
@@ -70,18 +70,19 @@ func NewBTree(
 }
 
 func (tree *bTree) createHeader() ([]byte, error) {
-	header, err := utils.BinaryStructSerialize(*tree)
+	header64, err := binstruct.Serialize(*tree)
 	if err != nil {
 		return nil, err
 	}
 
-	header = append([]byte(SECRETARY), header...)
+	header64 = append([]byte(SECRETARY), header64...)
 
-	if len(header) < SECRETARY_HEADER_LENGTH {
-		header = append(header, make([]byte, SECRETARY_HEADER_LENGTH-len(header))...)
+	if len(header64) < SECRETARY_HEADER_LENGTH {
+		// header = append(header, make([]byte, rootHeaderSize-len(header))...)
+		header64 = append(header64, utils.MakeByteArray(SECRETARY_HEADER_LENGTH-len(header64), '-')...)
 	}
 
-	return header, nil
+	return header64, nil
 }
 
 func (tree *bTree) SaveHeader() error {

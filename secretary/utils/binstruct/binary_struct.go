@@ -1,4 +1,4 @@
-package utils
+package binstruct
 
 import (
 	"bytes"
@@ -88,7 +88,7 @@ func readByteLen(buf *bytes.Reader, numByte int) int {
 // bin : type name
 // byte : number of bytes used for length of string or []byte
 // max : max length of string or []byte
-func BinaryStructSerialize(s interface{}) ([]byte, error) {
+func Serialize(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Ptr {
 		return nil, errors.New("SerializeBinary: expected a value not pointer")
@@ -140,6 +140,7 @@ func BinaryStructSerialize(s interface{}) ([]byte, error) {
 			buf.WriteString(str) // Write string directly
 		case reflect.Slice:
 			elemKind := fieldValue.Type().Elem().Kind()
+			elemType := fieldValue.Type().Elem()
 
 			length := fieldValue.Len()
 
@@ -157,6 +158,12 @@ func BinaryStructSerialize(s interface{}) ([]byte, error) {
 			if elemKind == reflect.Uint8 { // Special case for []byte
 				data := fieldValue.Bytes()
 				buf.Write(data[:length]) // Write directly
+			} else if elemKind == reflect.Slice && elemType.Elem().Kind() == reflect.Uint8 {
+				for i := 0; i < length; i++ {
+					item := fieldValue.Index(i).Interface().([]byte)
+					fmt.Println("--> ", item, elemKind, elemType, len(item))
+					buf.Write(item[:])
+				}
 			} else if elemKind == reflect.Int8 || elemKind == reflect.Uint8 ||
 				elemKind == reflect.Int16 || elemKind == reflect.Uint16 ||
 				elemKind == reflect.Int32 || elemKind == reflect.Uint32 ||
@@ -176,8 +183,8 @@ func BinaryStructSerialize(s interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// BinaryStructDeserialize binary []byte into struct (Little-Endian)
-func BinaryStructDeserialize(data []byte, s interface{}) error {
+// Deserialize binary []byte into struct (Little-Endian)
+func Deserialize(data []byte, s interface{}) error {
 	val := reflect.ValueOf(s)
 	if val.Kind() != reflect.Ptr {
 		return errors.New("DeserializeBinary: expected a pointer")
@@ -277,8 +284,8 @@ func BinaryStructDeserialize(data []byte, s interface{}) error {
 	return nil
 }
 
-// BinaryStructCompare compares two structs field by field (Little-Endian style)
-func BinaryStructCompare(a, b interface{}) (bool, error) {
+// Compare compares two structs field by field (Little-Endian style)
+func Compare(a, b interface{}) (bool, error) {
 	// Ensure we're working with non-pointer values
 	if reflect.ValueOf(a).Kind() == reflect.Ptr || reflect.ValueOf(b).Kind() == reflect.Ptr {
 		return false, errors.New("CompareStruct: expected non-pointer values")
@@ -369,7 +376,7 @@ func BinaryStructCompare(a, b interface{}) (bool, error) {
 	return true, nil
 }
 
-func BinaryStructMarshalJSON(s interface{}) ([]byte, error) {
+func MarshalJSON(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() != reflect.Ptr && val.Kind() != reflect.Struct {
 		return nil, errors.New("MarshalJSON: expected a struct or pointer to struct")

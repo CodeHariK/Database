@@ -33,3 +33,13 @@ func GenerateRandomSlice[T int8 | int16 | int32 | int64 | uint | uint8 | uint16 
 
 	return slice
 }
+
+func MakeByteArray(size int, c rune) []byte {
+	b := make([]byte, size)
+
+	for i := range b {
+		b[i] = byte(c)
+	}
+
+	return b
+}

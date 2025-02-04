@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/codeharik/secretary/utils"
+	"github.com/codeharik/secretary/utils/binstruct"
 )
 
 func testBTree(t *testing.T, collectionName string) *bTree {
 	originalTree, err := NewBTree(
 		collectionName,
 		10,
-		16,
 		32,
 		1024,
 		125,
@@ -28,7 +27,7 @@ func TestBTreeSerialization(t *testing.T) {
 	originalTree := testBTree(t, "TestBTreeSerialization")
 
 	// Serialize the tree
-	serializedData, err := utils.BinaryStructSerialize(*originalTree)
+	serializedData, err := binstruct.Serialize(*originalTree)
 	// serializedData, err := originalTree.Serialize()
 	if err != nil {
 		t.Fatalf("Serialization failed: %v", err)
@@ -39,12 +38,12 @@ func TestBTreeSerialization(t *testing.T) {
 	}
 
 	var deserializedTree bTree
-	err = utils.BinaryStructDeserialize(serializedData, &deserializedTree)
+	err = binstruct.Deserialize(serializedData, &deserializedTree)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
 
-	eq, err := utils.BinaryStructCompare(*originalTree, deserializedTree)
+	eq, err := binstruct.Compare(*originalTree, deserializedTree)
 	if !eq || err != nil {
 		t.Fatalf("\nShould be Equal\n")
 	}
