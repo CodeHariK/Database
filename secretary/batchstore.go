@@ -7,7 +7,7 @@ import (
 )
 
 // Opens or creates a file and sets up the BatchStore
-func (tree *bTree) NewBatchStore(fileType string, level uint8) (*BatchStore, error) {
+func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, error) {
 	batchSize := uint32(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
 
 	headerSize := 0
@@ -37,7 +37,7 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*BatchStore, err
 
 	fmt.Printf("Open File : %s\n", path)
 
-	return &BatchStore{
+	return &batchStore{
 		file:       file,
 		level:      level,
 		headerSize: uint8(headerSize),
@@ -46,7 +46,7 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*BatchStore, err
 }
 
 // AllocateBatch writes zeroed data in chunks of pageSize for alignment
-func (store *BatchStore) AllocateBatch(numBatch int32) error {
+func (store *batchStore) AllocateBatch(numBatch int32) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -72,9 +72,32 @@ func (store *BatchStore) AllocateBatch(numBatch int32) error {
 	return nil
 }
 
+/**
+* Header
+* |
+* |
+* |
+* |
+* |
+* |
+*-----
+*
+*
+*
+*-----
+*
+* Offset
+*          +
+*-----     + Data shoud not exceed batch boundary
+*          +
+*
+*
+*-----
+*
+**/
 // WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
-func (store *BatchStore) WriteAt(offset int64, data []byte) error {
+func (store *batchStore) WriteAt(offset int64, data []byte) error {
 	// Ensure data size does not exceed batchSize
 	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.batchSize)) != ((offset - int64(store.headerSize)) / int64(store.batchSize)) {
 		return fmt.Errorf("Error: Data size %d exceeds batch size %d at offset %d", len(data), store.batchSize, offset)
@@ -110,7 +133,7 @@ func (store *BatchStore) WriteAt(offset int64, data []byte) error {
 }
 
 // ReadAt reads data from the specified offset in the file
-func (store *BatchStore) ReadAt(offset int64, size int32) ([]byte, error) {
+func (store *batchStore) ReadAt(offset int64, size int32) ([]byte, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 

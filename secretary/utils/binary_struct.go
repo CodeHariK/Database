@@ -2,7 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -45,16 +47,16 @@ func extractFieldParameters(val reflect.Value, i int, field reflect.StructField)
 	return fieldValue, numBytes, maxSize, size
 }
 
-func writeByteLen(buf *bytes.Buffer, data []byte, numByte int) {
+func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
 	switch numByte {
 	case 2:
-		binary.Write(buf, binary.LittleEndian, uint16(len(data)))
+		binary.Write(buf, binary.LittleEndian, uint16(length))
 	case 3:
-		binary.Write(buf, binary.LittleEndian, uint32(len(data)))
+		binary.Write(buf, binary.LittleEndian, uint32(length))
 	case 4:
-		binary.Write(buf, binary.LittleEndian, uint64(len(data)))
+		binary.Write(buf, binary.LittleEndian, uint64(length))
 	default:
-		binary.Write(buf, binary.LittleEndian, uint8(len(data)))
+		binary.Write(buf, binary.LittleEndian, uint8(length))
 	}
 }
 
@@ -86,7 +88,7 @@ func readByteLen(buf *bytes.Reader, numByte int) int {
 // bin : type name
 // byte : number of bytes used for length of string or []byte
 // max : max length of string or []byte
-func SerializeBinaryStruct(s interface{}) ([]byte, error) {
+func BinaryStructSerialize(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Ptr {
 		return nil, errors.New("SerializeBinary: expected a value not pointer")
@@ -134,20 +136,38 @@ func SerializeBinaryStruct(s interface{}) ([]byte, error) {
 			if len(str) >= maxStorableSize {
 				str = str[:maxStorableSize]
 			}
-			writeByteLen(buf, []byte(str), numBytes)
+			writeByteLen(buf, numBytes, len(str))
 			buf.WriteString(str) // Write string directly
 		case reflect.Slice:
-			if fieldValue.Type().Elem().Kind() == reflect.Uint8 { // Handle []byte
-				data := fieldValue.Bytes()
-				if len(data) >= maxSize {
-					data = data[:maxSize]
-				}
-				if len(data) >= maxStorableSize {
-					data = data[:maxStorableSize]
-				}
+			elemKind := fieldValue.Type().Elem().Kind()
 
-				writeByteLen(buf, data, numBytes)
-				buf.Write(data) // Write  directly
+			length := fieldValue.Len()
+
+			// Apply truncation logic
+			if length > maxSize {
+				length = maxSize
+			}
+			if length > maxStorableSize {
+				length = maxStorableSize
+			}
+
+			// Write the truncated length prefix
+			writeByteLen(buf, numBytes, length)
+
+			if elemKind == reflect.Uint8 { // Special case for []byte
+				data := fieldValue.Bytes()
+				buf.Write(data[:length]) // Write directly
+			} else if elemKind == reflect.Int8 || elemKind == reflect.Uint8 ||
+				elemKind == reflect.Int16 || elemKind == reflect.Uint16 ||
+				elemKind == reflect.Int32 || elemKind == reflect.Uint32 ||
+				elemKind == reflect.Int64 || elemKind == reflect.Uint64 ||
+				elemKind == reflect.Float64 {
+
+				// Truncate using reflection
+				truncatedSlice := fieldValue.Slice(0, length).Interface()
+
+				// Write entire slice in one go
+				binary.Write(buf, binary.LittleEndian, truncatedSlice)
 			}
 		default:
 			return nil, fmt.Errorf("unsupported type: %s", field.Type.Kind())
@@ -156,8 +176,8 @@ func SerializeBinaryStruct(s interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Deserialize binary []byte into struct (Little-Endian)
-func DeserializeBinaryStruct(data []byte, s interface{}) error {
+// BinaryStructDeserialize binary []byte into struct (Little-Endian)
+func BinaryStructDeserialize(data []byte, s interface{}) error {
 	val := reflect.ValueOf(s)
 	if val.Kind() != reflect.Ptr {
 		return errors.New("DeserializeBinary: expected a pointer")
@@ -220,17 +240,35 @@ func DeserializeBinaryStruct(data []byte, s interface{}) error {
 			buf.Read(strBytes)
 			fieldValue.SetString(string(strBytes))
 		case reflect.Slice:
-			if fieldValue.Type().Elem().Kind() == reflect.Uint8 { // Handle []byte
-				length := readByteLen(buf, numBytes)
+			elemKind := fieldValue.Type().Elem().Kind()
+			length := readByteLen(buf, numBytes)
 
-				if length == 0 { // Ensure nil is restored instead of empty slice
-					fieldValue.Set(reflect.Zero(fieldValue.Type()))
-					continue
-				}
+			if length == 0 { // Ensure nil is restored instead of empty slice
+				fieldValue.Set(reflect.Zero(fieldValue.Type()))
+				continue
+			}
 
+			if elemKind == reflect.Uint8 { // Special case for []byte
 				byteData := make([]byte, length)
 				buf.Read(byteData)
 				fieldValue.SetBytes(byteData)
+			} else if elemKind == reflect.Int8 || elemKind == reflect.Uint8 ||
+				elemKind == reflect.Int16 || elemKind == reflect.Uint16 ||
+				elemKind == reflect.Int32 || elemKind == reflect.Uint32 ||
+				elemKind == reflect.Int64 || elemKind == reflect.Uint64 ||
+				elemKind == reflect.Float64 {
+
+				// Create a new slice of the correct type and length
+				newSlice := reflect.MakeSlice(fieldValue.Type(), length, length)
+
+				// Read the entire slice in one go
+				err := binary.Read(buf, binary.LittleEndian, newSlice.Interface())
+				if err != nil {
+					return fmt.Errorf("failed to read slice: %w", err)
+				}
+
+				// Set the field with the new slice
+				fieldValue.Set(newSlice)
 			}
 		default:
 			return fmt.Errorf("unsupported type: %s", field.Type.Kind())
@@ -239,8 +277,8 @@ func DeserializeBinaryStruct(data []byte, s interface{}) error {
 	return nil
 }
 
-// CompareBinaryStruct compares two structs field by field (Little-Endian style)
-func CompareBinaryStruct(a, b interface{}) (bool, error) {
+// BinaryStructCompare compares two structs field by field (Little-Endian style)
+func BinaryStructCompare(a, b interface{}) (bool, error) {
 	// Ensure we're working with non-pointer values
 	if reflect.ValueOf(a).Kind() == reflect.Ptr || reflect.ValueOf(b).Kind() == reflect.Ptr {
 		return false, errors.New("CompareStruct: expected non-pointer values")
@@ -329,4 +367,45 @@ func CompareBinaryStruct(a, b interface{}) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func BinaryStructMarshalJSON(s interface{}) ([]byte, error) {
+	val := reflect.ValueOf(s)
+	if val.Kind() != reflect.Ptr && val.Kind() != reflect.Struct {
+		return nil, errors.New("MarshalJSON: expected a struct or pointer to struct")
+	}
+
+	val = reflect.Indirect(val)
+	typ := val.Type()
+	jsonMap := make(map[string]interface{})
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		tag := field.Tag.Get("bin")
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		fieldValue := val.Field(i)
+		switch fieldValue.Kind() {
+		case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			jsonMap[tag] = fieldValue.Int()
+		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			jsonMap[tag] = fieldValue.Uint()
+		case reflect.Float64, reflect.Float32:
+			jsonMap[tag] = fieldValue.Float()
+		case reflect.String:
+			jsonMap[tag] = fieldValue.String()
+		case reflect.Slice:
+			if fieldValue.Type().Elem().Kind() == reflect.Uint8 { // Handle []byte
+				jsonMap[tag] = base64.StdEncoding.EncodeToString(fieldValue.Bytes())
+			} else {
+				jsonMap[tag] = fieldValue.Interface()
+			}
+		default:
+			return nil, fmt.Errorf("unsupported type: %s", field.Type.Kind())
+		}
+	}
+
+	return json.Marshal(jsonMap)
 }

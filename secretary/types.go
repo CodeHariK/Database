@@ -52,10 +52,10 @@ order ^ n	Leaf
 type bTree struct {
 	CollectionName string `bin:"collectionName" max:"30"` // Max 30Char
 
-	nodeBatchStore    *BatchStore
-	recordBatchStores []*BatchStore
+	nodeBatchStore    *batchStore
+	recordBatchStores []*batchStore
 
-	root *Node // Root node of the tree
+	root *node // Root node of the tree
 
 	Order          uint8  `bin:"order"`          // Max = 255, Order of the tree (maximum number of children)
 	KeySize        uint8  `bin:"keySize"`        // 8 or 16 bytes
@@ -65,7 +65,7 @@ type bTree struct {
 	BatchLength    uint8  `bin:"batchLength"`    // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
 }
 
-type BatchStore struct {
+type batchStore struct {
 	file *os.File
 
 	headerSize uint8
@@ -77,7 +77,7 @@ type BatchStore struct {
 }
 
 /*
-**Node Structure**
+**node Structure**
 +----------------+----------------+----------------+----------------+
 | parentOffset   | nextOffset     | prevOffset     | numKeys        |
 | (8 bytes)      | (8 bytes)      | (8 bytes)      | (1 bytes)      |
@@ -89,24 +89,25 @@ type BatchStore struct {
 | (8 or 16 bytes each)                                              |
 +----------------+----------------+----------------+----------------+
 */
-type Node struct {
-	parent   *Node
-	next     *Node
-	prev     *Node
-	children []*Node
+type node struct {
+	parent   *node
+	next     *node
+	prev     *node
+	children []*node
 	records  []*Record
 
-	offset       DataLocation
-	parentOffset DataLocation
-	nextOffset   DataLocation
-	prevOffset   DataLocation
+	Offset       DataLocation
+	ParentOffset DataLocation `bin:"ParentOffset"`
+	NextOffset   DataLocation `bin:"NextOffset"`
+	PrevOffset   DataLocation `bin:"PrevOffset"`
 
-	numKeys    uint8
-	keyOffsets []DataLocation // (8 bytes)
-	keys       [][]byte       // (8 bytes or 16 bytes)
+	NumKeys uint8 `bin:"NumKeys"`
+	// KeyOffsets []DataLocation `bin:"KeyOffsets"` // (8 bytes)
+	KeyOffsets []int64  `bin:"KeyOffsets"` // (8 bytes)
+	Keys       [][]byte // (8 bytes or 16 bytes)
 }
 
-func (n *Node) IsLeaf() bool {
+func (n *node) IsLeaf() bool {
 	return len(n.children) == 0
 }
 
