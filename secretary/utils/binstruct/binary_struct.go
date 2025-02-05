@@ -2,13 +2,27 @@ package binstruct
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 )
+
+func getArrayElemLenFromField(field reflect.StructField) int {
+	tag := field.Tag.Get("array_elem_len")
+
+	var size int
+	_, err := fmt.Sscanf(tag, "%d", &size)
+	if err != nil {
+		return 0
+	}
+	return size
+}
 
 func getSizeFromField(field reflect.StructField) int {
 	tag := field.Tag.Get("max")
@@ -33,7 +47,7 @@ func getByteFromField(field reflect.StructField) int {
 	return byte
 }
 
-func extractFieldParameters(val reflect.Value, i int, field reflect.StructField) (reflect.Value, int, int, int) {
+func extractFieldParameters(val reflect.Value, i int, field reflect.StructField) (reflect.Value, int, int, int, int) {
 	fieldValue := val.Field(i)
 	numBytes := getByteFromField(field)
 	maxSize := 1<<(numBytes*8) - 1
@@ -42,9 +56,11 @@ func extractFieldParameters(val reflect.Value, i int, field reflect.StructField)
 		size = maxSize
 	}
 
+	array_elem_len := getArrayElemLenFromField(field)
+
 	// fmt.Printf("\nnumBytes:%d maxSize:%d size:%d\n", numBytes, maxSize, size)
 
-	return fieldValue, numBytes, maxSize, size
+	return fieldValue, numBytes, maxSize, size, array_elem_len
 }
 
 func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
@@ -84,10 +100,42 @@ func readByteLen(buf *bytes.Reader, numByte int) int {
 	return length
 }
 
+func reflectKindByteLen(elemBaseKind reflect.Kind) int {
+	switch elemBaseKind {
+	case reflect.Uint16, reflect.Int16:
+		return 2
+	case reflect.Uint32, reflect.Int32, reflect.Float32:
+		return 4
+	case reflect.Uint64, reflect.Int64, reflect.Float64:
+		return 8
+	default:
+		return 1
+	}
+}
+
+func hash(data interface{}) (string, error) {
+	// Serialize the struct to JSON
+	serialized, err := MarshalJSON(data)
+	if err != nil {
+		return "", err
+	}
+
+	// Compute MD5 hash of the serialized data
+	hash := md5.New()
+	hash.Write(serialized)
+
+	// Get the hash sum as a byte slice
+	hashBytes := hash.Sum(nil)
+
+	// Return the hash as a hexadecimal string
+	return hex.EncodeToString(hashBytes), nil
+}
+
 // Serialize struct to binary []byte (Little-Endian)
 // bin : type name
 // byte : number of bytes used for length of string or []byte
 // max : max length of string or []byte
+// array_elem_len : max length (array elements) in (array of (array elements)), [][]byte [][]int32 [][]float64
 func Serialize(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Ptr {
@@ -106,7 +154,7 @@ func Serialize(s interface{}) ([]byte, error) {
 		if tag == "" {
 			continue
 		}
-		fieldValue, numBytes, maxStorableSize, maxSize := extractFieldParameters(val, i, field)
+		fieldValue, numBytes, maxStorableSize, maxSize, array_elem_len := extractFieldParameters(val, i, field)
 
 		// Handle fields based on their types
 		switch fieldValue.Kind() {
@@ -158,17 +206,96 @@ func Serialize(s interface{}) ([]byte, error) {
 			if elemKind == reflect.Uint8 { // Special case for []byte
 				data := fieldValue.Bytes()
 				buf.Write(data[:length]) // Write directly
-			} else if elemKind == reflect.Slice && elemType.Elem().Kind() == reflect.Uint8 {
+			} else if elemKind == reflect.Slice {
+				elemBaseKind := elemType.Elem().Kind()
+				elemLen := reflectKindByteLen(elemBaseKind)
+
 				for i := 0; i < length; i++ {
-					item := fieldValue.Index(i).Interface().([]byte)
-					fmt.Println("--> ", item, elemKind, elemType, len(item))
-					buf.Write(item[:])
+					var itemBytes []byte
+
+					switch elemBaseKind {
+					case reflect.Uint8, reflect.Int8:
+						itemBytes = fieldValue.Index(i).Interface().([]byte)
+
+					case reflect.Int16:
+						item := fieldValue.Index(i).Interface().([]int16)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint16(itemBytes[j*elemLen:], uint16(v))
+						}
+					case reflect.Uint16:
+						item := fieldValue.Index(i).Interface().([]uint16)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint16(itemBytes[j*elemLen:], v)
+						}
+
+					case reflect.Int32:
+						item := fieldValue.Index(i).Interface().([]int32)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], uint32(v))
+						}
+					case reflect.Uint32:
+						item := fieldValue.Index(i).Interface().([]uint32)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], v)
+						}
+
+					case reflect.Int64:
+						item := fieldValue.Index(i).Interface().([]int64)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], uint64(v))
+						}
+					case reflect.Uint64:
+						item := fieldValue.Index(i).Interface().([]uint64)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], v)
+						}
+
+					case reflect.Float32:
+						item := fieldValue.Index(i).Interface().([]float32)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							bits := math.Float32bits(v)
+							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], bits)
+						}
+					case reflect.Float64:
+						item := fieldValue.Index(i).Interface().([]float64)
+						itemBytes = make([]byte, len(item)*elemLen)
+						for j, v := range item {
+							bits := math.Float64bits(v)
+							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], bits)
+						}
+
+					default:
+						return nil, fmt.Errorf("unsupported slice element type: %s", elemBaseKind)
+					}
+
+					arrayLen := array_elem_len * elemLen
+
+					// Ensure proper length adjustments if needed
+					if arrayLen > 0 {
+						if len(itemBytes) > arrayLen {
+							itemBytes = itemBytes[:arrayLen]
+						} else if len(itemBytes) < arrayLen {
+							itemBytes = append(itemBytes, make([]byte, arrayLen-len(itemBytes))...)
+						}
+					} else {
+						itemLen := len(itemBytes) / elemLen
+						writeByteLen(buf, numBytes, itemLen)
+					}
+
+					buf.Write(itemBytes)
 				}
 			} else if elemKind == reflect.Int8 || elemKind == reflect.Uint8 ||
 				elemKind == reflect.Int16 || elemKind == reflect.Uint16 ||
 				elemKind == reflect.Int32 || elemKind == reflect.Uint32 ||
 				elemKind == reflect.Int64 || elemKind == reflect.Uint64 ||
-				elemKind == reflect.Float64 {
+				elemKind == reflect.Float64 || elemKind == reflect.Float32 {
 
 				// Truncate using reflection
 				truncatedSlice := fieldValue.Slice(0, length).Interface()
@@ -201,7 +328,7 @@ func Deserialize(data []byte, s interface{}) error {
 		if tag == "" {
 			continue
 		}
-		fieldValue, numBytes, _, _ := extractFieldParameters(val, i, field)
+		fieldValue, numBytes, _, _, array_elem_len := extractFieldParameters(val, i, field)
 
 		// Handle fields based on their types
 		switch fieldValue.Kind() {
@@ -248,22 +375,112 @@ func Deserialize(data []byte, s interface{}) error {
 			fieldValue.SetString(string(strBytes))
 		case reflect.Slice:
 			elemKind := fieldValue.Type().Elem().Kind()
+			elemType := fieldValue.Type().Elem()
+
 			length := readByteLen(buf, numBytes)
 
-			if length == 0 { // Ensure nil is restored instead of empty slice
-				fieldValue.Set(reflect.Zero(fieldValue.Type()))
-				continue
-			}
+			// if length == 0 { // Ensure nil is restored instead of empty slice
+			// 	fieldValue.Set(reflect.Zero(fieldValue.Type()))
+			// 	continue
+			// }
 
 			if elemKind == reflect.Uint8 { // Special case for []byte
 				byteData := make([]byte, length)
 				buf.Read(byteData)
 				fieldValue.SetBytes(byteData)
+			} else if elemKind == reflect.Slice {
+				elemBaseKind := elemType.Elem().Kind()
+				elemLen := reflectKindByteLen(elemBaseKind)
+
+				// Create a new slice of the correct type and length
+				newSlice := reflect.MakeSlice(fieldValue.Type(), length, length)
+
+				for i := 0; i < length; i++ {
+					var itemBytes []byte
+
+					if array_elem_len > 0 {
+						itemBytes = make([]byte, array_elem_len*elemLen)
+					} else {
+						itemLength := readByteLen(buf, numBytes) * elemLen
+						itemBytes = make([]byte, itemLength)
+					}
+
+					// Read exactly array_elem_len bytes
+					_, err := buf.Read(itemBytes)
+					if err != nil {
+						return fmt.Errorf("failed to read slice element: %w", err)
+					}
+
+					switch elemBaseKind {
+					case reflect.Uint8, reflect.Int8:
+						newSlice.Index(i).Set(reflect.ValueOf(itemBytes))
+
+					case reflect.Int16:
+						item := make([]int16, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = int16(binary.LittleEndian.Uint16(itemBytes[j*elemLen:]))
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+					case reflect.Uint16:
+						item := make([]uint16, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = binary.LittleEndian.Uint16(itemBytes[j*elemLen:])
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+
+					case reflect.Int32:
+						item := make([]int32, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = int32(binary.LittleEndian.Uint32(itemBytes[j*elemLen:]))
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+					case reflect.Uint32:
+						item := make([]uint32, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = binary.LittleEndian.Uint32(itemBytes[j*elemLen:])
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+
+					case reflect.Int64:
+						item := make([]int64, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = int64(binary.LittleEndian.Uint64(itemBytes[j*elemLen:]))
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+					case reflect.Uint64:
+						item := make([]uint64, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							item[j] = binary.LittleEndian.Uint64(itemBytes[j*elemLen:])
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+
+					case reflect.Float32:
+						item := make([]float32, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							bits := binary.LittleEndian.Uint32(itemBytes[j*elemLen:])
+							item[j] = math.Float32frombits(bits)
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+					case reflect.Float64:
+						item := make([]float64, len(itemBytes)/elemLen)
+						for j := 0; j < len(item); j++ {
+							bits := binary.LittleEndian.Uint64(itemBytes[j*elemLen:])
+							item[j] = math.Float64frombits(bits)
+						}
+						newSlice.Index(i).Set(reflect.ValueOf(item))
+
+					default:
+						return fmt.Errorf("unsupported slice element type: %s", elemBaseKind)
+					}
+				}
+
+				// Set the deserialized slice to the field
+				fieldValue.Set(newSlice)
 			} else if elemKind == reflect.Int8 || elemKind == reflect.Uint8 ||
 				elemKind == reflect.Int16 || elemKind == reflect.Uint16 ||
 				elemKind == reflect.Int32 || elemKind == reflect.Uint32 ||
 				elemKind == reflect.Int64 || elemKind == reflect.Uint64 ||
-				elemKind == reflect.Float64 {
+				elemKind == reflect.Float64 || elemKind == reflect.Float32 {
 
 				// Create a new slice of the correct type and length
 				newSlice := reflect.MakeSlice(fieldValue.Type(), length, length)
@@ -350,6 +567,10 @@ func Compare(a, b interface{}) (bool, error) {
 			if fieldA.Uint() != fieldB.Uint() {
 				return false, nil
 			}
+		case reflect.Float32:
+			if fieldA.Float() != fieldB.Float() {
+				return false, nil
+			}
 		case reflect.Float64:
 			if fieldA.Float() != fieldB.Float() {
 				return false, nil
@@ -363,7 +584,11 @@ func Compare(a, b interface{}) (bool, error) {
 				return false, nil
 			}
 			for j := 0; j < fieldA.Len(); j++ {
-				if fieldA.Index(j).Interface() != fieldB.Index(j).Interface() {
+				elemA := fieldA.Index(j).Interface()
+				elemB := fieldB.Index(j).Interface()
+
+				// Compare primitive elements directly
+				if !reflect.DeepEqual(elemA, elemB) {
 					return false, nil
 				}
 			}
@@ -407,8 +632,13 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 			if fieldValue.Type().Elem().Kind() == reflect.Uint8 { // Handle []byte
 				jsonMap[tag] = base64.StdEncoding.EncodeToString(fieldValue.Bytes())
 			} else {
-				jsonMap[tag] = fieldValue.Interface()
+				if fieldValue.IsNil() {
+					jsonMap[tag] = reflect.MakeSlice(fieldValue.Type(), 0, 0).Interface() // Ensure []
+				} else {
+					jsonMap[tag] = fieldValue.Interface()
+				}
 			}
+
 		default:
 			return nil, fmt.Errorf("unsupported type: %s", field.Type.Kind())
 		}

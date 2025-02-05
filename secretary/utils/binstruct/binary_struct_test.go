@@ -2,7 +2,6 @@ package binstruct
 
 import (
 	"bytes"
-	"encoding/json"
 	"testing"
 
 	"github.com/codeharik/secretary/utils"
@@ -33,6 +32,14 @@ type testStruct struct {
 
 	Fint64_array    []int64 `bin:"Fint64_array"`
 	Fint32_array_20 []int32 `bin:"Fint32_array_20" max:"20"`
+
+	Farraybytearray_Empty [][]byte    `bin:"Farraybytearray_Empty"`
+	Farraybytearray       [][]byte    `bin:"Farraybytearray"`
+	Farraybytearray_4     [][]byte    `bin:"Farraybytearray_4" array_elem_len:"4"`
+	Farrayint32array      [][]int32   `bin:"Farrayint32array"`
+	Farrayint32array_5    [][]int32   `bin:"Farrayint32array_5" array_elem_len:"5"`
+	Farrayfloat64array    [][]float64 `bin:"Farrayfloat64array"`
+	Farrayfloat64array_2  [][]float64 `bin:"Farrayfloat64array_2" array_elem_len:"2"`
 }
 
 func TestBinaryStructSerialize(t *testing.T) {
@@ -83,139 +90,62 @@ func TestBinaryStructSerialize(t *testing.T) {
 				Fint32_array_20: utils.GenerateRandomSlice[int32](21),
 			},
 		},
+		"Array Byte Array": {
+			true,
+			testStruct{
+				Farraybytearray_Empty: [][]byte{},
+				Farraybytearray:       [][]byte{{5, 4}, {100, 101, 102, 103}},
+				Farraybytearray_4:     [][]byte{{11, 12, 13, 14}, {101, 102, 103, 104}},
+				Farrayint32array:      [][]int32{{5, 4}, {100, 101, 102, 103}},
+				Farrayint32array_5:    [][]int32{{11, 12, 0, 0, 0}, {101, 102, 103, 104, 105}},
+				Farrayfloat64array:    [][]float64{{3.14, 2.74, 5.2334}},
+				Farrayfloat64array_2:  [][]float64{{3.14, 2.74}},
+			},
+		},
+		"Array Byte Array Extend": {
+			false,
+			testStruct{
+				Farraybytearray_4:    [][]byte{{5, 4}, {100, 101, 102, 103}},
+				Farrayint32array_5:   [][]int32{{5, 4}, {100, 101, 102, 103}},
+				Farrayfloat64array_2: [][]float64{{3.14}},
+			},
+		},
+		"Array Byte Array Truncate": {
+			false,
+			testStruct{
+				Farraybytearray_4:    [][]byte{{5, 4, 7, 8, 9}, {100, 101, 102, 103}},
+				Farrayint32array_5:   [][]int32{{5, 4, 7, 8, 9, 10}, {100, 101, 102, 103}},
+				Farrayfloat64array_2: [][]float64{{3.14, 2.74, 5.2334}},
+			},
+		},
 	}
 
 	for _, test := range tests {
 
-		t.Logf("\n----------------------------------------\nOriginal: %+v", test.s)
-
 		binaryData, _ := Serialize(test.s)
-		t.Logf("\n\nSerializ: %+v\n", binaryData)
 
 		var d testStruct
 		Deserialize(binaryData, &d)
-		t.Logf("\n\nDeserial: %+v\n", d)
+		t.Logf("\n----------------------------------------\nOriginal: %+v\n\nSerializ: %+v\n\nDeserial: %+v\n", test.s, binaryData, d)
 
-		hashS, _ := utils.Md5Struct(test.s)
-		hashD, _ := utils.Md5Struct(d)
-
-		eq, err := Compare(test.s, d)
-		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
-			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
-		}
-	}
-}
-
-func TestCompareBinaryStruct(t *testing.T) {
-	tests := map[string]struct {
-		equal bool
-		a     testStruct
-		b     testStruct
-	}{
-		"Equal": {
-			true,
-			testStruct{
-				Fint8:           -5,
-				Fuint8:          200,
-				Fint16:          -3000,
-				Fuint16:         60000,
-				Fint32:          -2000000000,
-				Fuint32:         4000000000,
-				Fint64:          -9000000000000000000,
-				Fuint64:         18000000000000000000,
-				Ffloat64:        3.1415926535,
-				Fstring:         "Hello",
-				Fstring_4_30:    "Hello",
-				Fstring_30:      "Hello",
-				Fbytes:          []byte{0x12, 0x34, 0x56, 0x78},
-				Fint64_array:    []int64{125, 2000},
-				Fint32_array_20: []int32{125, 2000},
-			},
-			testStruct{
-				Fint8:           -5,
-				Fuint8:          200,
-				Fint16:          -3000,
-				Fuint16:         60000,
-				Fint32:          -2000000000,
-				Fuint32:         4000000000,
-				Fint64:          -9000000000000000000,
-				Fuint64:         18000000000000000000,
-				Ffloat64:        3.1415926535,
-				Fstring:         "Hello",
-				Fstring_4_30:    "Hello",
-				Fstring_30:      "Hello",
-				Fbytes:          []byte{0x12, 0x34, 0x56, 0x78},
-				Fint64_array:    []int64{125, 2000},
-				Fint32_array_20: []int32{125, 2000},
-			},
-		},
-		"NotEqual": {
-			false,
-			testStruct{
-				Fbytes_300: make([]byte, 300),
-			},
-			testStruct{
-				Fint8: -5,
-			},
-		},
-	}
-
-	for _, test := range tests {
-
-		t.Logf("\n----------------------------------------\nA: %+v\nB: %+v", test.a, test.b)
-
-		equal, err := Compare(test.a, test.b)
+		jsonH, err := MarshalJSON(test.s)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if equal != test.equal {
-			t.Fatal("Compare failed")
+		jsonD, err := MarshalJSON(d)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-}
+		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
+			t.Fatalf("\n\nCompare Should be equal: %v \n%v:%s \n\n %v:%s\n", test.equal, len(jsonH), string(jsonH), len(jsonD), string(jsonD))
+		}
 
-func TestMarshalJSONBinaryStruct(t *testing.T) {
-	h := testStruct{
-		Fint8:           -5,
-		Fuint8:          200,
-		Fint16:          -3000,
-		Fuint16:         60000,
-		Fint32:          -2000000000,
-		Fuint32:         4000000000,
-		Fint64:          -9000000000000000000,
-		Fuint64:         18000000000000000000,
-		Ffloat64:        3.1415926535,
-		Fstring:         "Hello",
-		Fstring_4_30:    "Hello",
-		Fstring_30:      "Hello",
-		Fbytes:          []byte{0x12, 0x34, 0x56, 0x78},
-		Fint64_array:    []int64{125, 2000},
-		Fint32_array_20: []int32{125, 2000},
-	}
-
-	t.Logf("\n----------------------------------------\nOriginal: %+v", h)
-
-	binaryData, _ := Serialize(h)
-	t.Logf("\n\nSerializ: %+v\n", binaryData)
-
-	var d testStruct
-	Deserialize(binaryData, &d)
-	t.Logf("\n\nDeserial: %+v\n", d)
-
-	jsonH, err := MarshalJSON(h)
-	if err != nil {
-		t.Fatal(err)
-	}
-	jsonD, err := MarshalJSON(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	serialized, _ := json.Marshal(d)
-	t.Log("\n\n", string(serialized), "\n\n")
-
-	if bytes.Compare(jsonH, jsonD) != 0 {
-		t.Fatalf("Compare failed, %s \n %s", string(jsonH), string(jsonD))
+		hashS, _ := hash(test.s)
+		hashD, _ := hash(d)
+		eq, err := Compare(test.s, d)
+		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
+			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		}
 	}
 }
