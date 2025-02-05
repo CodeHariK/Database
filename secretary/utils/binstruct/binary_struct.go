@@ -13,124 +13,6 @@ import (
 	"reflect"
 )
 
-func getArrayElemLenFromField(field reflect.StructField) int {
-	tag := field.Tag.Get("array_elem_len")
-
-	var size int
-	_, err := fmt.Sscanf(tag, "%d", &size)
-	if err != nil {
-		return 0
-	}
-	return size
-}
-
-func getSizeFromField(field reflect.StructField) int {
-	tag := field.Tag.Get("max")
-
-	var size int
-	_, err := fmt.Sscanf(tag, "%d", &size)
-	if err != nil {
-		return 0
-	}
-	return size
-}
-
-// Get the bit from struct tag (default to 8 if not specified)
-func getByteFromField(field reflect.StructField) int {
-	tag := field.Tag.Get("byte")
-
-	var byte int
-	_, err := fmt.Sscanf(tag, "%d", &byte)
-	if err != nil && byte != 2 && byte != 3 && byte != 4 {
-		return 1
-	}
-	return byte
-}
-
-func extractFieldParameters(val reflect.Value, i int, field reflect.StructField) (reflect.Value, int, int, int, int) {
-	fieldValue := val.Field(i)
-	numBytes := getByteFromField(field)
-	maxSize := 1<<(numBytes*8) - 1
-	size := getSizeFromField(field)
-	if size == 0 {
-		size = maxSize
-	}
-
-	array_elem_len := getArrayElemLenFromField(field)
-
-	// fmt.Printf("\nnumBytes:%d maxSize:%d size:%d\n", numBytes, maxSize, size)
-
-	return fieldValue, numBytes, maxSize, size, array_elem_len
-}
-
-func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
-	switch numByte {
-	case 2:
-		binary.Write(buf, binary.LittleEndian, uint16(length))
-	case 3:
-		binary.Write(buf, binary.LittleEndian, uint32(length))
-	case 4:
-		binary.Write(buf, binary.LittleEndian, uint64(length))
-	default:
-		binary.Write(buf, binary.LittleEndian, uint8(length))
-	}
-}
-
-func readByteLen(buf *bytes.Reader, numByte int) int {
-	var length int
-	switch numByte {
-	case 2:
-		var temp uint16
-		binary.Read(buf, binary.LittleEndian, &temp)
-		length = int(temp)
-	case 3:
-		var temp uint32
-		binary.Read(buf, binary.LittleEndian, &temp)
-		length = int(temp)
-	case 4:
-		var temp uint64
-		binary.Read(buf, binary.LittleEndian, &temp)
-		length = int(temp)
-	default:
-		var temp uint8
-		binary.Read(buf, binary.LittleEndian, &temp)
-		length = int(temp) // Default to 8-bit length
-	}
-
-	return length
-}
-
-func reflectKindByteLen(elemBaseKind reflect.Kind) int {
-	switch elemBaseKind {
-	case reflect.Uint16, reflect.Int16:
-		return 2
-	case reflect.Uint32, reflect.Int32, reflect.Float32:
-		return 4
-	case reflect.Uint64, reflect.Int64, reflect.Float64:
-		return 8
-	default:
-		return 1
-	}
-}
-
-func hash(data interface{}) (string, error) {
-	// Serialize the struct to JSON
-	serialized, err := MarshalJSON(data)
-	if err != nil {
-		return "", err
-	}
-
-	// Compute MD5 hash of the serialized data
-	hash := md5.New()
-	hash.Write(serialized)
-
-	// Get the hash sum as a byte slice
-	hashBytes := hash.Sum(nil)
-
-	// Return the hash as a hexadecimal string
-	return hex.EncodeToString(hashBytes), nil
-}
-
 // Serialize struct to binary []byte (Little-Endian)
 // bin : type name
 // byte : number of bytes used for length of string or []byte
@@ -645,4 +527,122 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 	}
 
 	return json.Marshal(jsonMap)
+}
+
+func getArrayElemLenFromField(field reflect.StructField) int {
+	tag := field.Tag.Get("array_elem_len")
+
+	var size int
+	_, err := fmt.Sscanf(tag, "%d", &size)
+	if err != nil {
+		return 0
+	}
+	return size
+}
+
+func getSizeFromField(field reflect.StructField) int {
+	tag := field.Tag.Get("max")
+
+	var size int
+	_, err := fmt.Sscanf(tag, "%d", &size)
+	if err != nil {
+		return 0
+	}
+	return size
+}
+
+// Get the bit from struct tag (default to 8 if not specified)
+func getByteFromField(field reflect.StructField) int {
+	tag := field.Tag.Get("byte")
+
+	var byte int
+	_, err := fmt.Sscanf(tag, "%d", &byte)
+	if err != nil && byte != 2 && byte != 3 && byte != 4 {
+		return 1
+	}
+	return byte
+}
+
+func extractFieldParameters(val reflect.Value, i int, field reflect.StructField) (reflect.Value, int, int, int, int) {
+	fieldValue := val.Field(i)
+	numBytes := getByteFromField(field)
+	maxSize := 1<<(numBytes*8) - 1
+	size := getSizeFromField(field)
+	if size == 0 {
+		size = maxSize
+	}
+
+	array_elem_len := getArrayElemLenFromField(field)
+
+	// fmt.Printf("\nnumBytes:%d maxSize:%d size:%d\n", numBytes, maxSize, size)
+
+	return fieldValue, numBytes, maxSize, size, array_elem_len
+}
+
+func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
+	switch numByte {
+	case 2:
+		binary.Write(buf, binary.LittleEndian, uint16(length))
+	case 3:
+		binary.Write(buf, binary.LittleEndian, uint32(length))
+	case 4:
+		binary.Write(buf, binary.LittleEndian, uint64(length))
+	default:
+		binary.Write(buf, binary.LittleEndian, uint8(length))
+	}
+}
+
+func readByteLen(buf *bytes.Reader, numByte int) int {
+	var length int
+	switch numByte {
+	case 2:
+		var temp uint16
+		binary.Read(buf, binary.LittleEndian, &temp)
+		length = int(temp)
+	case 3:
+		var temp uint32
+		binary.Read(buf, binary.LittleEndian, &temp)
+		length = int(temp)
+	case 4:
+		var temp uint64
+		binary.Read(buf, binary.LittleEndian, &temp)
+		length = int(temp)
+	default:
+		var temp uint8
+		binary.Read(buf, binary.LittleEndian, &temp)
+		length = int(temp) // Default to 8-bit length
+	}
+
+	return length
+}
+
+func reflectKindByteLen(elemBaseKind reflect.Kind) int {
+	switch elemBaseKind {
+	case reflect.Uint16, reflect.Int16:
+		return 2
+	case reflect.Uint32, reflect.Int32, reflect.Float32:
+		return 4
+	case reflect.Uint64, reflect.Int64, reflect.Float64:
+		return 8
+	default:
+		return 1
+	}
+}
+
+func hash(data interface{}) (string, error) {
+	// Serialize the struct to JSON
+	serialized, err := MarshalJSON(data)
+	if err != nil {
+		return "", err
+	}
+
+	// Compute MD5 hash of the serialized data
+	hash := md5.New()
+	hash.Write(serialized)
+
+	// Get the hash sum as a byte slice
+	hashBytes := hash.Sum(nil)
+
+	// Return the hash as a hexadecimal string
+	return hex.EncodeToString(hashBytes), nil
 }

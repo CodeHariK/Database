@@ -50,7 +50,7 @@ func TestSaveRoot(t *testing.T) {
 
 		NumKeys: 104,
 
-		// Keys:       []Key16Byte{{10, 21, 32, 34}},
+		Keys:       [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
 	}
 
@@ -70,11 +70,13 @@ func TestSaveRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	jsonS, _ := binstruct.MarshalJSON(tree.root)
+	jsonD, _ := binstruct.MarshalJSON(root)
+
+	t.Log("\n", *tree.root, "\n", root, "\n", string(jsonS), "\n", string(jsonD), "\n")
+
 	eq, err := binstruct.Compare(*tree.root, root)
 	if !eq || err != nil {
 		t.Fatal(err)
 	}
-
-	jsonRoot, _ := binstruct.MarshalJSON(root)
-	t.Log(string(jsonRoot))
 }

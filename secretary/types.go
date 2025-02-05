@@ -107,8 +107,8 @@ type node struct {
 	PrevOffset   DataLocation `bin:"PrevOffset"`
 
 	NumKeys    uint8          `bin:"NumKeys"`
-	KeyOffsets []DataLocation `bin:"KeyOffsets"` // (8 bytes)
-	Keys       [][]byte       `bin:"Keys"`       // (16 bytes)
+	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes)
+	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
 func (n *node) IsLeaf() bool {
@@ -123,8 +123,6 @@ func (n *node) IsLeaf() bool {
 // 48 bit BatchOffset (Max batch in file = 2^48)
 // 16 bit NodeIndex	   (Max nodes in batch = 2^16)
 type DataLocation uint64
-
-type Key16Byte [16]byte
 
 type Record struct {
 	Offset DataLocation // (8 bytes)
