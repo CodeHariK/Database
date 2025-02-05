@@ -14,7 +14,7 @@ func testBTree(t *testing.T, collectionName string) *bTree {
 		32,
 		1024,
 		125,
-		64,
+		10,
 	)
 	if err != nil {
 		t.Fatal("NewBTree Failed")

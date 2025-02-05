@@ -122,7 +122,7 @@ func (n *node) IsLeaf() bool {
 // Node
 // 48 bit BatchOffset (Max batch in file = 2^48)
 // 16 bit NodeIndex	   (Max nodes in batch = 2^16)
-type DataLocation uint64
+type DataLocation int64
 
 type Record struct {
 	Offset DataLocation // (8 bytes)

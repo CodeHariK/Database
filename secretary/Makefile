@@ -1,12 +1,12 @@
 test:
 	@rm -r SECRETARY
 	@go clean -testcache
-	@go test ./...
+	@go test -cover -coverprofile=cover.txt ./...
 
 vtest:
 	@rm -r SECRETARY
 	@go clean -testcache
-	@go test -v ./...
+	@go test -cover -coverprofile=cover.txt -v ./...
 
 cover:
 	@rm -r SECRETARY
