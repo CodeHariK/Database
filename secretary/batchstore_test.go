@@ -3,7 +3,17 @@ package secretary
 import "testing"
 
 func TestAllocateBatch(t *testing.T) {
-	tree := testBTree(t, "TestAllocateBatch")
+	tree, err := NewBTree(
+		"TestAllocateBatch",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	{ // Allocate the first batch
 		err := tree.nodeBatchStore.AllocateBatch(1)
@@ -33,7 +43,17 @@ func TestAllocateBatch(t *testing.T) {
 }
 
 func TestWriteAndReadAtOffset(t *testing.T) {
-	tree := testBTree(t, "TestWriteAndReadAtOffset")
+	tree, err := NewBTree(
+		"TestWriteAndReadAtOffset",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	{
 		fileInfo, _ := tree.nodeBatchStore.file.Stat()

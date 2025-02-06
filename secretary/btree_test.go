@@ -7,9 +7,10 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func testBTree(t *testing.T, collectionName string) *bTree {
+// TestBTreeSerialization tests the serialization and deserialization of BPlusTree
+func TestBTreeSerialization(t *testing.T) {
 	originalTree, err := NewBTree(
-		collectionName,
+		"TestBTreeSerialization",
 		10,
 		32,
 		1024,
@@ -17,14 +18,8 @@ func testBTree(t *testing.T, collectionName string) *bTree {
 		10,
 	)
 	if err != nil {
-		t.Fatal("NewBTree Failed")
+		t.Fatal(err)
 	}
-	return originalTree
-}
-
-// TestBTreeSerialization tests the serialization and deserialization of BPlusTree
-func TestBTreeSerialization(t *testing.T) {
-	originalTree := testBTree(t, "TestBTreeSerialization")
 
 	// Serialize the tree
 	serializedData, err := binstruct.Serialize(*originalTree)
@@ -49,11 +44,51 @@ func TestBTreeSerialization(t *testing.T) {
 	}
 }
 
+func TestBtreeInvalid(t *testing.T) {
+	_, invalidNameErr := NewBTree(
+		"Tes",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	_, invalidIncrementErr := NewBTree(
+		"Tes",
+		10,
+		32,
+		1024,
+		225,
+		10,
+	)
+	_, invalidOrderErr := NewBTree(
+		"Tes",
+		210,
+		32,
+		1024,
+		225,
+		10,
+	)
+	if invalidNameErr == nil || invalidIncrementErr == nil || invalidOrderErr == nil {
+		t.Fatal(invalidNameErr, invalidIncrementErr, invalidOrderErr)
+	}
+}
+
 func TestSaveHeader(t *testing.T) {
-	tree := testBTree(t, "TestSaveHeader")
+	tree, err := NewBTree(
+		"TestSaveHeader",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Save header
-	err := tree.SaveHeader()
+	err = tree.SaveHeader()
 	if err != nil {
 		t.Fatalf("SaveHeader failed: %v", err)
 	}

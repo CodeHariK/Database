@@ -1,0 +1,4 @@
+package secretary
+
+func parseRecord() {
+}

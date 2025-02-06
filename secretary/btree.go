@@ -16,22 +16,22 @@ func NewBTree(
 	batchLength uint8,
 ) (*bTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
-		return nil, fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
+		return nil, ErrorInvalidOrder
 	}
 
 	if batchIncrement < 110 || batchIncrement > 200 {
-		return nil, fmt.Errorf("Batch Increment must be between 110 and 200")
+		return nil, ErrorInvalidBatchIncrement
 	}
 
 	nodeSize := uint32(order)*(KEY_SIZE+KEY_OFFSET_SIZE) + 3*POINTER_SIZE + 1
 
 	safeCollectionName := utils.SafeCollectionString(collectionName)
 	if len(safeCollectionName) < 5 || len(safeCollectionName) > MAX_COLLECTION_NAME_LENGTH {
-		return nil, fmt.Errorf("Collection name is not valid, should be a-z 0-9 and with >4 & <100 characters")
+		return nil, ErrorInvalidCollectionName()
 	}
 
-	if dirNotExist := utils.EnsureDir(fmt.Sprintf("%s/%s", SECRETARY, safeCollectionName)); dirNotExist != nil {
-		return nil, fmt.Errorf(safeCollectionName, dirNotExist.Error())
+	if err := utils.EnsureDir(fmt.Sprintf("%s/%s", SECRETARY, safeCollectionName)); err != nil {
+		return nil, err
 	}
 
 	tree := &bTree{
@@ -67,6 +67,20 @@ func NewBTree(
 	tree.recordBatchStores = recordBatchStores
 
 	return tree, nil
+}
+
+func (tree *bTree) close() error {
+	if err := tree.nodeBatchStore.file.Close(); err != nil {
+		return err
+	}
+
+	for _, batchStore := range tree.recordBatchStores {
+		if err := batchStore.file.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (tree *bTree) createHeader() ([]byte, error) {

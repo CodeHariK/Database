@@ -21,10 +21,10 @@ const (
 	BYTE_16 = 1<<16 - 1
 
 	RECORD_BATCH_OFFSET_AND = 1<<56 - 1
-	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 56
+	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 55
 
 	NODE_BATCH_OFFSET_AND = 1<<48 - 1
-	NODE_INDEX_AND        = (BYTE_16 - 1) << 48
+	NODE_INDEX_AND        = BYTE_16 << 47
 )
 
 type Secretary struct {

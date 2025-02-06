@@ -60,7 +60,7 @@ func (store *batchStore) AllocateBatch(numBatch int32) error {
 
 	// Align to the next page boundary
 	if (fileSize % int64(store.batchSize)) != 0 {
-		return fmt.Errorf("Error : File %s not aligned", fileInfo.Name())
+		return ErrorFileNotAligned(fileInfo)
 	}
 
 	// Expand file by writing zeros
@@ -101,13 +101,13 @@ func (store *batchStore) AllocateBatch(numBatch int32) error {
 func (store *batchStore) WriteAt(offset int64, data []byte) error {
 	// Ensure data size does not exceed batchSize
 	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.batchSize)) != ((offset - int64(store.headerSize)) / int64(store.batchSize)) {
-		return fmt.Errorf("Error: Data size %d exceeds batch size %d at offset %d", len(data), store.batchSize, offset)
+		return ErrorDataExceedBatchSize(len(data), store.batchSize, offset)
 	}
 
 	// Get current file size
 	fileInfo, err := store.file.Stat()
 	if err != nil {
-		return fmt.Errorf("Error getting file size: %v", err)
+		return ErrorFileStat(err)
 	}
 	fileSize := fileInfo.Size()
 
@@ -117,7 +117,7 @@ func (store *batchStore) WriteAt(offset int64, data []byte) error {
 	if offset+int64(len(data)) > fileSize {
 		err := store.AllocateBatch(int32(n))
 		if err != nil {
-			return fmt.Errorf("Error allocating batch: %v", err)
+			return ErrorAllocatingBatch(err)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (store *batchStore) WriteAt(offset int64, data []byte) error {
 	// Write data at the given offset
 	_, err = store.file.WriteAt(data, offset)
 	if err != nil {
-		return fmt.Errorf("Error writing data at offset %d: %v", offset, err)
+		return ErrorWritingDataAtOffset(offset, err)
 	}
 
 	return nil
@@ -145,7 +145,7 @@ func (store *batchStore) ReadAt(offset int64, size int32) ([]byte, error) {
 	// Read data from the given offset
 	_, err := store.file.ReadAt(data, offset)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading data at offset %d: %v", offset, err)
+		return nil, ErrorReadingDataAtOffset(offset, err)
 	}
 
 	return data, nil

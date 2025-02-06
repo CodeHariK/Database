@@ -7,9 +7,19 @@ import (
 )
 
 func TestNewNode(t *testing.T) {
-	tree := testBTree(t, "TestSaveRoot")
+	tree, err := NewBTree(
+		"TestNewNode",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err := tree.NewNode(
+	_, err = tree.NewNode(
 		-1,
 		-1,
 		-1,
@@ -23,7 +33,17 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestSaveRoot(t *testing.T) {
-	tree := testBTree(t, "TestSaveRoot")
+	tree, err := NewBTree(
+		"TestSaveRoot",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tree.root = &node{
 		ParentOffset: 101,
@@ -36,7 +56,7 @@ func TestSaveRoot(t *testing.T) {
 		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
 	}
 
-	err := tree.saveRoot()
+	err = tree.saveRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
