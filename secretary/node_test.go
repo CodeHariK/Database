@@ -45,7 +45,7 @@ func TestSaveRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree.root = &node{
+	tree.root = &Node{
 		ParentOffset: 101,
 		NextOffset:   102,
 		PrevOffset:   103,
@@ -66,7 +66,7 @@ func TestSaveRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var root node
+	var root Node
 	err = binstruct.Deserialize(rootBytes, &root)
 	if err != nil {
 		t.Fatal(err)

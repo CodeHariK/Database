@@ -7,12 +7,16 @@ import (
 )
 
 var (
-	ErrorNumKeysMoreThanOrder = errors.New("NumKeys cannot be more than order of tree")
-	ErrorNumKeysNotMatching   = errors.New("NumKeys not matching")
-	ErrorInvalidKeySize       = errors.New("Invalid key size")
-	ErrorInvalidDataLocation  = errors.New("Invalid data location")
-	ErrorKeyNotInNode         = errors.New("Key not in node")
-	ErrorNodeNotInTree        = errors.New("Node not in tree")
+	ErrorNumKeysMoreThanOrder       = errors.New("NumKeys cannot be more than order of tree")
+	ErrorNumKeysNotMatching         = errors.New("NumKeys not matching")
+	ErrorInvalidDataLocation        = errors.New("Invalid data location")
+	ErrorNodeNotInTree              = errors.New("Node not in tree")
+	ErrorNodeIsEitherLeaforInternal = errors.New("Node Is Either Leaf or Internal, Node can either have children or record")
+
+	ErrorKeyNotFound  = errors.New("Key not found")
+	ErrorKeyNotInNode = errors.New("Key not in node")
+	ErrorDuplicateKey = errors.New("Duplicate key")
+	ErrorInvalidKey   = errors.New("Invalid key size")
 
 	ErrorInvalidOrder          = fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
 	ErrorInvalidBatchIncrement = fmt.Errorf("Batch Increment must be between 110 and 200")

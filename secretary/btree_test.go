@@ -32,7 +32,7 @@ func TestBTreeSerialization(t *testing.T) {
 		t.Fatalf("Expected serialized data to be %d bytes, got %d", SECRETARY_HEADER_LENGTH, len(serializedData))
 	}
 
-	var deserializedTree bTree
+	var deserializedTree BTree
 	err = binstruct.Deserialize(serializedData, &deserializedTree)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)

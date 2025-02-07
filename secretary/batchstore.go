@@ -7,7 +7,7 @@ import (
 )
 
 // Opens or creates a file and sets up the BatchStore
-func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, error) {
+func (tree *BTree) NewBatchStore(fileType string, level uint8) (*BatchStore, error) {
 	batchSize := uint32(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
 
 	headerSize := 0
@@ -38,7 +38,7 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, err
 
 	// fmt.Printf("Open File : %s\n", path)
 
-	return &batchStore{
+	return &BatchStore{
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
@@ -47,7 +47,7 @@ func (tree *bTree) NewBatchStore(fileType string, level uint8) (*batchStore, err
 }
 
 // AllocateBatch writes zeroed data in chunks of pageSize for alignment
-func (store *batchStore) AllocateBatch(numBatch int32) error {
+func (store *BatchStore) AllocateBatch(numBatch int32) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -98,7 +98,7 @@ func (store *batchStore) AllocateBatch(numBatch int32) error {
 **/
 // WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
-func (store *batchStore) WriteAt(offset int64, data []byte) error {
+func (store *BatchStore) WriteAt(offset int64, data []byte) error {
 	// Ensure data size does not exceed batchSize
 	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.batchSize)) != ((offset - int64(store.headerSize)) / int64(store.batchSize)) {
 		return ErrorDataExceedBatchSize(len(data), store.batchSize, offset)
@@ -134,7 +134,7 @@ func (store *batchStore) WriteAt(offset int64, data []byte) error {
 }
 
 // ReadAt reads data from the specified offset in the file
-func (store *batchStore) ReadAt(offset int64, size int32) ([]byte, error) {
+func (store *BatchStore) ReadAt(offset int64, size int32) ([]byte, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 

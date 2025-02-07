@@ -14,7 +14,7 @@ func NewBTree(
 	batchBaseSize uint32,
 	batchIncrement uint8,
 	batchLength uint8,
-) (*bTree, error) {
+) (*BTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
 		return nil, ErrorInvalidOrder
 	}
@@ -34,10 +34,10 @@ func NewBTree(
 		return nil, err
 	}
 
-	tree := &bTree{
+	tree := &BTree{
 		CollectionName: safeCollectionName,
 
-		root: &node{},
+		root: &Node{},
 
 		Order:          order,
 		BatchNumLevel:  batchNumLevel,
@@ -55,7 +55,7 @@ func NewBTree(
 
 	tree.nodeBatchStore = nodeBatchStore
 
-	recordBatchStores := make([]*batchStore, batchNumLevel)
+	recordBatchStores := make([]*BatchStore, batchNumLevel)
 	for i := range recordBatchStores {
 		store, err := tree.NewBatchStore("record", uint8(i))
 		if err != nil {
@@ -69,7 +69,7 @@ func NewBTree(
 	return tree, nil
 }
 
-func (tree *bTree) close() error {
+func (tree *BTree) close() error {
 	if err := tree.nodeBatchStore.file.Close(); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (tree *bTree) close() error {
 	return nil
 }
 
-func (tree *bTree) createHeader() ([]byte, error) {
+func (tree *BTree) createHeader() ([]byte, error) {
 	header64, err := binstruct.Serialize(*tree)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (tree *bTree) createHeader() ([]byte, error) {
 	return header64, nil
 }
 
-func (tree *bTree) SaveHeader() error {
+func (tree *BTree) SaveHeader() error {
 	header, err := tree.createHeader()
 	if err != nil {
 		return err

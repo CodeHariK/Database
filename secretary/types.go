@@ -17,18 +17,18 @@ const (
 	KEY_OFFSET_SIZE = 8
 	POINTER_SIZE    = 8
 
-	BYTE_8  = 1<<8 - 1
-	BYTE_16 = 1<<16 - 1
+	BYTE_8  = uint64(1<<8 - 1)
+	BYTE_16 = uint64(1<<16 - 1)
 
-	RECORD_BATCH_OFFSET_AND = 1<<56 - 1
-	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 55
+	RECORD_BATCH_OFFSET_AND = uint64(1<<56 - 1)
+	RECORD_BATCH_LEVEL_AND  = BYTE_8 << 56
 
-	NODE_BATCH_OFFSET_AND = 1<<48 - 1
-	NODE_INDEX_AND        = BYTE_16 << 47
+	NODE_BATCH_OFFSET_AND = uint64(1<<48 - 1)
+	NODE_INDEX_AND        = BYTE_16 << 48
 )
 
 type Secretary struct {
-	tree map[string]*bTree
+	tree map[string]*BTree
 }
 
 /*
@@ -53,13 +53,13 @@ order ^ 4	Internal
 order ^ n	Leaf
 ---------------------
 */
-type bTree struct {
+type BTree struct {
 	CollectionName string `bin:"collectionName" max:"30"` // Max 30Char
 
-	nodeBatchStore    *batchStore
-	recordBatchStores []*batchStore
+	nodeBatchStore    *BatchStore
+	recordBatchStores []*BatchStore
 
-	root *node // Root node of the tree
+	root *Node // Root node of the tree
 
 	Order          uint8  `bin:"order"`          // Max = 255, Order of the tree (maximum number of children)
 	BatchNumLevel  uint8  `bin:"batchNumLevel"`  // 32, Max 256 levels
@@ -70,7 +70,7 @@ type bTree struct {
 	nodeSize uint32
 }
 
-type batchStore struct {
+type BatchStore struct {
 	file *os.File
 
 	headerSize int
@@ -82,7 +82,7 @@ type batchStore struct {
 }
 
 /*
-**node Structure**
+**Node Structure**
 +----------------+----------------+----------------+----------------+
 | parentOffset   | nextOffset     | prevOffset     | numKeys        |
 | (8 bytes)      | (8 bytes)      | (8 bytes)      | (1 bytes)      |
@@ -94,11 +94,11 @@ type batchStore struct {
 | (16 bytes each)                                              |
 +----------------+----------------+----------------+----------------+
 */
-type node struct {
-	parent   *node
-	next     *node
-	prev     *node
-	children []*node
+type Node struct {
+	parent   *Node
+	next     *Node
+	prev     *Node
+	children []*Node
 	records  []*Record
 
 	Offset       DataLocation
@@ -107,12 +107,8 @@ type node struct {
 	PrevOffset   DataLocation `bin:"PrevOffset"`
 
 	NumKeys    uint8          `bin:"NumKeys"`
-	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes)
+	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
-}
-
-func (n *node) IsLeaf() bool {
-	return len(n.children) == 0
 }
 
 // Record
