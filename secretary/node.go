@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
 	"github.com/codeharik/secretary/utils/binstruct"
@@ -95,17 +96,6 @@ func (tree *BTree) saveRoot() error {
 	return tree.nodeBatchStore.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
 }
 
-// TODO : Binary search key
-func (tree *BTree) searchNode(n *Node, key []byte) (*Node, error) {
-	if len(key) != KEY_SIZE {
-		return nil, ErrorInvalidKey
-	}
-
-	tree.searchKey(tree.root, key)
-
-	return nil, ErrorNodeNotInTree
-}
-
 func (tree *BTree) dataLocationCheck(location DataLocation) error {
 	if location == -1 {
 		return ErrorInvalidDataLocation
@@ -113,44 +103,11 @@ func (tree *BTree) dataLocationCheck(location DataLocation) error {
 	return nil
 }
 
-func (tree *BTree) addKey(n *Node, key []byte, keyOffset DataLocation) error {
-	if (n.NumKeys + 1) > tree.Order {
-		return ErrorNumKeysMoreThanOrder
-	}
-	if len(key) != KEY_SIZE {
-		return ErrorInvalidKey
-	}
-	if err := tree.dataLocationCheck(keyOffset); err != nil {
-		return err
-	}
-
-	n.NumKeys += 1
-
-	n.KeyOffsets = append(n.KeyOffsets, keyOffset)
-	n.Keys = append(n.Keys, key)
-
-	return nil
-}
-
-// TODO : Binary search key
-// Returns equal or less than
-func (tree *BTree) searchKey(n *Node, key []byte) (int, error) {
-	if len(key) != KEY_SIZE {
-		return -1, ErrorInvalidKey
-	}
-
-	for i, k := range n.Keys {
-		if bytes.Compare(key, k) == 0 {
-			return i, nil
-		}
-	}
-
-	return -1, ErrorKeyNotInNode
-}
-
 // TODO : Remove Key
 func (tree *BTree) removeKey(n *Node, key []byte) {
 }
+
+//------------------------------------------------------------------
 
 // Create a new internal node
 func (tree *BTree) createInternalNode() *Node {
@@ -346,4 +303,294 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 		}
 	}
 	return ErrorKeyNotFound
+}
+
+// ------------------------------------------------------------------
+
+// BulkLoad inserts sorted records into the B+ Tree efficiently
+func (tree *BTree) BulkLoad(sortedRecords []*Record) {
+	if len(sortedRecords) == 0 {
+		return
+	}
+
+	// Step 1: Create leaf nodes
+	leafNodes := []*Node{}
+	for i := 0; i < len(sortedRecords); i += int(tree.Order) - 1 {
+		end := i + int(tree.Order) - 1
+		if end > len(sortedRecords) {
+			end = len(sortedRecords)
+		}
+
+		leaf := tree.createLeafNode()
+		for j := i; j < end; j++ {
+			leaf.Keys = append(leaf.Keys, sortedRecords[j].Key)
+			leaf.records = append(leaf.records, sortedRecords[j])
+		}
+		leaf.NumKeys = uint8(len(leaf.Keys))
+
+		// Link leaf nodes
+		if len(leafNodes) > 0 {
+			leafNodes[len(leafNodes)-1].next = leaf
+			leaf.prev = leafNodes[len(leafNodes)-1]
+		}
+
+		leafNodes = append(leafNodes, leaf)
+	}
+
+	// Step 2: Build internal nodes
+	tree.root = buildInternalNodes(leafNodes, tree.Order)
+}
+
+// Recursively build internal nodes
+func buildInternalNodes(children []*Node, order uint8) *Node {
+	if len(children) == 1 {
+		return children[0] // Root node
+	}
+
+	internalNodes := []*Node{}
+	keys := [][]byte{}
+
+	for i := 0; i < len(children); i += int(order) {
+		end := i + int(order)
+		if end > len(children) {
+			end = len(children)
+		}
+
+		node := &Node{children: children[i:end]}
+		for _, child := range children[i:end] {
+			child.parent = node
+		}
+
+		// Pick first key from each child
+		if i > 0 {
+			keys = append(keys, children[i].Keys[0])
+		}
+
+		node.Keys = keys
+		node.NumKeys = uint8(len(keys))
+		internalNodes = append(internalNodes, node)
+	}
+
+	return buildInternalNodes(internalNodes, order)
+}
+
+//------------------------------------------------------------------
+
+// SearchKey searches for a key in the B+ tree using binary search.
+func (tree *BTree) SearchKey(key []byte) (*Record, bool) {
+	if tree == nil || tree.root == nil {
+		return nil, false
+	}
+
+	node := tree.root
+
+	// Traverse down to the leaf node
+	for len(node.children) > 0 {
+		index := binarySearch(node.Keys, key)
+		node = node.children[index]
+	}
+
+	// Perform binary search in the leaf node
+	index := binarySearch(node.Keys, key)
+	if index < len(node.Keys) && bytes.Equal(node.Keys[index], key) {
+		return node.records[index], true
+	}
+
+	return nil, false // Key not found
+}
+
+// Binary search helper function
+func binarySearch(keys [][]byte, key []byte) int {
+	return sort.Search(len(keys), func(i int) bool {
+		return bytes.Compare(keys[i], key) >= 0
+	})
+}
+
+// RangeScan retrieves all records in the range [startKey, endKey].
+func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
+	if tree == nil || tree.root == nil {
+		return nil
+	}
+
+	var results []*Record
+	node := tree.root
+
+	// Traverse down to the correct leaf node
+	for len(node.children) > 0 {
+		index := binarySearch(node.Keys, startKey)
+		node = node.children[index]
+	}
+
+	// Scan through leaf nodes until we reach endKey
+	for node != nil {
+		for i := 0; i < len(node.Keys); i++ {
+			if bytes.Compare(node.Keys[i], startKey) >= 0 && bytes.Compare(node.Keys[i], endKey) <= 0 {
+				results = append(results, node.records[i])
+			}
+			// Stop if we exceed endKey
+			if bytes.Compare(node.Keys[i], endKey) > 0 {
+				return results
+			}
+		}
+		node = node.next // Move to next leaf node
+	}
+
+	return results
+}
+
+//------------------------------------------------------------------
+
+// deleteKey deletes a key from the B+ Tree.
+func (tree *BTree) deleteKey(key []byte) {
+	if tree.root == nil {
+		fmt.Println("Tree is empty!")
+		return
+	}
+
+	leaf := tree.findLeaf(key)
+	index := -1
+
+	// Find the key in the leaf node
+	for i, k := range leaf.Keys {
+		if bytes.Equal(k, key) {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		fmt.Println("Key not found!")
+		return
+	}
+
+	// Remove the key and corresponding record
+	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
+	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
+	leaf.NumKeys--
+
+	// Handle underflow
+	tree.handleUnderflow(leaf)
+}
+
+// handleUnderflow handles cases when a node has fewer than the required keys.
+func (tree *BTree) handleUnderflow(node *Node) {
+	minKeys := (int(tree.Order) - 1) / 2 // Minimum required keys
+	if len(node.Keys) >= minKeys {
+		return // No underflow
+	}
+
+	// Check if the node is the root
+	if node == tree.root {
+		if len(node.children) == 1 { // If root has only one child, make it the new root
+			tree.root = node.children[0]
+			tree.root.parent = nil
+		}
+		return
+	}
+
+	// Find the node's parent and its position
+	parent := node.parent
+	pos := 0
+	for pos < len(parent.children) && parent.children[pos] != node {
+		pos++
+	}
+
+	// Try to borrow from left sibling
+	if pos > 0 {
+		leftSibling := parent.children[pos-1]
+		if len(leftSibling.Keys) > minKeys {
+			// Borrow key from left sibling
+			borrowedKey := leftSibling.Keys[len(leftSibling.Keys)-1]
+			leftSibling.Keys = leftSibling.Keys[:len(leftSibling.Keys)-1]
+			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
+			parent.Keys[pos-1] = borrowedKey
+			return
+		}
+	}
+
+	// Try to borrow from right sibling
+	if pos < len(parent.children)-1 {
+		rightSibling := parent.children[pos+1]
+		if len(rightSibling.Keys) > minKeys {
+			// Borrow key from right sibling
+			borrowedKey := rightSibling.Keys[0]
+			rightSibling.Keys = rightSibling.Keys[1:]
+			node.Keys = append(node.Keys, borrowedKey)
+			parent.Keys[pos] = rightSibling.Keys[0]
+			return
+		}
+	}
+
+	// Merge with left sibling
+	if pos > 0 {
+		leftSibling := parent.children[pos-1]
+		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
+		leftSibling.records = append(leftSibling.records, node.records...)
+		parent.children = append(parent.children[:pos], parent.children[pos+1:]...)
+		parent.Keys = append(parent.Keys[:pos-1], parent.Keys[pos:]...)
+		tree.handleUnderflow(parent)
+	} else { // Merge with right sibling
+		rightSibling := parent.children[pos+1]
+		node.Keys = append(node.Keys, rightSibling.Keys...)
+		node.records = append(node.records, rightSibling.records...)
+		parent.children = append(parent.children[:pos+1], parent.children[pos+2:]...)
+		parent.Keys = append(parent.Keys[:pos], parent.Keys[pos+1:]...)
+		tree.handleUnderflow(parent)
+	}
+}
+
+//------------------------------------------------------------------
+
+// PrintBTree prints the entire B+ tree
+func PrintBTree(tree *BTree) {
+	if tree == nil || tree.root == nil {
+		fmt.Println("Tree is empty")
+		return
+	}
+	fmt.Println("B+ Tree Structure:")
+	printBTreeRecursive(tree.root, 0)
+}
+
+// Recursive function to print nodes at each level
+func printBTreeRecursive(node *Node, level int) {
+	if node == nil {
+		return
+	}
+
+	// Print the keys in the current node
+	fmt.Printf("Level %d | Keys: %v\n", level, getKeysAsStrings(node.Keys))
+
+	// Recurse through children
+	for _, child := range node.children {
+		printBTreeRecursive(child, level+1)
+	}
+}
+
+// Print only leaf nodes in sorted order
+func PrintLeafNodes(tree *BTree) {
+	if tree == nil || tree.root == nil {
+		fmt.Println("Tree is empty")
+		return
+	}
+
+	// Find the leftmost leaf
+	node := tree.root
+	for node != nil && len(node.children) > 0 {
+		node = node.children[0]
+	}
+
+	fmt.Println("Leaf Nodes (in order):")
+	for node != nil {
+		fmt.Printf("[%v] -> ", getKeysAsStrings(node.Keys))
+		node = node.next
+	}
+	fmt.Println("nil")
+}
+
+// Helper function to convert [][]byte keys to readable format
+func getKeysAsStrings(keys [][]byte) []string {
+	var strKeys []string
+	for _, key := range keys {
+		strKeys = append(strKeys, string(key))
+	}
+	return strKeys
 }
