@@ -1,111 +1,160 @@
-import * as d3 from "d3";
+import { shapes, dia, elementTools } from '@joint/core';
 
-export interface BPlusTreeNode {
+type BPlusTreeNode = {
   keys: number[];
-  children?: BPlusTreeNode[];
-}
-
-export function renderBPlusTree(treeData: BPlusTreeNode, order: number) {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const svg = d3.select("#tree-container")
-    .attr("width", width)
-    .attr("height", height)
-    .call(d3.zoom().on("zoom", (event) => {
-      g.attr("transform", event.transform);
-    }))
-    .append("g");
-
-  svg.selectAll("*").remove(); // Clear previous drawings
-
-  const treeLayout = d3.tree<BPlusTreeNode>().size([width - 200, height - 200]);
-  const root = d3.hierarchy(treeData);
-  treeLayout(root);
-
-  const g = svg.append("g");
-
-  const lineGenerator = d3.line<d3.HierarchyPointLink<BPlusTreeNode>>()
-    .x(d => d.x)
-    .y(d => d.y)
-    .curve(d3.curveBasis);
-
-  const links = g.selectAll(".link")
-    .data(root.links())
-    .enter()
-    .append("path")
-    .attr("class", "link")
-    .attr("fill", "none")
-    .attr("stroke", "#007acc")
-    .attr("stroke-width", 3)
-    .attr("d", d => lineGenerator([d.source, d.target]));
-
-  const nodes = g.selectAll(".node")
-    .data(root.descendants())
-    .enter()
-    .append("g")
-    .attr("class", "node")
-    .attr("transform", d => `translate(${d.x}, ${d.y})`);
-
-  nodes.append("rect")
-    .attr("width", d => d.data.keys.length * 40 + 20)
-    .attr("height", 50)
-    .attr("x", d => -((d.data.keys.length * 40 + 20) / 2))
-    .attr("y", -25)
-    .attr("rx", 10)
-    .attr("ry", 10)
-    .attr("fill", "lightblue")
-    .attr("stroke", "black");
-
-  nodes.selectAll(".key-box")
-    .data(d => d.data.keys.map((key, i) => ({ key, index: i, total: d.data.keys.length })))
-    .enter()
-    .append("rect")
-    .attr("class", "key-box")
-    .attr("width", 30)
-    .attr("height", 30)
-    .attr("x", d => -((d.total * 40 + 20) / 2) + d.index * 40 + 10)
-    .attr("y", -15)
-    .attr("rx", 5)
-    .attr("ry", 5)
-    .attr("fill", "white")
-    .attr("stroke", "black");
-
-  nodes.selectAll(".key-text")
-    .data(d => d.data.keys.map((key, i) => ({ key, index: i, total: d.data.keys.length })))
-    .enter()
-    .append("text")
-    .attr("class", "key-text")
-    .attr("x", d => -((d.total * 40 + 20) / 2) + d.index * 40 + 25)
-    .attr("y", 0)
-    .attr("text-anchor", "middle")
-    .attr("alignment-baseline", "middle")
-    .text(d => d.key);
-
-  const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<BPlusTreeNode>>()
-    .on("start", function (event) {
-      d3.select(this).raise().classed("active", true);
-    })
-    .on("drag", function (event, d) {
-      d3.select(this).attr("transform", `translate(${event.x}, ${event.y})`);
-      d.x = event.x;
-      d.y = event.y;
-      links.attr("d", d => lineGenerator([d.source, d.target]));
-    })
-    .on("end", function () {
-      d3.select(this).classed("active", false);
-    });
-
-  dragHandler(nodes);
-}
-
-const sampleTree: BPlusTreeNode = {
-  keys: [20, 40],
-  children: [
-    { keys: [5, 10, 15], children: [{ keys: [2, 3, 4] }, { keys: [6, 7, 9] }, { keys: [11, 12, 14] }] },
-    { keys: [25, 30, 35], children: [{ keys: [21, 22, 24] }, { keys: [26, 27, 29] }, { keys: [31, 32, 34] }] },
-    { keys: [45, 50], children: [{ keys: [41, 42, 44] }, { keys: [46, 47, 49] }] }
-  ]
+  children: BPlusTreeNode[];
 };
 
-renderBPlusTree(sampleTree, 10)
+let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, keys: number[]) => {
 
+  const bevelSize = 15;
+
+  const element = new shapes.standard.Polygon();
+  element.position(x, y);
+  element.resize(100, 40);
+  element.attr({
+    body: {
+      fill: 'white',
+      stroke: '#C94A46',
+      strokeWidth: 2,
+      // rx: 10, ry: 10
+      refPoints: `0,0 150,0 150,${30 - bevelSize} 135,30 ${bevelSize},30 0,${30 - bevelSize}`
+    },
+    label: {
+      text: keys.toString(),
+      fill: 'black',
+      fontSize: 14
+    }
+  });
+  element.addTo(graph);
+
+  const boundaryTool = new elementTools.Boundary();
+  const removeButton = new elementTools.Remove();
+
+  const toolsView = new dia.ToolsView({
+    tools: [boundaryTool, removeButton]
+  });
+
+  const elementView = element.findView(paper);
+  elementView.addTools(toolsView);
+  elementView.hideTools();
+
+  paper.on('element:mouseenter', function (elementView) {
+    elementView.showTools();
+  });
+
+  paper.on('element:mouseleave', function (elementView) {
+    elementView.hideTools();
+  });
+
+  return element
+}
+
+
+function createBPlusTreeFromJSON(paper: dia.Paper, graph: dia.Graph, treeData: BPlusTreeNode, x = 400, y = 50, xSpacing = 200, ySpacing = 150) {
+  if (!treeData) return null;
+
+  const node = newBox(paper, graph, x, y, treeData.keys);
+
+  if (treeData.children && treeData.children.length > 0) {
+    const numChildren = treeData.children.length;
+    const startX = x - ((numChildren - 1) * xSpacing) / 2;
+
+    treeData.children.forEach((child, index) => {
+      const childX = startX + index * xSpacing;
+      const childY = y + ySpacing;
+      const childNode = createBPlusTreeFromJSON(paper, graph, child, childX, childY, xSpacing / 1.5, ySpacing);
+
+      if (childNode) {
+        const link = new shapes.standard.Link();
+        link.source(node);
+        link.target(childNode);
+
+        link.appendLabel({
+          attrs: {
+            text: {
+              text: 'to the'
+            }
+          }
+        });
+        link.router('orthogonal');
+        link.connector('straight', { cornerType: 'line' });
+
+        graph.addCell(link);
+      }
+    });
+  }
+  return node;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const namespace = shapes;
+
+  const graph = new dia.Graph({}, { cellNamespace: namespace });
+
+  const paper = new dia.Paper({
+    el: document.getElementById('paper'),
+    model: graph,
+    width: 900,
+    height: 900,
+    background: { color: '#F5F5F5' },
+    gridSize: 10,
+    interactive: true,
+    cellViewNamespace: namespace,
+    async: true,
+    sorting: dia.Paper.sorting.APPROX,
+  });
+
+  // Enable panning and zooming
+  paper.scale(1);
+  paper.setInteractivity({
+    elementMove: true,
+    linkMove: true
+  });
+  let panning = false;
+  let lastPosition = { x: 0, y: 0 };
+
+  paper.on('blank:pointerdown', function (_, x, y) {
+    panning = true;
+    lastPosition = { x, y };
+  });
+
+  paper.on('blank:pointermove', function (_, x, y) {
+    if (panning) {
+      const dx = (x - lastPosition.x); // Reduce speed
+      const dy = (y - lastPosition.y); // Reduce speed
+      const currentTranslate = paper.translate();
+      paper.translate(currentTranslate.tx + dx, currentTranslate.ty + dy);
+      lastPosition = { x, y };
+    }
+  });
+
+  paper.on('blank:pointerup', function () {
+    panning = false;
+  });
+
+  document.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const scaleFactor = 1.1;
+    let scale = paper.scale().sx;
+    scale = event.deltaY < 0 ? scale * scaleFactor : scale / scaleFactor;
+    paper.scale(Math.max(0.2, Math.min(2, scale)));
+  }, { passive: false });
+
+  const sampleTree: BPlusTreeNode = {
+    keys: [10, 20],
+    children: [
+      { keys: [5, 8], children: [] },
+      { keys: [12, 18], children: [] },
+      {
+        keys: [22, 25], children: [
+          { keys: [5, 8], children: [] },
+          { keys: [5, 8], children: [] },
+        ]
+      }
+    ]
+  };
+
+  createBPlusTreeFromJSON(paper, graph, sampleTree);
+});

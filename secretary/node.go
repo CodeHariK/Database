@@ -103,10 +103,6 @@ func (tree *BTree) dataLocationCheck(location DataLocation) error {
 	return nil
 }
 
-// TODO : Remove Key
-func (tree *BTree) removeKey(n *Node, key []byte) {
-}
-
 //------------------------------------------------------------------
 
 // Create a new internal node
@@ -447,7 +443,7 @@ func (tree *BTree) deleteKey(key []byte) {
 		return
 	}
 
-	leaf := tree.findLeaf(key)
+	leaf := tree.findLeafNode(key)
 	index := -1
 
 	// Find the key in the leaf node
