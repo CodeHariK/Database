@@ -28,7 +28,7 @@ const (
 )
 
 type Secretary struct {
-	tree map[string]*BTree
+	trees map[string]*BTree
 }
 
 /*
@@ -70,17 +70,6 @@ type BTree struct {
 	nodeSize uint32
 }
 
-type BatchStore struct {
-	file *os.File
-
-	headerSize int
-	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
-
-	batchSize uint32 // Maximum batch size = 4GB
-
-	mu sync.Mutex
-}
-
 /*
 **Node Structure**
 +----------------+----------------+----------------+----------------+
@@ -109,6 +98,17 @@ type Node struct {
 	NumKeys    uint8          `bin:"NumKeys"`
 	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
+}
+
+type BatchStore struct {
+	file *os.File
+
+	headerSize int
+	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
+
+	batchSize uint32 // Maximum batch size = 4GB
+
+	mu sync.Mutex
 }
 
 // Record

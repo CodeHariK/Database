@@ -2,10 +2,11 @@ import { shapes, dia, elementTools } from '@joint/core';
 
 type BPlusTreeNode = {
   keys: number[];
+  value: string[];
   children: BPlusTreeNode[];
 };
 
-let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, keys: number[]) => {
+let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, node: BPlusTreeNode) => {
 
   const bevelSize = 15;
 
@@ -21,7 +22,7 @@ let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, keys: nu
       refPoints: `0,0 150,0 150,${30 - bevelSize} 135,30 ${bevelSize},30 0,${30 - bevelSize}`
     },
     label: {
-      text: keys.toString(),
+      text: node.keys.toString() + " " + node.value.toString(),
       fill: 'black',
       fontSize: 14
     }
@@ -54,7 +55,7 @@ let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, keys: nu
 function createBPlusTreeFromJSON(paper: dia.Paper, graph: dia.Graph, treeData: BPlusTreeNode, x = 400, y = 50, xSpacing = 200, ySpacing = 150) {
   if (!treeData) return null;
 
-  const node = newBox(paper, graph, x, y, treeData.keys);
+  const node = newBox(paper, graph, x, y, treeData);
 
   if (treeData.children && treeData.children.length > 0) {
     const numChildren = treeData.children.length;
@@ -142,19 +143,42 @@ document.addEventListener('DOMContentLoaded', () => {
     paper.scale(Math.max(0.2, Math.min(2, scale)));
   }, { passive: false });
 
-  const sampleTree: BPlusTreeNode = {
-    keys: [10, 20],
-    children: [
-      { keys: [5, 8], children: [] },
-      { keys: [12, 18], children: [] },
+  const bPlusTree: BPlusTreeNode = convertJsonToBPlusTree(jsonString);
+  createBPlusTreeFromJSON(paper, graph, bPlusTree);
+});
+
+// Example JSON from Go
+const jsonString = `{
+  "root": {
+    "key": ["A", "B"],
+    "value": ["ValueA", "ValueB"],
+    "children": [
       {
-        keys: [22, 25], children: [
-          { keys: [5, 8], children: [] },
-          { keys: [5, 8], children: [] },
-        ]
+        "key": ["AA", "AB"],
+        "value": ["ValueAA", "ValueAB"],
+        "children": []
+      },
+      {
+        "key": ["BA", "BB"],
+        "value": ["ValueBA", "ValueBB"],
+        "children": []
       }
     ]
-  };
+  }
+}`;
 
-  createBPlusTreeFromJSON(paper, graph, sampleTree);
-});
+// Function to convert string keys to ASCII codes
+function convertJsonToBPlusTree(json: string): BPlusTreeNode {
+  const parsed = JSON.parse(json);
+
+  function convertNode(node: any): BPlusTreeNode {
+    return {
+      keys: node.key.map((k: string) => k.charCodeAt(0)), // Convert string keys to numbers (ASCII)
+      value: node.value,
+      children: node.children.map(convertNode),
+    };
+  }
+
+  return convertNode(parsed.root);
+}
+

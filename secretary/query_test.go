@@ -1,7 +1,6 @@
 package secretary
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -15,8 +14,6 @@ func TestQuery(t *testing.T) {
 
 	for _, query := range queries {
 		stmt := ParseSQL(query)
-		fmt.Printf("Parsed Statement:\n%+v\n\n", stmt)
+		t.Logf("Parsed Statement:\n%+v\n\n", stmt)
 	}
-
-	t.Fatal()
 }

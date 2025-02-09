@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -372,10 +373,10 @@ func buildInternalNodes(children []*Node, order uint8) *Node {
 
 //------------------------------------------------------------------
 
-// SearchKey searches for a key in the B+ tree using binary search.
-func (tree *BTree) SearchKey(key []byte) (*Record, bool) {
+// Search searches for a key in the B+ tree using binary search.
+func (tree *BTree) Search(key []byte) (*Record, error) {
 	if tree == nil || tree.root == nil {
-		return nil, false
+		return nil, ErrorTreeNil
 	}
 
 	node := tree.root
@@ -389,10 +390,10 @@ func (tree *BTree) SearchKey(key []byte) (*Record, bool) {
 	// Perform binary search in the leaf node
 	index := binarySearch(node.Keys, key)
 	if index < len(node.Keys) && bytes.Equal(node.Keys[index], key) {
-		return node.records[index], true
+		return node.records[index], nil
 	}
 
-	return nil, false // Key not found
+	return nil, ErrorKeyNotFound
 }
 
 // Binary search helper function
@@ -534,59 +535,57 @@ func (tree *BTree) handleUnderflow(node *Node) {
 	}
 }
 
-//------------------------------------------------------------------
+// ------------------------------------------------------------------
 
-// PrintBTree prints the entire B+ tree
-func PrintBTree(tree *BTree) {
-	if tree == nil || tree.root == nil {
-		fmt.Println("Tree is empty")
-		return
-	}
-	fmt.Println("B+ Tree Structure:")
-	printBTreeRecursive(tree.root, 0)
+// NodeJSON represents a node in a JSON-friendly structure
+type NodeJSON struct {
+	Key      []string   `json:"key"`
+	Value    []string   `json:"value"`
+	Children []NodeJSON `json:"children"`
 }
 
-// Recursive function to print nodes at each level
-func printBTreeRecursive(node *Node, level int) {
+// ConvertNodeToJSON recursively converts a Node into a JSON-friendly structure
+func (node *Node) ConvertNodeToJSON() NodeJSON {
 	if node == nil {
-		return
+		return NodeJSON{}
 	}
 
-	// Print the keys in the current node
-	fmt.Printf("Level %d | Keys: %v\n", level, getKeysAsStrings(node.Keys))
+	keys := make([]string, len(node.Keys))
+	values := make([]string, len(node.records))
 
-	// Recurse through children
-	for _, child := range node.children {
-		printBTreeRecursive(child, level+1)
+	for i, key := range node.Keys {
+		keys[i] = string(key)
+	}
+	for i, record := range node.records {
+		values[i] = string(record.Value)
+	}
+
+	children := make([]NodeJSON, len(node.children))
+	for i, child := range node.children {
+		children[i] = child.ConvertNodeToJSON()
+	}
+
+	return NodeJSON{
+		Key:      keys,
+		Value:    values,
+		Children: children,
 	}
 }
 
-// Print only leaf nodes in sorted order
-func PrintLeafNodes(tree *BTree) {
-	if tree == nil || tree.root == nil {
-		fmt.Println("Tree is empty")
-		return
+// ConvertBTreeToJSON converts the entire BTree into a JSON structure
+func (tree *BTree) ConvertBTreeToJSON() (string, error) {
+	if tree.root == nil {
+		return "{}", nil
 	}
 
-	// Find the leftmost leaf
-	node := tree.root
-	for node != nil && len(node.children) > 0 {
-		node = node.children[0]
+	treeJSON := map[string]NodeJSON{
+		"root": tree.root.ConvertNodeToJSON(),
 	}
 
-	fmt.Println("Leaf Nodes (in order):")
-	for node != nil {
-		fmt.Printf("[%v] -> ", getKeysAsStrings(node.Keys))
-		node = node.next
+	jsonData, err := json.MarshalIndent(treeJSON, "", "  ")
+	if err != nil {
+		return "", err
 	}
-	fmt.Println("nil")
-}
 
-// Helper function to convert [][]byte keys to readable format
-func getKeysAsStrings(keys [][]byte) []string {
-	var strKeys []string
-	for _, key := range keys {
-		strKeys = append(strKeys, string(key))
-	}
-	return strKeys
+	return string(jsonData), nil
 }

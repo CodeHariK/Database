@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/codeharik/secretary"
+)
 
 func main() {
-	fmt.Println("Hello Secretary!")
+	secretary.New()
 }

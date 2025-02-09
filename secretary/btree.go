@@ -1,6 +1,7 @@
 package secretary
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/codeharik/secretary/utils"
@@ -27,7 +28,7 @@ func NewBTree(
 
 	safeCollectionName := utils.SafeCollectionString(collectionName)
 	if len(safeCollectionName) < 5 || len(safeCollectionName) > MAX_COLLECTION_NAME_LENGTH {
-		return nil, ErrorInvalidCollectionName()
+		return nil, ErrorInvalidCollectionName
 	}
 
 	if err := utils.EnsureDir(fmt.Sprintf("%s/%s", SECRETARY, safeCollectionName)); err != nil {
@@ -106,4 +107,49 @@ func (tree *BTree) SaveHeader() error {
 	}
 
 	return tree.nodeBatchStore.WriteAt(0, header)
+}
+
+func NewBTreeReadHeader(collectionName string) (*BTree, error) {
+	temp, err := NewBTree(collectionName,
+		10,
+		0,
+		0,
+		125,
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	diskData, err := temp.nodeBatchStore.ReadAt(0, SECRETARY_HEADER_LENGTH)
+	if err != nil {
+		return nil, err
+	}
+
+	data := bytes.Trim(diskData, "-")[len(SECRETARY):]
+	var deserializedTree BTree
+	err = binstruct.Deserialize(data, &deserializedTree)
+	if err != nil {
+		return nil, err
+	}
+
+	return &deserializedTree, nil
+}
+
+func (t *BTree) Height() int {
+	if t.root == nil {
+		return 0
+	}
+
+	height := 0
+	node := t.root
+	for node != nil {
+		height++
+		if len(node.children) == 0 { // Leaf node reached
+			break
+		}
+		node = node.children[0] // Move to the first child
+	}
+
+	return height
 }

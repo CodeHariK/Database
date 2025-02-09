@@ -1,8 +1,10 @@
 package secretary
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
@@ -80,5 +82,40 @@ func TestSaveRoot(t *testing.T) {
 	eq, err := binstruct.Compare(*tree.root, root)
 	if !eq || err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInsertNilRoot(t *testing.T) {
+	tree, err := NewBTree(
+		"TestInsertNilRoot",
+		10,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key := []byte(utils.GenerateRandomString(16))
+	value := []byte("Hello world!")
+
+	err = tree.Insert(key, value)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	r, err := tree.Search(key)
+	if err != nil {
+		t.Errorf("%s\n", err)
+	}
+
+	if r == nil {
+		t.Errorf("returned nil \n")
+	}
+
+	if !reflect.DeepEqual(r.Value, value) {
+		t.Errorf("expected %v and got %v \n", value, r.Value)
 	}
 }

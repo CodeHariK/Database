@@ -1,20 +1,37 @@
 package secretary
 
-// func new() *Secretary {
-// 	secretary := &Secretary{
-// 		tree: map[string]*BPlusTree{
-// 			"users":    {collectionName: "users"},
-// 			"products": {collectionName: "products"},
-// 		},
-// 	}
+import (
+	"fmt"
+	"log"
+	"os"
+)
 
-// 	basePath := "data"
-// 	err := secretary.InitializeStorage(basePath)
-// 	if err != nil {
-// 		fmt.Println("Error initializing storage:", err)
-// 	} else {
-// 		fmt.Println("Storage initialized successfully")
-// 	}
+func New() *Secretary {
+	secretary := &Secretary{
+		trees: map[string]*BTree{},
+	}
 
-// 	return secretary
-// }
+	fmt.Println("Hello Secretary!")
+
+	dirPath := "./SECRETARY"
+
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			fmt.Print("\n[DIR] ", file.Name())
+
+			tree, err := NewBTreeReadHeader(file.Name())
+			if err == nil && tree.CollectionName == file.Name() {
+				secretary.trees[file.Name()] = tree
+			} else {
+				fmt.Print(" ", err)
+			}
+		}
+	}
+
+	return secretary
+}

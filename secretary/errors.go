@@ -13,17 +13,16 @@ var (
 	ErrorNodeNotInTree              = errors.New("Node not in tree")
 	ErrorNodeIsEitherLeaforInternal = errors.New("Node Is Either Leaf or Internal, Node can either have children or record")
 
+	ErrorTreeNil      = errors.New("Tree nil")
 	ErrorKeyNotFound  = errors.New("Key not found")
 	ErrorKeyNotInNode = errors.New("Key not in node")
 	ErrorDuplicateKey = errors.New("Duplicate key")
 	ErrorInvalidKey   = errors.New("Invalid key size")
 
 	ErrorInvalidOrder          = fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
-	ErrorInvalidBatchIncrement = fmt.Errorf("Batch Increment must be between 110 and 200")
+	ErrorInvalidBatchIncrement = errors.New("Batch Increment must be between 110 and 200")
 
-	ErrorInvalidCollectionName = func() error {
-		return fmt.Errorf("Collection name is not valid, should be a-z 0-9 and with >4 & <30 characters")
-	}
+	ErrorInvalidCollectionName = errors.New("Collection name is not valid, should be a-z 0-9 and with >4 & <30 characters")
 
 	ErrorFileNotAligned = func(fileInfo os.FileInfo) error {
 		return fmt.Errorf("Error : File %s not aligned", fileInfo.Name())
