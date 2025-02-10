@@ -54,18 +54,18 @@ order ^ n	Leaf
 ---------------------
 */
 type BTree struct {
-	CollectionName string `bin:"collectionName" max:"30"` // Max 30Char
+	CollectionName string `json:"collectionName" bin:"collectionName" max:"30"` // Max 30Char
 
 	nodeBatchStore    *BatchStore
 	recordBatchStores []*BatchStore
 
 	root *Node // Root node of the tree
 
-	Order          uint8  `bin:"order"`          // Max = 255, Order of the tree (maximum number of children)
-	BatchNumLevel  uint8  `bin:"batchNumLevel"`  // 32, Max 256 levels
-	BatchBaseSize  uint32 `bin:"batchBaseSize"`  // 1024MB
-	BatchIncrement uint8  `bin:"batchIncrement"` // 125 => 1.25
-	BatchLength    uint8  `bin:"batchLength"`    // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
+	Order          uint8  `json:"order" bin:"order"`                   // Max = 255, Order of the tree (maximum number of children)
+	BatchNumLevel  uint8  `json:"batchNumLevel" bin:"batchNumLevel"`   // 32, Max 256 levels
+	BatchBaseSize  uint32 `json:"batchBaseSize" bin:"batchBaseSize"`   // 1024MB
+	BatchIncrement uint8  `json:"batchIncrement" bin:"batchIncrement"` // 125 => 1.25
+	BatchLength    uint8  `json:"batchLength" bin:"batchLength"`       // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
 
 	nodeSize uint32
 }

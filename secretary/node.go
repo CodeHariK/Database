@@ -262,6 +262,8 @@ func (tree *BTree) splitInternal(node *Node) {
 
 // Insert a key-value pair into the B+ Tree
 func (tree *BTree) Insert(key []byte, value []byte) error {
+	fmt.Println("+++++++++ ", tree.Order)
+
 	if len(key) != 16 {
 		return ErrorInvalidKey
 	}
@@ -573,9 +575,9 @@ func (node *Node) ConvertNodeToJSON() NodeJSON {
 }
 
 // ConvertBTreeToJSON converts the entire BTree into a JSON structure
-func (tree *BTree) ConvertBTreeToJSON() (string, error) {
+func (tree *BTree) ConvertBTreeToJSON() ([]byte, error) {
 	if tree.root == nil {
-		return "{}", nil
+		return nil, nil
 	}
 
 	treeJSON := map[string]NodeJSON{
@@ -584,8 +586,8 @@ func (tree *BTree) ConvertBTreeToJSON() (string, error) {
 
 	jsonData, err := json.MarshalIndent(treeJSON, "", "  ")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(jsonData), nil
+	return jsonData, nil
 }

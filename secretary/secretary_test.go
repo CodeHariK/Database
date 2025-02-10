@@ -1,6 +1,8 @@
 package secretary
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestTree(t *testing.T) {
 	usersTree, userErr := NewBTree(

@@ -2,8 +2,10 @@ package secretary
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
@@ -109,39 +111,41 @@ func TestSaveReadHeader(t *testing.T) {
 	}
 }
 
-// func TestBTreeHeight(t *testing.T) {
-// 	tree := &BTree{}
+func TestBTreeHeight(t *testing.T) {
+	tree := &BTree{}
 
-// 	// Insert first key-value pair (root node only)
-// 	key1 := []byte(utils.GenerateRandomString(16))
-// 	value1 := []byte("Hello world!")
-// 	err := tree.Insert(key1, value1)
-// 	if err != nil {
-// 		t.Errorf("Insert failed: %s", err)
-// 	}
-// 	if tree.Height() != 1 {
-// 		t.Errorf("Expected height 1, got %d", tree.Height())
-// 	}
+	fmt.Println("+++++++++ ", tree.Order)
 
-// 	// Insert more keys to increase height
-// 	for i := 0; i < 3; i++ {
-// 		key := []byte(utils.GenerateRandomString(16))
-// 		value := []byte(fmt.Sprintf("value : %d", i))
-// 		err = tree.Insert(key, value)
-// 		if err != nil {
-// 			t.Errorf("Insert failed: %s", err)
-// 		}
-// 	}
+	// Insert first key-value pair (root node only)
+	key1 := []byte(utils.GenerateRandomString(16))
+	value1 := []byte("Hello world!")
+	err := tree.Insert(key1, value1)
+	if err != nil {
+		t.Errorf("Insert failed: %s", err)
+	}
+	if tree.Height() != 1 {
+		t.Errorf("Expected height 1, got %d", tree.Height())
+	}
 
-// 	// Check if the height increased after multiple insertions
-// 	if tree.Height() != 3 {
-// 		t.Errorf("Expected height %d", tree.Height())
-// 	}
+	// Insert more keys to increase height
+	for i := 0; i < 10; i++ {
+		key := []byte(utils.GenerateRandomString(16))
+		value := []byte(fmt.Sprintf("value : %d", i))
+		err = tree.Insert(key, value)
+		if err != nil {
+			t.Errorf("Insert failed: %s", err)
+		}
+	}
 
-// 	jsonOutput, err := tree.ConvertBTreeToJSON()
-// 	if err != nil {
-// 		fmt.Println("Error:", err)
-// 		return
-// 	}
-// 	t.Log(tree.Order, jsonOutput)
-// }
+	// // Check if the height increased after multiple insertions
+	// if tree.Height() != 3 {
+	// 	t.Errorf("Expected height %d", tree.Height())
+	// }
+
+	jsonOutput, err := tree.ConvertBTreeToJSON()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	t.Log(tree.Order, jsonOutput)
+}

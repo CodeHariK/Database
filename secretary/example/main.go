@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-	secretary.New()
+	s := secretary.New()
+	s.Serve()
 }
