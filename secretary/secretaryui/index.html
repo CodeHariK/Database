@@ -50,24 +50,29 @@
     }
 
     #form-section {
-      flex: 30%;
+      flex: 20%;
       background: #f1f3f5;
       border-right: none;
     }
 
-    canvas {
-      border: 1px solid #000;
-      background: white;
+    input {
+      width: 100%;
+      flex: 1;
+      min-width: 0;
+      margin-right: 10px;
+      padding: 10px;
     }
 
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 20px;
+    #form-section>div {
+      padding: 10px 0px;
+    }
+
+    form>div {
+      padding: 5px;
     }
 
     button {
+      width: 100%;
       padding: 10px;
       background: #19f156;
       color: rgb(0, 0, 0);
@@ -98,6 +103,10 @@
     .card:hover {
       transform: scale(1.05);
     }
+
+    .highlight {
+      border: 1px solid #19f156;
+    }
   </style>
 </head>
 
@@ -113,9 +122,19 @@
     </div>
 
     <div id="form-section" class="section">
-      <form id="fetch-form">
-        <button type="button" onclick="fetchData()">Fetch JSON</button>
-      </form>
+      <div>
+        <input type="text" id="value" placeholder="Enter value" />
+        <button type="button" id="insert-btn">Insert</button>
+      </div>
+      <div>
+        <input type="text" id="delete-id" placeholder="Enter ID to delete" />
+        <button type="button" id="delete-btn">Delete</button>
+      </div>
+      <div>
+        <input type="text" id="query" placeholder="Enter query id" />
+        <button type="button" id="query-btn">Query</button>
+      </div>
+      <div id="result"></div>
     </div>
   </div>
 

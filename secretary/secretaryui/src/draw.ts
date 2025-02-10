@@ -1,34 +1,31 @@
-import { shapes, dia, elementTools } from '@joint/core';
+import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
 
 type BPlusTreeNode = {
-    keys: number[];
+    keys: string[];
     value: string[];
     children: BPlusTreeNode[];
 };
 
-let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, node: BPlusTreeNode) => {
+const BOXWIDTH = 200
+const BOXHEIGHT = 200
 
-    const bevelSize = 15;
+let MouseInBox = false
 
-    const element = new shapes.standard.Polygon();
+let newBox = (x: number, y: number, node: BPlusTreeNode) => {
+
+    const element = new shapes.standard.HeaderedRectangle();
+    element.resize(BOXWIDTH, BOXHEIGHT);
     element.position(x, y);
-    element.resize(100, 40);
-    element.attr({
-        body: {
-            fill: 'white',
-            stroke: '#C94A46',
-            strokeWidth: 2,
-            // rx: 10, ry: 10
-            refPoints: `0,0 150,0 150,${30 - bevelSize} 135,30 ${bevelSize},30 0,${30 - bevelSize}`
-        },
-        label: {
-            text: node.keys.toString() + " " + node.value.toString(),
-            fill: 'black',
-            fontSize: 14
-        }
-    });
-    element.addTo(graph);
+    element.attr('root/tabindex', 12);
+    element.attr('root/title', 'shapes.standard.HeaderedRectangle');
+    element.attr('header/fill', '#000000');
+    element.attr('header/fillOpacity', 0.1);
+    element.attr('headerText/text', node.keys.map((a) => { return "\n" + a }).toString());
+    element.attr('body/fill', '#fe854f');
+    element.attr('body/fillOpacity', 0.5);
+    element.attr('bodyText/text', node.value.map((a) => { return "\n" + a }).toString());
+    element.addTo(ui.graph);
 
     const boundaryTool = new elementTools.Boundary();
     const removeButton = new elementTools.Remove();
@@ -37,47 +34,101 @@ let newBox = (paper: dia.Paper, graph: dia.Graph, x: number, y: number, node: BP
         tools: [boundaryTool, removeButton]
     });
 
-    const elementView = element.findView(paper);
+    const elementView = element.findView(ui.paper);
     elementView.addTools(toolsView);
     elementView.hideTools();
 
-    paper.on('element:mouseenter', function (elementView) {
+    ui.paper.on('element:mouseenter', function (elementView) {
         elementView.showTools();
+        MouseInBox = true
     });
 
-    paper.on('element:mouseleave', function (elementView) {
+    ui.paper.on('element:mouseleave', function (elementView) {
         elementView.hideTools();
+        MouseInBox = false
     });
 
     return element
 }
 
-export function createBPlusTreeFromJSON(treeData: BPlusTreeNode, x = 400, y = 50, xSpacing = 200, ySpacing = 150) {
+// export function createBPlusTreeFromJSON(treeData: BPlusTreeNode, x = 400, y = 50, xSpacing = BOXWIDTH * 1.4, ySpacing = BOXHEIGHT * 1.5) {
+//     if (!treeData) return null;
+
+//     const node = newBox(x, y, treeData);
+
+//     if (treeData.children && treeData.children.length > 0) {
+//         const numChildren = treeData.children.length;
+//         const startX = x - ((numChildren - 1) * xSpacing) / 2;
+
+//         treeData.children.forEach((child, index) => {
+//             const childX = startX + index * xSpacing;
+//             const childY = y + ySpacing;
+//             const childNode = createBPlusTreeFromJSON(child, childX, childY, xSpacing / 1.5, ySpacing);
+
+//             if (childNode) {
+//                 const link = new shapes.standard.Link();
+//                 link.source(node);
+//                 link.target(childNode);
+
+//                 // link.appendLabel({
+//                 //     attrs: {
+//                 //         text: {
+//                 //             text: 'to the'
+//                 //         }
+//                 //     }
+//                 // });
+//                 link.router('orthogonal');
+//                 link.connector('straight', { cornerType: 'line' });
+
+//                 ui.graph.addCell(link);
+//             }
+//         });
+//     }
+//     return node;
+// }
+
+
+export function createBPlusTreeFromJSON(
+    treeData: BPlusTreeNode,
+    order: number,
+    x = 400,
+    y = 50
+) {
     if (!treeData) return null;
 
-    const node = newBox(ui.paper, ui.graph, x, y, treeData);
+    const height = getTreeHeight(treeData);
+    const maxSpacing = Math.pow(order, height - 1) * BOXWIDTH;
+
+    return createTreeRecursive(treeData, order, height, 1, x, y, maxSpacing);
+}
+
+function createTreeRecursive(
+    treeData: BPlusTreeNode,
+    order: number,
+    height: number,
+    level: number,
+    x: number,
+    y: number,
+    maxSpacing: number
+) {
+    if (!treeData) return null;
+
+    const node = newBox(x, y, treeData);
 
     if (treeData.children && treeData.children.length > 0) {
         const numChildren = treeData.children.length;
-        const startX = x - ((numChildren - 1) * xSpacing) / 2;
+        const spacing = maxSpacing / Math.pow(order, level - 1);
+        const startX = x - ((numChildren - 1) * spacing) / 2;
 
         treeData.children.forEach((child, index) => {
-            const childX = startX + index * xSpacing;
-            const childY = y + ySpacing;
-            const childNode = createBPlusTreeFromJSON(child, childX, childY, xSpacing / 1.5, ySpacing);
+            const childX = startX + index * spacing;
+            const childY = y + BOXHEIGHT * 1.5;
+            const childNode = createTreeRecursive(child, order, height, level + 1, childX, childY, maxSpacing);
 
             if (childNode) {
                 const link = new shapes.standard.Link();
                 link.source(node);
                 link.target(childNode);
-
-                link.appendLabel({
-                    attrs: {
-                        text: {
-                            text: 'to the'
-                        }
-                    }
-                });
                 link.router('orthogonal');
                 link.connector('straight', { cornerType: 'line' });
 
@@ -85,12 +136,19 @@ export function createBPlusTreeFromJSON(treeData: BPlusTreeNode, x = 400, y = 50
             }
         });
     }
+
     return node;
 }
 
+// Helper function to determine tree height
+function getTreeHeight(node: BPlusTreeNode): number {
+    if (!node.children || node.children.length === 0) return 1;
+    return 1 + Math.max(...node.children.map(getTreeHeight));
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Enable panning and zooming
     ui.paper.scale(1);
     ui.paper.setInteractivity({
         elementMove: true,
@@ -99,24 +157,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let panning = false;
     let lastPosition = { x: 0, y: 0 };
 
-    ui.paper.on('blank:pointerdown', function (_, x, y) {
-        panning = true;
-        lastPosition = { x, y };
-    });
-
-    ui.paper.on('blank:pointermove', function (_, x, y) {
+    document.addEventListener('mousedown', (e) => {
+        if (!MouseInBox) {
+            panning = true;
+        }
+        lastPosition = { x: e.x, y: e.y };
+    })
+    document.addEventListener('mouseup', () => {
+        panning = false;
+    })
+    document.addEventListener('mousemove', (e) => {
         if (panning) {
-            const dx = (x - lastPosition.x); // Reduce speed
-            const dy = (y - lastPosition.y); // Reduce speed
+            const dx = (e.x - lastPosition.x); // Reduce speed
+            const dy = (e.y - lastPosition.y); // Reduce speed
             const currentTranslate = ui.paper.translate();
             ui.paper.translate(currentTranslate.tx + dx, currentTranslate.ty + dy);
-            lastPosition = { x, y };
+            lastPosition = { x: e.x, y: e.y };
         }
-    });
-
-    ui.paper.on('blank:pointerup', function () {
-        panning = false;
-    });
+    })
 
     document.addEventListener('wheel', (event) => {
         event.preventDefault();
@@ -127,12 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: false });
 });
 
-
 export function convertJsonToBPlusTree(json: any): BPlusTreeNode {
 
     function convertNode(node: any): BPlusTreeNode {
         return {
-            keys: node.key.map((k: string) => k.charCodeAt(0)), // Convert string keys to ASCII codes
+            keys: node.key,
             value: node.value,
             children: node.children.map(convertNode),
         };

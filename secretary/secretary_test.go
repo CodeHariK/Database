@@ -7,7 +7,7 @@ import (
 func TestTree(t *testing.T) {
 	usersTree, userErr := NewBTree(
 		"users",
-		10,
+		4,
 		32,
 		1024,
 		125,

@@ -44,5 +44,14 @@ func New() *Secretary {
 		fmt.Print(err)
 	}
 
+	for i := 0; i < 20; i++ {
+		key := []byte(utils.GenerateRandomString(16))
+		value := []byte(fmt.Sprintf("value : %d", i))
+		err = users.Insert(key, value)
+		if err != nil {
+			fmt.Print(err)
+		}
+	}
+
 	return secretary
 }
