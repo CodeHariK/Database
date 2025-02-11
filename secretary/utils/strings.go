@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"math/rand"
 	"regexp"
 )
@@ -20,4 +21,25 @@ func GenerateRandomString(l int) string {
 		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+var generateSeq int32 = 0
+
+func GenerateSeqRandomString(length int, pad int, value ...string) string {
+	generateSeq += 1
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	s := fmt.Sprintf("%0*d:%s:%s", pad, generateSeq, value, string(b))
+	return s[:length]
+}
+
+func BytesToStrings(byteSlices [][]byte) []string {
+	strs := make([]string, len(byteSlices))
+	for i, b := range byteSlices {
+		strs[i] = string(b) // Convert []byte to string
+	}
+	return strs
 }

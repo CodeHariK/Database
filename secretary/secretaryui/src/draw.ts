@@ -1,7 +1,7 @@
 import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
 
-type BPlusTreeNode = {
+export type BPlusTreeNode = {
     keys: string[];
     value: string[];
     children: BPlusTreeNode[];
@@ -97,7 +97,7 @@ export function createBPlusTreeFromJSON(
     if (!treeData) return null;
 
     const height = getTreeHeight(treeData);
-    const maxSpacing = Math.pow(order, height - 1) * BOXWIDTH;
+    const maxSpacing = Math.pow(order, height - 1) * BOXWIDTH / 3;
 
     return createTreeRecursive(treeData, order, height, 1, x, y, maxSpacing);
 }

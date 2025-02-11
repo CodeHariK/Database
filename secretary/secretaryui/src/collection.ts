@@ -1,19 +1,29 @@
-import { convertJsonToBPlusTree, createBPlusTreeFromJSON } from "./draw";
 import { ui } from "./main";
 
+import { BPlusTreeNode, convertJsonToBPlusTree, createBPlusTreeFromJSON } from "./draw";
+
 const url = "http://localhost:8080"
-let currentCollection = ""
+let currentTree
+let currentTreeSnapshotIndex = 0
+let TreeSnapshots: Array<BPlusTreeNode> = []
+
+const prevTreeBtn = document.getElementById("prev-tree") as HTMLButtonElement;
+const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonElement;
 
 const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
 const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
 const queryBtn = document.getElementById("query-btn") as HTMLButtonElement;
 const resultDiv = document.getElementById("result") as HTMLDivElement;
 
-async function handleCardClick(item: any) {
+function showSnapshot() {
+    ui.graph.clear()
 
-    currentCollection = item.collectionName
+    createBPlusTreeFromJSON(TreeSnapshots[currentTreeSnapshotIndex], currentTree!.order);
+}
 
-    const response = await fetch(`${url}/getbtree?table=${currentCollection}`);
+async function fetchCurrentTree() {
+
+    const response = await fetch(`${url}/getbtree?table=${currentTree!.collectionName}`);
 
     if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -22,10 +32,10 @@ async function handleCardClick(item: any) {
     const data = await response.json(); // Assuming data is an array
 
     const bPlusTree = convertJsonToBPlusTree(data)
+    TreeSnapshots.push(bPlusTree)
+    currentTreeSnapshotIndex = TreeSnapshots.length - 1
 
-    ui.graph.clear()
-
-    createBPlusTreeFromJSON(bPlusTree, item.order);
+    showSnapshot()
 }
 
 export async function fetchAllBTree() {
@@ -41,17 +51,19 @@ export async function fetchAllBTree() {
         const collectionsDiv = document.getElementById("collections")!;
         collectionsDiv.innerHTML = ""; // Clear existing content
 
-        data.forEach((item, _) => {
+        data.forEach((tree, _) => {
             const card = document.createElement("div");
             card.className = "card";
-            card.innerHTML = `<p>${JSON.stringify(item, null, 2)}</p>`;
+            card.innerHTML = `<p>${JSON.stringify(tree, null, 2)}</p>`;
             card.onclick = () => {
                 Array.from(document.getElementsByClassName("highlight")).
                     forEach((e) => {
                         e.classList.remove("highlight")
                     })
                 card.classList.add("highlight");
-                handleCardClick(item)
+
+                currentTree = tree
+                fetchCurrentTree()
             };
 
             collectionsDiv.appendChild(card);
@@ -67,13 +79,15 @@ async function insertData() {
     const value = (document.getElementById("value") as HTMLInputElement).value;
     const payload = { value };
     try {
-        const response = await fetch(`${url}/api/insert?table=${currentCollection}`, {
+        const response = await fetch(`${url}/insert?table=${currentTree!.collectionName}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
+
+        fetchCurrentTree()
     } catch (error) {
         console.error("Error inserting data:", error);
     }
@@ -82,7 +96,7 @@ async function insertData() {
 async function deleteData() {
     const id = (document.getElementById("delete-id") as HTMLInputElement).value;
     try {
-        const response = await fetch(`${url}/api/delete?table=/${currentCollection}/${id}`, { method: "DELETE" });
+        const response = await fetch(`${url}/delete?table=/${currentTree!.collectionName}/${id}`, { method: "DELETE" });
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
     } catch (error) {
@@ -93,7 +107,7 @@ async function deleteData() {
 async function queryData() {
     const query = (document.getElementById("query") as HTMLInputElement).value;
     try {
-        const response = await fetch(`/api/query?table=${currentCollection}/id=${query}`);
+        const response = await fetch(`/query?table=${currentTree!.collectionName}/id=${query}`);
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
     } catch (error) {
@@ -102,6 +116,20 @@ async function queryData() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    prevTreeBtn.addEventListener("click", () => {
+        if (currentTreeSnapshotIndex != 0) {
+            currentTreeSnapshotIndex--;
+            showSnapshot()
+        }
+    });
+    nextTreeBtn.addEventListener("click", () => {
+        if (currentTreeSnapshotIndex != (TreeSnapshots.length - 1)) {
+            currentTreeSnapshotIndex++;
+            showSnapshot()
+        }
+    });
+
     insertBtn.addEventListener("click", insertData);
     deleteBtn.addEventListener("click", deleteData);
     queryBtn.addEventListener("click", queryData);

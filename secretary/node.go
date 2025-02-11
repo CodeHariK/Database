@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
@@ -230,7 +231,9 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 	right.parent = parent
 	parent.NumKeys++
 
-	if int(parent.NumKeys) >= int(tree.Order) {
+	fmt.Println("\ni ", parent.NumKeys, len(parent.Keys), int(tree.Order-1), "split:", int(parent.NumKeys) > int(tree.Order-1), utils.BytesToStrings(parent.Keys))
+
+	if int(parent.NumKeys) > int(tree.Order-1) {
 		tree.splitInternal(parent)
 	}
 }
@@ -262,8 +265,6 @@ func (tree *BTree) splitInternal(node *Node) {
 
 // Insert a key-value pair into the B+ Tree
 func (tree *BTree) Insert(key []byte, value []byte) error {
-	fmt.Println("+++++++++ ", tree.Order)
-
 	if len(key) != 16 {
 		return ErrorInvalidKey
 	}
@@ -282,7 +283,10 @@ func (tree *BTree) Insert(key []byte, value []byte) error {
 	}
 
 	tree.insertIntoLeaf(leaf, key, value)
-	if int(leaf.NumKeys) >= int(tree.Order) {
+
+	fmt.Println("\nl ", leaf.NumKeys, len(leaf.Keys), int(tree.Order-1), "split:", int(leaf.NumKeys) > int(tree.Order-1), utils.BytesToStrings(leaf.Keys))
+
+	if int(leaf.NumKeys) > int(tree.Order-1) {
 		tree.splitLeaf(leaf)
 	}
 	return nil

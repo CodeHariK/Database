@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/codeharik/secretary/utils"
 	"github.com/rs/cors"
@@ -67,7 +68,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req InsertRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(strings.Trim(req.Value, " ")) == 0 {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
@@ -78,8 +79,8 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := []byte(utils.GenerateRandomString(16))
-	err := tree.Insert(key, []byte(req.Value))
+	key := []byte(utils.GenerateSeqRandomString(16, 4, req.Value))
+	err := tree.Insert(key, key)
 	if err != nil {
 		http.Error(w, "Tree not found", http.StatusInternalServerError)
 		return
@@ -99,7 +100,7 @@ func (s *Secretary) Serve() {
 
 	mux.HandleFunc("/getallbtree", s.getAllBTreeHandler)
 	mux.HandleFunc("/getbtree", s.getBTreeHandler)
-	mux.HandleFunc("/api/insert", s.insertHandler)
+	mux.HandleFunc("/insert", s.insertHandler)
 
 	// Enable CORS with custom settings
 	handler := cors.New(cors.Options{

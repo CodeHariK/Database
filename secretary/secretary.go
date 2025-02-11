@@ -37,17 +37,10 @@ func New() *Secretary {
 	}
 
 	users := secretary.trees["users"]
-	key1 := []byte(utils.GenerateRandomString(16))
-	value1 := []byte("Hello world!")
-	err = users.Insert(key1, value1)
-	if err != nil {
-		fmt.Print(err)
-	}
 
-	for i := 0; i < 20; i++ {
-		key := []byte(utils.GenerateRandomString(16))
-		value := []byte(fmt.Sprintf("value : %d", i))
-		err = users.Insert(key, value)
+	for i := 0; i < 2; i++ {
+		key := []byte(utils.GenerateSeqRandomString(16, 4))
+		err = users.Insert(key, key)
 		if err != nil {
 			fmt.Print(err)
 		}

@@ -31,8 +31,6 @@
     .section {
       height: 100%;
       overflow: auto;
-      padding: 10px;
-      border-right: 2px solid #ddd;
     }
 
     #json-section {
@@ -47,6 +45,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    #paper {
+      width: 100% !important;
+      height: 100% !important;
     }
 
     #form-section {
@@ -122,6 +125,8 @@
     </div>
 
     <div id="form-section" class="section">
+      <button type="button" id="prev-tree">Prev</button>
+      <button type="button" id="next-tree">Next</button>
       <div>
         <input type="text" id="value" placeholder="Enter value" />
         <button type="button" id="insert-btn">Insert</button>

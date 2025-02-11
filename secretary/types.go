@@ -84,6 +84,8 @@ type BTree struct {
 +----------------+----------------+----------------+----------------+
 */
 type Node struct {
+	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
+
 	parent   *Node
 	next     *Node
 	prev     *Node

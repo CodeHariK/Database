@@ -10,8 +10,6 @@ class Ui {
     this.paper = new dia.Paper({
       el: document.getElementById('paper'),
       model: this.graph,
-      width: 900,
-      height: 900,
       background: { color: '#F5F5F5' },
       gridSize: 10,
       interactive: true,
