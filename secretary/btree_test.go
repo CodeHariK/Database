@@ -112,40 +112,45 @@ func TestSaveReadHeader(t *testing.T) {
 }
 
 func TestBTreeHeight(t *testing.T) {
-	tree := &BTree{}
-
-	fmt.Println("+++++++++ ", tree.Order)
-
-	// Insert first key-value pair (root node only)
-	key1 := []byte(utils.GenerateRandomString(16))
-	value1 := []byte("Hello world!")
-	err := tree.Insert(key1, value1)
+	tree, err := NewBTree(
+		"TestSaveHeader",
+		4,
+		32,
+		1024,
+		125,
+		10,
+	)
 	if err != nil {
-		t.Errorf("Insert failed: %s", err)
-	}
-	if tree.Height() != 1 {
-		t.Errorf("Expected height 1, got %d", tree.Height())
+		t.Fatal(err)
 	}
 
 	// Insert more keys to increase height
-	for i := 0; i < 10; i++ {
-		key := []byte(utils.GenerateRandomString(16))
-		value := []byte(fmt.Sprintf("value : %d", i))
-		err = tree.Insert(key, value)
+	for i := 0; i < 11; i++ {
+		key := []byte(utils.GenerateSeqRandomString(16, 4))
+		err = tree.Insert(key, key)
 		if err != nil {
 			t.Errorf("Insert failed: %s", err)
 		}
 	}
 
-	// // Check if the height increased after multiple insertions
-	// if tree.Height() != 3 {
-	// 	t.Errorf("Expected height %d", tree.Height())
-	// }
+	if tree.Height() != 2 {
+		t.Errorf("Expected height %d", tree.Height())
+	}
+
+	key := []byte(utils.GenerateSeqRandomString(16, 4))
+	err = tree.Insert(key, key)
+	if err != nil {
+		t.Errorf("Insert failed: %s", err)
+	}
+
+	if tree.Height() != 3 {
+		t.Errorf("Expected height %d", tree.Height())
+	}
 
 	jsonOutput, err := tree.ConvertBTreeToJSON()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	t.Log(tree.Order, jsonOutput)
+	t.Log(tree.Order, string(jsonOutput))
 }

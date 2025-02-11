@@ -1,6 +1,7 @@
 package secretary
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -38,11 +39,18 @@ func New() *Secretary {
 
 	users := secretary.trees["users"]
 
-	for i := 0; i < 2; i++ {
-		key := []byte(utils.GenerateSeqRandomString(16, 4))
-		err = users.Insert(key, key)
+	multipleKeys := make([][]byte, 40)
+	for i := range multipleKeys {
+		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
+		err = users.Insert(multipleKeys[i], multipleKeys[i])
 		if err != nil {
-			fmt.Print(err)
+			fmt.Printf("Insert failed: %s", err)
+		}
+	}
+	for i := range multipleKeys {
+		r, err := users.Search(multipleKeys[i])
+		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
+			fmt.Printf("\nSearch failed: %d : %s", i, err)
 		}
 	}
 
