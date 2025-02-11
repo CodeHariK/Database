@@ -15,6 +15,85 @@ const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
 const queryBtn = document.getElementById("query-btn") as HTMLButtonElement;
 const resultDiv = document.getElementById("result") as HTMLDivElement;
 
+export function displayNode(node: BPlusTreeNode) {
+    const infoBox = document.getElementById("info-box");
+    if (!infoBox) return;
+
+    // Clear previous content
+    infoBox.innerHTML = "";
+
+    // Create Node ID section
+    const nodeIdDiv = document.createElement("div");
+    nodeIdDiv.textContent = `Node ID: ${node.nodeID}`;
+    nodeIdDiv.style.fontSize = "17px";
+    nodeIdDiv.style.marginBottom = "10px";
+    infoBox.appendChild(nodeIdDiv);
+
+    // Create the list container
+    const list = document.createElement("ul");
+    list.style.listStyle = "none";
+    list.style.padding = "0";
+
+    node.keys.forEach((key, index) => {
+        const listItem = document.createElement("li");
+        listItem.style.marginTop = "15px";
+        listItem.style.alignItems = "center";
+
+        // Key text
+        const keySpan = document.createElement("span");
+        keySpan.textContent = `${key} `;
+
+        // Input for modifying value
+        const valueInput = document.createElement("textarea");
+        valueInput.value = node.value[index];
+        valueInput.style.width = '100%'
+        valueInput.style.padding = '7px'
+        valueInput.style.overflow = "hidden"; // Hide scrollbar
+        valueInput.style.resize = "none"; // Disable manual resize
+        valueInput.style.minHeight = "20px"; // Set a minimum height
+        valueInput.oninput = () => {
+            node.value[index] = valueInput.value;
+
+            valueInput.style.height = "auto"; // Reset height
+            valueInput.style.height = valueInput.scrollHeight + "px"; // Set new height
+        };
+
+        const updateButton = document.createElement("button");
+        updateButton.textContent = " Update ";
+        updateButton.style.backgroundColor = "#be7eb1";
+        updateButton.style.color = "white";
+        updateButton.style.border = "none";
+        updateButton.style.cursor = "pointer";
+        updateButton.onclick = () => {
+            // node.keys.splice(index, 1);
+            // node.value.splice(index, 1);
+            displayNode(node); // Re-render the updated node
+        };
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = " Delete ";
+        deleteButton.style.backgroundColor = "#f15858";
+        deleteButton.style.color = "white";
+        deleteButton.style.border = "none";
+        deleteButton.style.cursor = "pointer";
+        deleteButton.onclick = () => {
+            // node.keys.splice(index, 1);
+            // node.value.splice(index, 1);
+            displayNode(node); // Re-render the updated node
+        };
+
+        listItem.appendChild(keySpan);
+        if (node.value[index]) {
+            listItem.appendChild(valueInput);
+            listItem.appendChild(updateButton);
+            listItem.appendChild(deleteButton);
+        }
+        list.appendChild(listItem);
+    });
+
+    infoBox.appendChild(list);
+}
+
 function showSnapshot() {
     ui.graph.clear()
 

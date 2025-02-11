@@ -1,7 +1,10 @@
 import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
+import { NODECOLOR, randomColor } from './utils';
+import { displayNode } from './collection';
 
 export type BPlusTreeNode = {
+    nodeID: number;
     keys: string[];
     value: string[];
     children: BPlusTreeNode[];
@@ -10,9 +13,15 @@ export type BPlusTreeNode = {
 const BOXWIDTH = 200
 const BOXHEIGHT = 200
 
-let MouseInBox = false
+let MouseCurrentNode: BPlusTreeNode | null = null
 
 let newBox = (x: number, y: number, node: BPlusTreeNode) => {
+
+    let nodeColor = NODECOLOR.get(node.nodeID)
+    if (!nodeColor) {
+        NODECOLOR.set(node.nodeID, randomColor())
+    }
+    nodeColor = NODECOLOR.get(node.nodeID)
 
     const element = new shapes.standard.HeaderedRectangle();
     element.resize(BOXWIDTH, BOXHEIGHT);
@@ -21,31 +30,38 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
     element.attr('root/title', 'shapes.standard.HeaderedRectangle');
     element.attr('header/fill', '#000000');
     element.attr('header/fillOpacity', 0.1);
-    element.attr('headerText/text', node.keys.map((a) => { return "\n" + a }).toString());
-    element.attr('body/fill', '#fe854f');
+    element.attr('headerText/text', node.nodeID);
+    element.attr('body/fill', nodeColor);
     element.attr('body/fillOpacity', 0.5);
-    element.attr('bodyText/text', node.value.map((a) => { return "\n" + a }).toString());
+    element.attr('bodyText/text', "Keys" + node.keys.map((a) => { return "\n" + a }).toString() + "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
     element.addTo(ui.graph);
 
     const boundaryTool = new elementTools.Boundary();
     const removeButton = new elementTools.Remove();
+    const btnButton = new elementTools.Button();
 
     const toolsView = new dia.ToolsView({
-        tools: [boundaryTool, removeButton]
+        tools: [boundaryTool, removeButton, btnButton]
     });
 
     const elementView = element.findView(ui.paper);
     elementView.addTools(toolsView);
     elementView.hideTools();
 
-    ui.paper.on('element:mouseenter', function (elementView) {
-        elementView.showTools();
-        MouseInBox = true
+    ui.paper.on('element:mouseenter', function (ev) {
+        ev.showTools();
+
+        MouseCurrentNode = node
+
+        if (ev == elementView) {
+            displayNode(MouseCurrentNode)
+        }
     });
 
-    ui.paper.on('element:mouseleave', function (elementView) {
-        elementView.hideTools();
-        MouseInBox = false
+    ui.paper.on('element:mouseleave', function (ev) {
+        ev.hideTools();
+
+        MouseCurrentNode = null
     });
 
     return element
@@ -158,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastPosition = { x: 0, y: 0 };
 
     document.addEventListener('mousedown', (e) => {
-        if (!MouseInBox) {
+        if (MouseCurrentNode == null) {
             panning = true;
         }
         lastPosition = { x: e.x, y: e.y };
@@ -189,6 +205,7 @@ export function convertJsonToBPlusTree(json: any): BPlusTreeNode {
 
     function convertNode(node: any): BPlusTreeNode {
         return {
+            nodeID: node.nodeID,
             keys: node.key,
             value: node.value,
             children: node.children.map(convertNode),

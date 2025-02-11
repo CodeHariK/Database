@@ -72,6 +72,8 @@ func (tree *BTree) NewNode(
 	keyOffsets []DataLocation,
 	keys [][]byte,
 ) (*Node, error) {
+	tree.NumNodes += 1
+
 	n := &Node{
 		ParentOffset: parentOffset,
 		NextOffset:   nextOffset,
@@ -80,9 +82,41 @@ func (tree *BTree) NewNode(
 		NumKeys:    uint8(numKeys),
 		KeyOffsets: keyOffsets,
 		Keys:       keys,
+
+		NodeID: tree.NumNodes,
 	}
 
 	return tree.NodeCheck(n)
+}
+
+// Create a new internal node
+func (tree *BTree) createInternalNode(children []*Node) *Node {
+	tree.NumNodes += 1
+
+	if children == nil {
+		children = make([]*Node, 0)
+	}
+
+	return &Node{
+		Keys:     make([][]byte, 0),
+		children: children,
+		NumKeys:  0,
+
+		NodeID: tree.NumNodes,
+	}
+}
+
+// Create a new leaf node
+func (tree *BTree) createLeafNode() *Node {
+	tree.NumNodes += 1
+
+	return &Node{
+		Keys:    make([][]byte, 0),
+		records: make([]*Record, 0),
+		NumKeys: 0,
+
+		NodeID: tree.NumNodes,
+	}
 }
 
 func (n *Node) IsLeaf() bool {
@@ -106,24 +140,6 @@ func (tree *BTree) dataLocationCheck(location DataLocation) error {
 }
 
 //------------------------------------------------------------------
-
-// Create a new internal node
-func (tree *BTree) createInternalNode() *Node {
-	return &Node{
-		Keys:     make([][]byte, 0),
-		children: make([]*Node, 0),
-		NumKeys:  0,
-	}
-}
-
-// Create a new leaf node
-func (tree *BTree) createLeafNode() *Node {
-	return &Node{
-		Keys:    make([][]byte, 0),
-		records: make([]*Record, 0),
-		NumKeys: 0,
-	}
-}
 
 // Find the appropriate leaf node
 func (tree *BTree) findLeafNode(key []byte) *Node {
@@ -198,7 +214,7 @@ func (tree *BTree) splitLeaf(leaf *Node) {
 func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 	// If left is leaf and root, then create new root
 	if left.parent == nil {
-		newRoot := tree.createInternalNode()
+		newRoot := tree.createInternalNode(nil)
 		newRoot.Keys = [][]byte{key}
 		newRoot.children = []*Node{left, right}
 		left.parent = newRoot
@@ -242,7 +258,7 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 func (tree *BTree) splitInternal(node *Node) {
 	mid := len(node.Keys) / 2
 
-	newInternal := tree.createInternalNode()
+	newInternal := tree.createInternalNode(nil)
 	newInternal.Keys = append(
 		newInternal.Keys,
 		node.Keys[mid+1:]...)
@@ -341,11 +357,11 @@ func (tree *BTree) BulkLoad(sortedRecords []*Record) {
 	}
 
 	// Step 2: Build internal nodes
-	tree.root = buildInternalNodes(leafNodes, tree.Order)
+	tree.root = tree.buildInternalNodes(leafNodes, tree.Order)
 }
 
 // Recursively build internal nodes
-func buildInternalNodes(children []*Node, order uint8) *Node {
+func (tree *BTree) buildInternalNodes(children []*Node, order uint8) *Node {
 	if len(children) == 1 {
 		return children[0] // Root node
 	}
@@ -359,7 +375,7 @@ func buildInternalNodes(children []*Node, order uint8) *Node {
 			end = len(children)
 		}
 
-		node := &Node{children: children[i:end]}
+		node := tree.createInternalNode(children[i:end])
 		for _, child := range children[i:end] {
 			child.parent = node
 		}
@@ -374,7 +390,7 @@ func buildInternalNodes(children []*Node, order uint8) *Node {
 		internalNodes = append(internalNodes, node)
 	}
 
-	return buildInternalNodes(internalNodes, order)
+	return tree.buildInternalNodes(internalNodes, order)
 }
 
 //------------------------------------------------------------------
@@ -545,6 +561,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 // NodeJSON represents a node in a JSON-friendly structure
 type NodeJSON struct {
+	NodeId   uint64     `json:"nodeID"`
 	Key      []string   `json:"key"`
 	Value    []string   `json:"value"`
 	Children []NodeJSON `json:"children"`
@@ -572,6 +589,7 @@ func (node *Node) ConvertNodeToJSON() NodeJSON {
 	}
 
 	return NodeJSON{
+		NodeId:   node.NodeID,
 		Key:      keys,
 		Value:    values,
 		Children: children,

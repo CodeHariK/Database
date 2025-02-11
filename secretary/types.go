@@ -66,22 +66,23 @@ type BTree struct {
 	BatchBaseSize  uint32 `json:"batchBaseSize" bin:"batchBaseSize"`   // 1024MB
 	BatchIncrement uint8  `json:"batchIncrement" bin:"batchIncrement"` // 125 => 1.25
 	BatchLength    uint8  `json:"batchLength" bin:"batchLength"`       // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
+	NumNodes       uint64 `json:"numNodes" bin:"numNodes"`             // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
 
 	nodeSize uint32
 }
 
 /*
 **Node Structure**
-+----------------+----------------+----------------+----------------+
-| parentOffset   | nextOffset     | prevOffset     | numKeys        |
-| (8 bytes)      | (8 bytes)      | (8 bytes)      | (1 bytes)      |
-+----------------+----------------+----------------+----------------+
-| keyOffsets...                                                     |
-| (8 bytes each)                                                    |
-+----------------+----------------+----------------+----------------+
-| Keys...                                                           |
-| (16 bytes each)                                              |
-+----------------+----------------+----------------+----------------+
++----------------+----------------+----------------+----------------+----------------+
+| NodeID         | parentOffset   | nextOffset     | prevOffset     | numKeys        |
+| (8 bytes)      | (8 bytes)      | (8 bytes)      | (8 bytes)      | (1 bytes)      |
++----------------+----------------+----------------+----------------+----------------+
+| keyOffsets...                                                                      |
+| (8 bytes each)                                                                     |
++----------------+----------------+----------------+----------------+----------------+
+| Keys...                                                                            |
+| (16 bytes each)                                                                    |
++----------------+----------------+----------------+----------------+----------------+
 */
 type Node struct {
 	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
