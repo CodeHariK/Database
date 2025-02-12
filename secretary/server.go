@@ -43,7 +43,8 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	m, err := tree.ConvertBTreeToJSON()
 	if err != nil || m == nil {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		fmt.Print("-------------", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -95,7 +96,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (s *Secretary) Serve() {
+func (s *Secretary) setupRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/getallbtree", s.getAllBTreeHandler)
@@ -110,7 +111,11 @@ func (s *Secretary) Serve() {
 		AllowCredentials: true,
 	}).Handler(mux)
 
+	return handler
+}
+
+func (s *Secretary) Serve() {
 	port := 8080
 	fmt.Printf("\nServer running on port %d...\n", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), s.setupRouter()))
 }

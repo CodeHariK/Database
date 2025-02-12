@@ -23,3 +23,10 @@ func (datalocation DataLocation) toNodeLocation() NodeLocation {
 		index:       uint16((uint64(datalocation) & NODE_INDEX_AND) >> 48),
 	}
 }
+
+func (tree *BTree) dataLocationCheck(location DataLocation) error {
+	if location == -1 {
+		return ErrorInvalidDataLocation
+	}
+	return nil
+}

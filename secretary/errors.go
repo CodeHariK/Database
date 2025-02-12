@@ -13,6 +13,7 @@ var (
 	ErrorNodeNotInTree              = errors.New("Node not in tree")
 	ErrorNodeIsEitherLeaforInternal = errors.New("Node Is Either Leaf or Internal, Node can either have children or record")
 
+	ErrorTreeNotFound = errors.New("Tree not found")
 	ErrorTreeNil      = errors.New("Tree nil")
 	ErrorKeyNotFound  = errors.New("Key not found")
 	ErrorKeyNotInNode = errors.New("Key not in node")

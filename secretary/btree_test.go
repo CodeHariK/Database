@@ -154,3 +154,22 @@ func TestBTreeHeight(t *testing.T) {
 	}
 	t.Log(tree.Order, string(jsonOutput))
 }
+
+func TestBTreeClose(t *testing.T) {
+	tree, err := NewBTree(
+		"TestSaveHeader",
+		4,
+		32,
+		1024,
+		125,
+		10,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tree.close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}

@@ -1,26 +1,29 @@
 package secretary
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/codeharik/secretary/utils"
 )
 
-func New() *Secretary {
+func New() (*Secretary, error) {
+	fmt.Println("Hello Secretary!")
+
 	secretary := &Secretary{
 		trees: map[string]*BTree{},
 	}
 
-	fmt.Println("Hello Secretary!")
-
 	dirPath := "./SECRETARY"
+
+	err := utils.EnsureDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
 
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	for _, file := range files {
@@ -37,22 +40,13 @@ func New() *Secretary {
 		}
 	}
 
-	users := secretary.trees["users"]
+	return secretary, nil
+}
 
-	multipleKeys := make([][]byte, 40)
-	for i := range multipleKeys {
-		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-		err = users.Insert(multipleKeys[i], multipleKeys[i])
-		if err != nil {
-			fmt.Printf("Insert failed: %s", err)
-		}
+func (s *Secretary) Tree(name string) (*BTree, error) {
+	tree, ok := s.trees[name]
+	if !ok {
+		return nil, ErrorTreeNotFound
 	}
-	for i := range multipleKeys {
-		r, err := users.Search(multipleKeys[i])
-		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-			fmt.Printf("\nSearch failed: %d : %s", i, err)
-		}
-	}
-
-	return secretary
+	return tree, nil
 }

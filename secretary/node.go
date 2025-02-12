@@ -109,13 +109,6 @@ func (tree *BTree) saveRoot() error {
 	return tree.nodeBatchStore.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
 }
 
-func (tree *BTree) dataLocationCheck(location DataLocation) error {
-	if location == -1 {
-		return ErrorInvalidDataLocation
-	}
-	return nil
-}
-
 //------------------------------------------------------------------
 
 // Find the appropriate leaf node
@@ -592,7 +585,7 @@ func (node *Node) ConvertNodeToJSON() NodeJSON {
 // ConvertBTreeToJSON converts the entire BTree into a JSON structure
 func (tree *BTree) ConvertBTreeToJSON() ([]byte, error) {
 	if tree.root == nil {
-		return nil, nil
+		return nil, ErrorTreeNil
 	}
 
 	treeJSON := map[string]NodeJSON{
