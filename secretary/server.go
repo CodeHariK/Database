@@ -43,7 +43,6 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	m, err := tree.ConvertBTreeToJSON()
 	if err != nil || m == nil {
-		fmt.Print("-------------", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

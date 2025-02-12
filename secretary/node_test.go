@@ -27,8 +27,6 @@ func TestSaveRoot(t *testing.T) {
 		NextOffset:   102,
 		PrevOffset:   103,
 
-		NumKeys: 104,
-
 		Keys:       [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
 	}
@@ -82,41 +80,159 @@ func TestInsert(t *testing.T) {
 	value := []byte("Hello world!")
 	err = tree.Insert(key, value)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatalf("%s", err)
 	}
 
 	r, err = tree.Search(key)
 	if err != nil {
-		t.Errorf("%s\n", err)
+		t.Fatalf("%s\n", err)
+	}
+	if r == nil || !reflect.DeepEqual(r.Value, value) {
+		t.Fatalf("expected %v and got %v \n", value, r)
 	}
 
-	if r == nil {
-		t.Errorf("returned nil \n")
-	}
-
-	if !reflect.DeepEqual(r.Value, value) {
-		t.Errorf("expected %v and got %v \n", value, r.Value)
-	}
-
+	// Duplicate Key error
 	err = tree.Insert(key, append(value, []byte("world1")...))
 	if err == nil {
-		t.Errorf("expected error but got nil %v", err)
+		t.Fatalf("expected error but got nil %v", err)
 	}
 
 	r, err = tree.Search(key)
 	if err != nil {
-		t.Errorf("%s\n", err)
+		t.Fatalf("%s\n", err)
 	}
-	if r == nil {
-		t.Errorf("returned nil \n")
+	if r == nil || bytes.Compare(r.Value, value) != 0 {
+		t.Fatalf("expected %v and got %v \n", value, r)
+	}
+}
+
+func TestNodeScan(t *testing.T) {
+	tests := []struct {
+		keys     [][]byte
+		search   []byte
+		expected int
+	}{
+		// Search for existing keys
+		{
+			[][]byte{[]byte("a"), []byte("c"), []byte("e")},
+			[]byte("c"),
+			1,
+		},
+		{
+			[][]byte{[]byte("apple"), []byte("banana"), []byte("cherry")},
+			[]byte("banana"),
+			1,
+		},
+
+		// Search for non-existing keys (returns insertion index)
+		{
+			[][]byte{[]byte("b"), []byte("c"), []byte("e")},
+			[]byte("a"),
+			0,
+		},
+		{
+			[][]byte{[]byte("a"), []byte("c"), []byte("e")},
+			[]byte("b"),
+			1,
+		},
+		{
+			[][]byte{[]byte("a"), []byte("c"), []byte("e")},
+			[]byte("f"),
+			3,
+		},
+		{
+			[][]byte{[]byte("apple"), []byte("banana"), []byte("cherry")},
+			[]byte("blueberry"),
+			2,
+		},
+
+		// Edge cases
+		{
+			[][]byte{},
+			[]byte("z"),
+			0,
+		}, // Empty node
+		{
+			[][]byte{[]byte("m")},
+			[]byte("m"),
+			0,
+		}, // Single key (exact match)
+		{
+			[][]byte{[]byte("m")},
+			[]byte("a"),
+			0,
+		}, // Single key (less than)
+		{
+			[][]byte{[]byte("m")},
+			[]byte("z"),
+			1,
+		}, // Single key (greater than)
 	}
 
-	if bytes.Compare(r.Value, value) != 0 {
-		t.Errorf("expected %v and got %v \n", value, r.Value)
+	for _, test := range tests {
+		node := &Node{Keys: test.keys}
+		result := node.nodeScan(test.search)
+		if result != test.expected {
+			t.Errorf("nodeSearch(%q) = %d, expected %d", test.search, result, test.expected)
+		}
+	}
+}
+
+func TestSearchLeafNode(t *testing.T) {
+	// Create a simple B+ tree manually
+	root := &Node{
+		Keys: [][]byte{[]byte("m")},
+		children: []*Node{
+			{
+				Keys: [][]byte{[]byte("a"), []byte("e"), []byte("h")},
+			}, // Left child
+			{
+				Keys: [][]byte{[]byte("n"), []byte("r"), []byte("z")},
+			}, // Right child
+		},
 	}
 
-	if tree.root.NumKeys != 1 {
-		t.Errorf("expected 1 key and got %d", tree.root.NumKeys)
+	tree := &BTree{root: root}
+
+	tests := []struct {
+		key      []byte
+		expected *Node
+	}{
+		{
+			[]byte("b"),
+			root.children[0],
+		}, // Should go to left child
+		{
+			[]byte("g"),
+			root.children[0],
+		}, // Should go to left child
+		{
+			[]byte("q"),
+			root.children[1],
+		}, // Should go to right child
+		{
+			[]byte("z"),
+			root.children[1],
+		}, // Should go to right child
+	}
+
+	for _, test := range tests {
+		result := tree.searchLeafNode(test.key)
+		if result != test.expected {
+			t.Errorf("searchLeafNode(%q) returned wrong leaf node", test.key)
+		}
+	}
+
+	// Test empty tree
+	emptyTree := &BTree{root: &Node{}}
+	if emptyTree.searchLeafNode([]byte("x")) != emptyTree.root {
+		t.Errorf("searchLeafNode on empty tree should return root")
+	}
+
+	// Test single-node tree
+	singleNodeTree := &BTree{root: &Node{Keys: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}}
+	if singleNodeTree.searchLeafNode([]byte("b")) != singleNodeTree.root {
+		t.Errorf("searchLeafNode on single-node tree should return root")
 	}
 }
 
@@ -138,7 +254,7 @@ func TestDelete(t *testing.T) {
 
 	err = tree.Delete(key)
 	if err == nil {
-		t.Errorf("expected error and got nil")
+		t.Fatalf("expected error and got nil")
 	}
 
 	err = tree.Insert(key, value)
@@ -150,24 +266,18 @@ func TestDelete(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if r == nil {
-		t.Errorf("returned nil \n")
-	}
-	if !reflect.DeepEqual(r.Value, value) {
-		t.Errorf("expected %v and got %v \n", value, r.Value)
+	if r == nil || !reflect.DeepEqual(r.Value, value) {
+		t.Fatalf("expected %v and got %v \n", value, r)
 	}
 
 	err = tree.Delete(key)
 	if err != nil {
-		t.Errorf("%s\n", err)
+		t.Fatalf("%s\n", err)
 	}
 
 	r, err = tree.Search(key)
-	if err == nil {
-		t.Error("expected error and got nil", err)
-	}
-	if r != nil {
-		t.Errorf("returned struct after delete \n")
+	if r != nil || err == nil {
+		t.Error("expected error and got struct", err)
 	}
 
 	multipleKeys := make([][]byte, 40)
@@ -175,19 +285,19 @@ func TestDelete(t *testing.T) {
 		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
 		err = tree.Insert(multipleKeys[i], multipleKeys[i])
 		if err != nil {
-			t.Errorf("Insert failed: %s", err)
+			t.Fatalf("Insert failed: %s", err)
 		}
 	}
 	// for i := range multipleKeys {
 	// 	r, err = tree.Search(multipleKeys[i])
 	// 	if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-	// 		t.Errorf("Search failed: %d : %s", i, err)
+	// 		t.Fatalf("Search failed: %d : %s", i, err)
 	// 	}
 	// }
 	// for i := range multipleKeys {
 	// 	err = tree.Delete(multipleKeys[i])
 	// 	if err != nil {
-	// 		t.Errorf("Delete failed: %s", err)
+	// 		t.Fatalf("Delete failed: %s", err)
 	// 	}
 	// }
 }
@@ -221,11 +331,8 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if r == nil {
-		t.Errorf("returned nil \n")
-	}
-	if !reflect.DeepEqual(r.Value, value) {
-		t.Errorf("expected %v and got %v \n", value, r.Value)
+	if r == nil || !reflect.DeepEqual(r.Value, value) {
+		t.Fatalf("expected %v and got %v \n", value, r)
 	}
 
 	newValue := []byte("Alola world!")
@@ -237,10 +344,7 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if r == nil {
-		t.Errorf("returned nil \n")
-	}
-	if !reflect.DeepEqual(r.Value, newValue) {
-		t.Errorf("expected %v and got %v \n", value, r.Value)
+	if r == nil || !reflect.DeepEqual(r.Value, newValue) {
+		t.Fatalf("expected %v and got %v \n", value, r)
 	}
 }

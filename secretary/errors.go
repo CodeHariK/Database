@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	ErrorNumKeysMoreThanOrder       = errors.New("NumKeys cannot be more than order of tree")
 	ErrorNumKeysNotMatching         = errors.New("NumKeys not matching")
 	ErrorInvalidDataLocation        = errors.New("Invalid data location")
 	ErrorNodeNotInTree              = errors.New("Node not in tree")

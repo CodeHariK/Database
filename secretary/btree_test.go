@@ -125,7 +125,7 @@ func TestBTreeHeight(t *testing.T) {
 	}
 
 	// Insert more keys to increase height
-	for i := 0; i < 11; i++ {
+	for i := 0; i < 9; i++ {
 		key := []byte(utils.GenerateSeqRandomString(16, 4))
 		err = tree.Insert(key, key)
 		if err != nil {

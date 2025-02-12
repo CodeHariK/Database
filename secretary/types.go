@@ -73,16 +73,16 @@ type BTree struct {
 
 /*
 **Node Structure**
-+----------------+----------------+----------------+----------------+----------------+
-| NodeID         | parentOffset   | nextOffset     | prevOffset     | numKeys        |
-| (8 bytes)      | (8 bytes)      | (8 bytes)      | (8 bytes)      | (1 bytes)      |
-+----------------+----------------+----------------+----------------+----------------+
-| keyOffsets...                                                                      |
-| (8 bytes each)                                                                     |
-+----------------+----------------+----------------+----------------+----------------+
-| Keys...                                                                            |
-| (16 bytes each)                                                                    |
-+----------------+----------------+----------------+----------------+----------------+
++----------------+----------------+----------------+----------------+
+| NodeID         | parentOffset   | nextOffset     | prevOffset     |
+| (8 bytes)      | (8 bytes)      | (8 bytes)      | (8 bytes)      |
++----------------+----------------+----------------+----------------+
+| keyOffsets...                                                     |
+| (8 bytes each)                                                    |
++----------------+----------------+----------------+----------------+
+| Keys...                                                           |
+| (16 bytes each)                                                   |
++----------------+----------------+----------------+----------------+
 */
 type Node struct {
 	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
@@ -98,7 +98,7 @@ type Node struct {
 	NextOffset   DataLocation `bin:"NextOffset"`
 	PrevOffset   DataLocation `bin:"PrevOffset"`
 
-	NumKeys    uint8          `bin:"NumKeys"`
+	// NumKeys    uint8          `bin:"NumKeys"`
 	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
