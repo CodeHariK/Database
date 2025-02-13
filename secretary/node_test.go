@@ -2,7 +2,6 @@ package secretary
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -135,7 +134,7 @@ func TestNodeScan(t *testing.T) {
 
 	for _, test := range tests {
 		node := &Node{Keys: test.keys}
-		result, found := node.NodeScan(test.search)
+		result, found := node.SearchKey(test.search)
 		if result != test.expectedIndex || found != test.expectedFound {
 			t.Errorf("nodeSearch(%q) = %d, expected %d", test.search, result, test.expectedIndex)
 		}
@@ -159,8 +158,6 @@ func TestNodeScan(t *testing.T) {
 		err = tree.Insert(multipleKeys[i], multipleKeys[i])
 		if err != nil {
 			t.Errorf("Insert failed: %s", err)
-		} else {
-			fmt.Println("Insert key success : ", string(multipleKeys[i]))
 		}
 	}
 }
@@ -183,7 +180,7 @@ func TestSearchLeafNode(t *testing.T) {
 	}
 
 	// abcdefg   hijklmnopq	  rstuvwxyz
-	// a_cd_fg   _ij_lmn_pq	  _st_vwx_z
+	// a_cd_fg   +ij_lmn_pq	  +st_vwx_z
 	// 0011122   0111222233	  011122223
 
 	tree := &BTree{root: root}
@@ -351,17 +348,12 @@ func TestDelete(t *testing.T) {
 		err = tree.Insert(multipleKeys[i], multipleKeys[i])
 		if err != nil {
 			t.Errorf("Insert failed: %s", err)
-		} else {
-			fmt.Println("Insert key success : ", string(multipleKeys[i]))
 		}
 	}
 	for i := range multipleKeys {
 		r, err := tree.SearchRecord(multipleKeys[i])
 		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-			fmt.Printf("Search failed: %d : %v : %s", i, string(multipleKeys[i]), err)
 			t.Errorf("Search failed: %d : %s", i, err)
-		} else {
-			fmt.Println("Search key success : ", string(multipleKeys[i]))
 		}
 	}
 	// for i := range multipleKeys {
@@ -416,5 +408,70 @@ func TestUpdate(t *testing.T) {
 	}
 	if r == nil || !reflect.DeepEqual(r.Value, newValue) {
 		t.Fatalf("expected %v and got %v \n", value, r)
+	}
+}
+
+func TestRangeScan(t *testing.T) {
+	node1 := &Node{
+		NodeID:  2,
+		Keys:    [][]byte{[]byte("b"), []byte("e")},
+		records: []*Record{{Value: []byte("b")}, {Value: []byte("e")}},
+	}
+	node2 := &Node{
+		NodeID:  3,
+		Keys:    [][]byte{[]byte("h"), []byte("k"), []byte("o")},
+		records: []*Record{{Value: []byte("h")}, {Value: []byte("k")}, {Value: []byte("o")}},
+	}
+	node3 := &Node{
+		NodeID:  4,
+		Keys:    [][]byte{[]byte("r"), []byte("u"), []byte("y")},
+		records: []*Record{{Value: []byte("r")}, {Value: []byte("u")}, {Value: []byte("y")}},
+	}
+
+	node1.next = node2
+	node2.prev = node1
+	node2.next = node3
+	node3.prev = node2
+
+	root := &Node{
+		NodeID: 1,
+		Keys:   [][]byte{[]byte("h"), []byte("r")},
+		children: []*Node{
+			node1,
+			node2,
+			node3,
+		},
+	}
+
+	// abcdefg   hijklmnopq	  rstuvwxyz
+	// a_cd_fg   +ij_lmn_pq	  +st_vwx_z
+	// 0011122   0111222233	  011122223
+
+	tree := &BTree{root: root}
+
+	tests := []struct {
+		startKey []byte
+		endKey   []byte
+		expected []string
+	}{
+		{[]byte("a"), []byte("z"), []string{"b", "e", "h", "k", "o", "r", "u", "y"}},
+		{[]byte("b"), []byte("z"), []string{"b", "e", "h", "k", "o", "r", "u", "y"}},
+		{[]byte("c"), []byte("x"), []string{"e", "h", "k", "o", "r", "u"}},
+		{[]byte("c"), []byte("y"), []string{"e", "h", "k", "o", "r", "u", "y"}},
+		{[]byte("c"), []byte("z"), []string{"e", "h", "k", "o", "r", "u", "y"}},
+		{[]byte("c"), []byte("c"), []string{}},
+		{[]byte("e"), []byte("e"), []string{"e"}},
+		{[]byte("l"), []byte("m"), []string{}},
+	}
+
+	for _, tt := range tests {
+		results := tree.RangeScan(tt.startKey, tt.endKey)
+		var resultKeys []string
+		for _, record := range results {
+			resultKeys = append(resultKeys, string(record.Value))
+		}
+		if !utils.CompareStringArray(resultKeys, tt.expected) {
+			t.Errorf("RangeScan(%q, %q) = %v, expected %v", tt.startKey, tt.endKey, resultKeys, tt.expected)
+		}
 	}
 }

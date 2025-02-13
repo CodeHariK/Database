@@ -25,6 +25,11 @@ func GenerateRandomString(l int) string {
 
 var generateSeq int32 = 0
 
+func GenerateSeqString(length int) string {
+	generateSeq += 1
+	return fmt.Sprintf("%0*d", length, generateSeq)
+}
+
 func GenerateSeqRandomString(length int, pad int, value ...string) string {
 	generateSeq += 1
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -42,4 +47,16 @@ func BytesToStrings(byteSlices [][]byte) []string {
 		strs[i] = string(b) // Convert []byte to string
 	}
 	return strs
+}
+
+func CompareStringArray(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

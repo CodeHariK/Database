@@ -5,6 +5,8 @@ import { displayNode } from './collection';
 
 export type BPlusTreeNode = {
     nodeID: number;
+    nextID: number;
+    prevID: number;
     keys: string[];
     value: string[];
     children: BPlusTreeNode[];
@@ -28,14 +30,34 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
     const element = new shapes.standard.HeaderedRectangle();
     element.resize(BOXWIDTH, BOXHEIGHT);
     element.position(x, y);
-    element.attr('root/tabindex', 12);
-    element.attr('root/title', 'shapes.standard.HeaderedRectangle');
-    element.attr('header/fill', '#000000');
-    element.attr('header/fillOpacity', 0.1);
     element.attr('headerText/text', node.nodeID);
-    element.attr('body/fill', nodeColor);
-    element.attr('body/fillOpacity', 0.5);
-    element.attr('bodyText/text', "Keys" + node.keys.map((a) => { return "\n" + a }).toString() + "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
+    element.attr({
+        root: {
+            tabindex: 12,
+            title: 'shapes.standard.HeaderedRectangle',
+        },
+        body: {
+            fill: nodeColor,
+            fillOpacity: 0.5,
+            // rx: 20,
+            // ry: 20,
+            strokeWidth: 1,
+            strokeDasharray: '4,2'
+        },
+        label: {
+            text: 'Hello',
+            fill: '#ECF0F1',
+            fontSize: 11,
+            fontVariant: 'small-caps'
+        },
+        header: {
+            fill: "#000000",
+            fillOpacity: 0.1,
+            strokeWidth: 1
+        },
+    });
+
+    element.attr('bodyText/text', "Next " + node.nextID + "\nPrev " + node.prevID + "\nKeys" + node.keys.map((a) => { return "\n" + a }).toString() + "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
     element.addTo(ui.graph);
 
     const boundaryTool = new elementTools.Boundary();
@@ -109,15 +131,28 @@ function createTreeRecursive(
                 const link = new shapes.standard.Link();
                 link.source(node);
                 link.target(childNode);
-                // link.appendLabel({
-                //     attrs: {
-                //         text: {
-                //             text: 'to the'
-                //         }
-                //     }
-                // });
+                link.appendLabel({
+                    attrs: {
+                        text: {
+                            text: 'to the'
+                        }
+                    }
+                });
                 link.router('orthogonal');
                 link.connector('straight', { cornerType: 'line' });
+
+                var stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
+
+                link.attr(
+                    {
+                        line: {
+                            // connection: true,
+                            stroke: stroke,
+                            strokeWidth: 2,
+                            strokeDasharray: 4
+                        },
+                    },
+                )
 
                 ui.graph.addCell(link);
             }
@@ -178,6 +213,8 @@ export function convertJsonToBPlusTree(json: any): BPlusTreeNode {
     function convertNode(node: any): BPlusTreeNode {
         return {
             nodeID: node.nodeID,
+            nextID: node.nextID,
+            prevID: node.prevID,
             keys: node.key,
             value: node.value,
             children: node.children.map(convertNode),
