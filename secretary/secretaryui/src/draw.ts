@@ -1,34 +1,20 @@
 import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
-import { NODECOLOR, randomColor } from './utils';
+import { randomColor } from './utils';
 import { displayNode } from './collection';
+import { BTree, BTreeNode } from './tree';
+import { canvasSection } from './dom';
 
-export type BPlusTreeNode = {
-    nodeID: number;
-    nextID: number;
-    prevID: number;
-    keys: string[];
-    value: string[];
-    children: BPlusTreeNode[];
-};
+let newBox = (x: number, y: number, node: BTreeNode) => {
 
-const BOXWIDTH = 200
-const BOXHEIGHT = 200
-
-const canvasSsection = document.getElementById("canvas-section") as HTMLButtonElement;
-
-let MouseCurrentNode: BPlusTreeNode | null = null
-
-let newBox = (x: number, y: number, node: BPlusTreeNode) => {
-
-    let nodeColor = NODECOLOR.get(node.nodeID)
+    let nodeColor = ui.NODECOLOR.get(node.nodeID)
     if (!nodeColor) {
-        NODECOLOR.set(node.nodeID, randomColor())
+        ui.NODECOLOR.set(node.nodeID, randomColor())
     }
-    nodeColor = NODECOLOR.get(node.nodeID)
+    nodeColor = ui.NODECOLOR.get(node.nodeID)
 
     const element = new shapes.standard.HeaderedRectangle();
-    element.resize(BOXWIDTH, BOXHEIGHT);
+    element.resize(ui.BOXWIDTH, ui.BOXHEIGHT);
     element.position(x, y);
     element.attr('headerText/text', node.nodeID);
     element.attr({
@@ -38,7 +24,7 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
         },
         body: {
             fill: nodeColor,
-            fillOpacity: 0.5,
+            fillOpacity: ui.SELECTEDNODE.get(node) ? 0.5 : 0.1,
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
@@ -75,62 +61,62 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
     ui.paper.on('element:mouseenter', function (ev) {
         ev.showTools();
 
-
         if (ev == elementView) {
-            MouseCurrentNode = node
+            ui.MouseCurrentNode = node
         }
     });
 
     ui.paper.on('element:mouseleave', function (ev) {
         ev.hideTools();
 
-        MouseCurrentNode = null
+        ui.MouseCurrentNode = null
     });
 
     return element
 }
 
 export function createBPlusTreeFromJSON(
-    treeData: BPlusTreeNode,
+    tree: BTree,
     order: number,
     x = 400,
     y = 50
 ) {
-    if (!treeData) return null;
+    if (!tree) return null;
 
-    const height = getTreeHeight(treeData);
-    const maxSpacing = Math.pow(order, height - 1) * BOXWIDTH / 3;
+    const height = tree.height();
+    const maxSpacing = Math.pow(order, height - 1) * ui.BOXWIDTH / 3;
 
-    return createTreeRecursive(treeData, order, height, 1, x, y, maxSpacing);
+    return createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
 }
 
 function createTreeRecursive(
-    treeData: BPlusTreeNode,
+    node: BTreeNode,
     order: number,
     height: number,
     level: number,
     x: number,
     y: number,
     maxSpacing: number
-) {
-    if (!treeData) return null;
+): shapes.standard.HeaderedRectangle | null {
+    if (!node) return null;
 
-    const node = newBox(x, y, treeData);
+    const box = newBox(x, y, node);
 
-    if (treeData.children && treeData.children.length > 0) {
-        const numChildren = treeData.children.length;
+    if (node.children && node.children.length > 0) {
+        const numChildren = node.children.length;
         const spacing = maxSpacing / Math.pow(order, level - 1);
         const startX = x - ((numChildren - 1) * spacing) / 2;
 
-        treeData.children.forEach((child, index) => {
+        node.children.forEach((child, index) => {
             const childX = startX + index * spacing;
-            const childY = y + BOXHEIGHT * 1.5;
+            const childY = y + ui.BOXHEIGHT * 1.5;
             const childNode = createTreeRecursive(child, order, height, level + 1, childX, childY, maxSpacing);
 
             if (childNode) {
                 const link = new shapes.standard.Link();
-                link.source(node);
+                link.source(box);
                 link.target(childNode);
+
                 link.appendLabel({
                     attrs: {
                         text: {
@@ -141,7 +127,10 @@ function createTreeRecursive(
                 link.router('orthogonal');
                 link.connector('straight', { cornerType: 'line' });
 
-                var stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
+                var stroke = "#000000"
+                if (ui.SELECTEDNODE.get(node) && ui.SELECTEDNODE.get(child)) {
+                    stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
+                }
 
                 link.attr(
                     {
@@ -159,13 +148,7 @@ function createTreeRecursive(
         });
     }
 
-    return node;
-}
-
-// Helper function to determine tree height
-function getTreeHeight(node: BPlusTreeNode): number {
-    if (!node.children || node.children.length === 0) return 1;
-    return 1 + Math.max(...node.children.map(getTreeHeight));
+    return box;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -178,18 +161,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let panning = false;
     let lastPosition = { x: 0, y: 0 };
 
-    canvasSsection.addEventListener('mousedown', (e) => {
-        if (MouseCurrentNode == null) {
+    canvasSection.addEventListener('mousedown', (e) => {
+        if (ui.MouseCurrentNode == null) {
             panning = true;
         } else {
-            displayNode(MouseCurrentNode)
+            displayNode(ui.MouseCurrentNode)
         }
         lastPosition = { x: e.x, y: e.y };
     })
-    canvasSsection.addEventListener('mouseup', () => {
+    canvasSection.addEventListener('mouseup', () => {
         panning = false;
     })
-    canvasSsection.addEventListener('mousemove', (e) => {
+    canvasSection.addEventListener('mousemove', (e) => {
         if (panning) {
             const dx = (e.x - lastPosition.x); // Reduce speed
             const dy = (e.y - lastPosition.y); // Reduce speed
@@ -199,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 
-    canvasSsection.addEventListener('wheel', (event) => {
+    canvasSection.addEventListener('wheel', (event) => {
         event.preventDefault();
         const scaleFactor = 1.1;
         let scale = ui.paper.scale().sx;
@@ -207,19 +190,3 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.paper.scale(Math.max(0.2, Math.min(2, scale)));
     }, { passive: false });
 });
-
-export function convertJsonToBPlusTree(json: any): BPlusTreeNode {
-
-    function convertNode(node: any): BPlusTreeNode {
-        return {
-            nodeID: node.nodeID,
-            nextID: node.nextID,
-            prevID: node.prevID,
-            keys: node.key,
-            value: node.value,
-            children: node.children.map(convertNode),
-        };
-    }
-
-    return convertNode(json.root);
-}

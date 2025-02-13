@@ -1,0 +1,65 @@
+export class TreeDef {
+    collectionName: string
+    order: number
+
+    constructor(collectionName: string, order: number) {
+        this.collectionName = collectionName
+        this.order = order
+    }
+}
+
+export type BTreeNode = {
+    nodeID: number;
+    nextID: number;
+    prevID: number;
+    keys: string[];
+    value: string[];
+    children: BTreeNode[];
+};
+
+export class BTree {
+    root: BTreeNode;
+
+    constructor(json: any) {
+        this.root = this.convertNode(json.root);
+    }
+
+    convertNode = (node: any): BTreeNode => {
+        return {
+            nodeID: node.nodeID,
+            nextID: node.nextID,
+            prevID: node.prevID,
+            keys: node.key,
+            value: node.value,
+            children: node.children ? node.children.map((child: any) => this.convertNode(child)) : [],
+        };
+    };
+
+    searchLeafNode(key: string): { node: BTreeNode; index: number; found: boolean, path: BTreeNode[] } {
+        let node = this.root;
+        let path: BTreeNode[] = [node];
+
+        // Traverse internal nodes
+        while (node.children.length > 0) {
+            let { index, found } = this.searchKey(node, key);
+            node = found ? node.children[index + 1] : node.children[index];
+            path.push(node);
+        }
+
+        // Search within the leaf node
+        let { index, found } = this.searchKey(node, key);
+        return { node, index, found, path };
+    }
+
+    searchKey(node: BTreeNode, key: string): { index: number; found: boolean } {
+        for (let i = 0; i < node.keys.length; i++) {
+            if (key === node.keys[i]) return { index: i, found: true };
+            if (key < node.keys[i]) return { index: i, found: false };
+        }
+        return { index: node.keys.length, found: false };
+    }
+
+    height(node: BTreeNode = this.root): number {
+        return node.children.length === 0 ? 1 : 1 + Math.max(...node.children.map(child => this.height(child)));
+    }
+}

@@ -1,21 +1,10 @@
 import { ui } from "./main";
 
-import { BPlusTreeNode, convertJsonToBPlusTree, createBPlusTreeFromJSON } from "./draw";
+import { createBPlusTreeFromJSON } from "./draw";
+import { BTree, BTreeNode } from "./tree";
+import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn } from "./dom";
 
-const url = "http://localhost:8080"
-let currentTree
-let currentTreeSnapshotIndex = 0
-let TreeSnapshots: Array<BPlusTreeNode> = []
-
-const prevTreeBtn = document.getElementById("prev-tree") as HTMLButtonElement;
-const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonElement;
-
-const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
-const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
-const searchBtn = document.getElementById("search-btn") as HTMLButtonElement;
-const resultDiv = document.getElementById("result") as HTMLDivElement;
-
-export function displayNode(node: BPlusTreeNode) {
+export function displayNode(node: BTreeNode) {
     const infoBox = document.getElementById("info-box");
     if (!infoBox) return;
 
@@ -97,12 +86,12 @@ export function displayNode(node: BPlusTreeNode) {
 function showSnapshot() {
     ui.graph.clear()
 
-    createBPlusTreeFromJSON(TreeSnapshots[currentTreeSnapshotIndex], currentTree!.order);
+    createBPlusTreeFromJSON(ui.getTree(), ui.currentTreeDef!.order);
 }
 
 async function fetchCurrentTree() {
 
-    const response = await fetch(`${url}/getbtree?table=${currentTree!.collectionName}`);
+    const response = await fetch(`${ui.url}/getbtree?table=${ui.currentTreeDef!.collectionName}`);
 
     if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -110,16 +99,16 @@ async function fetchCurrentTree() {
 
     const data = await response.json(); // Assuming data is an array
 
-    const bPlusTree = convertJsonToBPlusTree(data)
-    TreeSnapshots.push(bPlusTree)
-    currentTreeSnapshotIndex = TreeSnapshots.length - 1
+    const bPlusTree = new BTree(data)
+    ui.TreeSnapshots.push(bPlusTree)
+    ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
 
     showSnapshot()
 }
 
 export async function fetchAllBTree() {
     try {
-        const response = await fetch(`${url}/getallbtree`);
+        const response = await fetch(`${ui.url}/getallbtree`);
 
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -141,7 +130,7 @@ export async function fetchAllBTree() {
                     })
                 card.classList.add("highlight");
 
-                currentTree = tree
+                ui.currentTreeDef = tree
                 fetchCurrentTree()
             };
 
@@ -158,7 +147,7 @@ async function insertData() {
     const value = (document.getElementById("value") as HTMLInputElement).value;
     const payload = { value };
     try {
-        const response = await fetch(`${url}/insert?table=${currentTree!.collectionName}`, {
+        const response = await fetch(`${ui.url}/insert?table=${ui.currentTreeDef!.collectionName}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -175,7 +164,7 @@ async function insertData() {
 async function deleteData() {
     const id = (document.getElementById("delete-id") as HTMLInputElement).value;
     try {
-        const response = await fetch(`${url}/delete?table=/${currentTree!.collectionName}/${id}`, { method: "DELETE" });
+        const response = await fetch(`${ui.url}/delete?table=/${ui.currentTreeDef!.collectionName}/${id}`, { method: "DELETE" });
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
     } catch (error) {
@@ -186,9 +175,18 @@ async function deleteData() {
 async function searchData() {
     const search = (document.getElementById("search") as HTMLInputElement).value;
     try {
-        const response = await fetch(`${url}/search/${currentTree!.collectionName}/${search}`);
+        const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
+
+        let searchResult = ui.getTree().searchLeafNode(search)
+
+        ui.SELECTEDNODE = new Map()
+        searchResult.path.forEach((e) => {
+            ui.SELECTEDNODE.set(e, true)
+        })
+
+        showSnapshot()
     } catch (error) {
         console.error("Error searching data:", error);
     }
@@ -197,14 +195,14 @@ async function searchData() {
 document.addEventListener("DOMContentLoaded", () => {
 
     prevTreeBtn.addEventListener("click", () => {
-        if (currentTreeSnapshotIndex != 0) {
-            currentTreeSnapshotIndex--;
+        if (ui.currentTreeSnapshotIndex != 0) {
+            ui.currentTreeSnapshotIndex--;
             showSnapshot()
         }
     });
     nextTreeBtn.addEventListener("click", () => {
-        if (currentTreeSnapshotIndex != (TreeSnapshots.length - 1)) {
-            currentTreeSnapshotIndex++;
+        if (ui.currentTreeSnapshotIndex != (ui.TreeSnapshots.length - 1)) {
+            ui.currentTreeSnapshotIndex++;
             showSnapshot()
         }
     });
