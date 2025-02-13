@@ -13,6 +13,8 @@ export type BPlusTreeNode = {
 const BOXWIDTH = 200
 const BOXHEIGHT = 200
 
+const canvasSsection = document.getElementById("canvas-section") as HTMLButtonElement;
+
 let MouseCurrentNode: BPlusTreeNode | null = null
 
 let newBox = (x: number, y: number, node: BPlusTreeNode) => {
@@ -51,10 +53,9 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
     ui.paper.on('element:mouseenter', function (ev) {
         ev.showTools();
 
-        MouseCurrentNode = node
 
         if (ev == elementView) {
-            displayNode(MouseCurrentNode)
+            MouseCurrentNode = node
         }
     });
 
@@ -66,43 +67,6 @@ let newBox = (x: number, y: number, node: BPlusTreeNode) => {
 
     return element
 }
-
-// export function createBPlusTreeFromJSON(treeData: BPlusTreeNode, x = 400, y = 50, xSpacing = BOXWIDTH * 1.4, ySpacing = BOXHEIGHT * 1.5) {
-//     if (!treeData) return null;
-
-//     const node = newBox(x, y, treeData);
-
-//     if (treeData.children && treeData.children.length > 0) {
-//         const numChildren = treeData.children.length;
-//         const startX = x - ((numChildren - 1) * xSpacing) / 2;
-
-//         treeData.children.forEach((child, index) => {
-//             const childX = startX + index * xSpacing;
-//             const childY = y + ySpacing;
-//             const childNode = createBPlusTreeFromJSON(child, childX, childY, xSpacing / 1.5, ySpacing);
-
-//             if (childNode) {
-//                 const link = new shapes.standard.Link();
-//                 link.source(node);
-//                 link.target(childNode);
-
-//                 // link.appendLabel({
-//                 //     attrs: {
-//                 //         text: {
-//                 //             text: 'to the'
-//                 //         }
-//                 //     }
-//                 // });
-//                 link.router('orthogonal');
-//                 link.connector('straight', { cornerType: 'line' });
-
-//                 ui.graph.addCell(link);
-//             }
-//         });
-//     }
-//     return node;
-// }
-
 
 export function createBPlusTreeFromJSON(
     treeData: BPlusTreeNode,
@@ -145,6 +109,13 @@ function createTreeRecursive(
                 const link = new shapes.standard.Link();
                 link.source(node);
                 link.target(childNode);
+                // link.appendLabel({
+                //     attrs: {
+                //         text: {
+                //             text: 'to the'
+                //         }
+                //     }
+                // });
                 link.router('orthogonal');
                 link.connector('straight', { cornerType: 'line' });
 
@@ -162,7 +133,6 @@ function getTreeHeight(node: BPlusTreeNode): number {
     return 1 + Math.max(...node.children.map(getTreeHeight));
 }
 
-
 document.addEventListener('DOMContentLoaded', () => {
 
     ui.paper.scale(1);
@@ -173,16 +143,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let panning = false;
     let lastPosition = { x: 0, y: 0 };
 
-    document.addEventListener('mousedown', (e) => {
+    canvasSsection.addEventListener('mousedown', (e) => {
         if (MouseCurrentNode == null) {
             panning = true;
+        } else {
+            displayNode(MouseCurrentNode)
         }
         lastPosition = { x: e.x, y: e.y };
     })
-    document.addEventListener('mouseup', () => {
+    canvasSsection.addEventListener('mouseup', () => {
         panning = false;
     })
-    document.addEventListener('mousemove', (e) => {
+    canvasSsection.addEventListener('mousemove', (e) => {
         if (panning) {
             const dx = (e.x - lastPosition.x); // Reduce speed
             const dy = (e.y - lastPosition.y); // Reduce speed
@@ -192,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 
-    document.addEventListener('wheel', (event) => {
+    canvasSsection.addEventListener('wheel', (event) => {
         event.preventDefault();
         const scaleFactor = 1.1;
         let scale = ui.paper.scale().sx;

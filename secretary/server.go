@@ -95,12 +95,38 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+	id := r.PathValue("id")
+
+	tree, exists := s.trees[table]
+	if !exists {
+		http.Error(w, "Tree not found", http.StatusNotFound)
+		return
+	}
+
+	node, index, found := tree.SearchLeafNode([]byte(id))
+	record := "<nil>"
+	if found {
+		record = string(node.records[index].Value)
+	}
+
+	response := map[string]string{
+		"table":  table,
+		"result": fmt.Sprintf("[NodeID:%d  Index:%d  Found:%v  Value:%s]", node.NodeID, index, found, record),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 func (s *Secretary) setupRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/getallbtree", s.getAllBTreeHandler)
 	mux.HandleFunc("/getbtree", s.getBTreeHandler)
 	mux.HandleFunc("/insert", s.insertHandler)
+	mux.HandleFunc("GET /search/{table}/{id}", s.searchHandler)
 
 	// Enable CORS with custom settings
 	handler := cors.New(cors.Options{

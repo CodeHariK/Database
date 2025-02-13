@@ -12,7 +12,7 @@ const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonElement;
 
 const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
 const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
-const queryBtn = document.getElementById("query-btn") as HTMLButtonElement;
+const searchBtn = document.getElementById("search-btn") as HTMLButtonElement;
 const resultDiv = document.getElementById("result") as HTMLDivElement;
 
 export function displayNode(node: BPlusTreeNode) {
@@ -183,14 +183,14 @@ async function deleteData() {
     }
 }
 
-async function queryData() {
-    const query = (document.getElementById("query") as HTMLInputElement).value;
+async function searchData() {
+    const search = (document.getElementById("search") as HTMLInputElement).value;
     try {
-        const response = await fetch(`/query?table=${currentTree!.collectionName}/id=${query}`);
+        const response = await fetch(`${url}/search/${currentTree!.collectionName}/${search}`);
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
     } catch (error) {
-        console.error("Error querying data:", error);
+        console.error("Error searching data:", error);
     }
 }
 
@@ -211,5 +211,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
     insertBtn.addEventListener("click", insertData);
     deleteBtn.addEventListener("click", deleteData);
-    queryBtn.addEventListener("click", queryData);
+    searchBtn.addEventListener("click", searchData);
 });

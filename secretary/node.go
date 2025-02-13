@@ -3,7 +3,6 @@ package secretary
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"runtime/debug"
 	"sort"
@@ -115,7 +114,7 @@ func (tree *BTree) saveRoot() error {
 
 // Insert key-value into a leaf node
 func (tree *BTree) insertIntoLeaf(leaf *Node, key []byte, value []byte) {
-	i := leaf.nodeScan(key)
+	i, _ := leaf.NodeScan(key)
 
 	leaf.Keys = append(
 		leaf.Keys[:i],
@@ -188,7 +187,7 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 	}
 
 	parent := left.parent
-	insertIdx := parent.nodeScan(key)
+	insertIdx, _ := parent.NodeScan(key)
 
 	parent.Keys = append(
 		parent.Keys[:insertIdx],
@@ -207,7 +206,7 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 	right.parent = parent
 	// parent.NumKeys++
 
-	fmt.Println("intl ", parent.NodeID, len(parent.Keys), "split:", len(parent.Keys) >= int(tree.Order))
+	// fmt.Println("intl ", parent.NodeID, len(parent.Keys), "split:", len(parent.Keys) >= int(tree.Order))
 
 	// if parent.NumKeys >= tree.Order {
 	if len(parent.Keys) >= int(tree.Order) {
@@ -259,16 +258,14 @@ func (tree *BTree) Insert(key []byte, value []byte) error {
 		return nil
 	}
 
-	leaf := tree.searchLeafNode(key)
-	for _, k := range leaf.Keys {
-		if string(k) == string(key) {
-			return ErrorDuplicateKey
-		}
+	leaf, index, found := tree.SearchLeafNode(key)
+	if found && bytes.Compare(leaf.Keys[index], key) == 0 {
+		return ErrorDuplicateKey
 	}
 
 	tree.insertIntoLeaf(leaf, key, value)
 
-	fmt.Println("leaf ", leaf.NodeID, len(leaf.Keys), "split:", len(leaf.Keys) >= int(tree.Order))
+	// fmt.Println("leaf ", leaf.NodeID, len(leaf.Keys), "split:", len(leaf.Keys) >= int(tree.Order))
 
 	if len(leaf.Keys) >= int(tree.Order) {
 		tree.splitLeaf(leaf)
@@ -284,12 +281,10 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 		return ErrorInvalidKey
 	}
 
-	leaf := tree.searchLeafNode(key)
-	for i, k := range leaf.Keys {
-		if string(k) == string(key) {
-			leaf.records[i].Value = value
-			return nil
-		}
+	leaf, index, found := tree.SearchLeafNode(key)
+	if found {
+		leaf.records[index].Value = value
+		return nil
 	}
 	return ErrorKeyNotFound
 }
@@ -372,125 +367,157 @@ func (tree *BTree) buildInternalNodes(children []*Node, order uint8) *Node {
 //------------------------------------------------------------------
 
 // Binary search helper function
-func (n *Node) nodeScan(key []byte) int {
-	return sort.Search(
+func (n *Node) NodeScan(key []byte) (index int, found bool) {
+	index = sort.Search(
 		len(n.Keys),
 		func(i int) bool {
 			return bytes.Compare(n.Keys[i], key) >= 0
 		},
 	)
+
+	// Check if the key exists at the found index
+	found = index < len(n.Keys) && bytes.Equal(n.Keys[index], key)
+
+	return index, found
 }
 
 // Find the appropriate leaf node
-func (tree *BTree) searchLeafNode(key []byte) *Node {
-	current := tree.root
-	for len(current.children) > 0 {
-		i := current.nodeScan(key)
-		current = current.children[i]
+func (tree *BTree) SearchLeafNode(key []byte) (node *Node, index int, found bool) {
+	node = tree.root
+
+	// fmt.Println(node.NodeID, utils.BytesToStrings(node.Keys))
+
+	// Traverse internal nodes
+	for len(node.children) > 0 {
+		index, found := node.NodeScan(key)
+		if found {
+			node = node.children[index+1]
+		} else {
+			node = node.children[index]
+		}
+		// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
 	}
-	return current
+
+	// Search within the leaf node
+	index, found = node.NodeScan(key)
+	// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
+
+	return node, index, found
 }
 
-// Search searches for a key in the B+ tree using binary search.
-func (tree *BTree) Search(key []byte) (*Record, error) {
-	if tree == nil || tree.root == nil {
-		return nil, ErrorTreeNil
-	}
-
-	node := tree.root
-
-	// Traverse down to the leaf node
-	for len(node.children) > 0 {
-		index := node.nodeScan(key)
-
-		// 🔥 If key is GREATER than keys[index], move right (avoid bad splits)
-		if index < len(node.Keys) && bytes.Compare(node.Keys[index], key) < 0 {
-			index++
-		}
-
-		// 🔥 Prevent out-of-bounds error
-		if index >= len(node.children) {
-			index = len(node.children) - 1
-		}
-
-		node = node.children[index]
-	}
-
-	// Perform binary search in the leaf node
-	index := node.nodeScan(key)
-	if index < len(node.Keys) && bytes.Equal(node.Keys[index], key) {
+func (tree *BTree) SearchRecord(key []byte) (*Record, error) {
+	node, index, found := tree.SearchLeafNode(key)
+	if found {
 		return node.records[index], nil
 	}
-
 	return nil, ErrorKeyNotFound
 }
 
-// RangeScan retrieves all records in the range [startKey, endKey].
-func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
-	if tree == nil || tree.root == nil {
-		return nil
-	}
+// // Search searches for a key in the B+ tree using binary search.
+// func (tree *BTree) Search(key []byte) (*Record, error) {
+// 	if tree == nil || tree.root == nil {
+// 		return nil, ErrorTreeNil
+// 	}
 
-	var results []*Record
-	node := tree.root
+// 	node := tree.root
 
-	// Traverse down to the correct leaf node
-	for len(node.children) > 0 {
-		index := node.nodeScan(startKey)
-		node = node.children[index]
-	}
+// 	// Traverse down to the leaf node
+// 	for len(node.children) > 0 {
+// 		index := node.nodeScan(key)
 
-	// Scan through leaf nodes until we reach endKey
-	for node != nil {
-		for i := 0; i < len(node.Keys); i++ {
-			if bytes.Compare(node.Keys[i], startKey) >= 0 && bytes.Compare(node.Keys[i], endKey) <= 0 {
-				results = append(results, node.records[i])
-			}
-			// Stop if we exceed endKey
-			if bytes.Compare(node.Keys[i], endKey) > 0 {
-				return results
-			}
-		}
-		node = node.next // Move to next leaf node
-	}
+// 		// 🔥 If key is GREATER than keys[index], move right (avoid bad splits)
+// 		if index < len(node.Keys) && bytes.Compare(node.Keys[index], key) < 0 {
+// 			index++
+// 		}
 
-	return results
-}
+// 		// 🔥 Prevent out-of-bounds error
+// 		if index >= len(node.children) {
+// 			index = len(node.children) - 1
+// 		}
+
+// 		fmt.Printf("\nSearching for key: %s\n", key)
+// 		fmt.Printf("Binary search index: %d\n", index)
+// 		fmt.Printf("Keys in node: %v\n", utils.BytesToStrings(node.Keys))
+// 		fmt.Printf("Number of children: %d\n", len(node.children))
+
+// 		node = node.children[index]
+// 	}
+
+// 	// Perform binary search in the leaf node
+// 	index := node.nodeScan(key)
+// 	if index < len(node.Keys) && bytes.Equal(node.Keys[index], key) {
+// 		return node.records[index], nil
+// 	}
+
+// 	return nil, ErrorKeyNotFound
+// }
+
+// // RangeScan retrieves all records in the range [startKey, endKey].
+// func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
+// 	if tree == nil || tree.root == nil {
+// 		return nil
+// 	}
+
+// 	var results []*Record
+// 	node := tree.root
+
+// 	// Traverse down to the correct leaf node
+// 	for len(node.children) > 0 {
+// 		index,found := node.nodeScan(startKey)
+// 		node = node.children[index]
+// 	}
+
+// 	// Scan through leaf nodes until we reach endKey
+// 	for node != nil {
+// 		for i := 0; i < len(node.Keys); i++ {
+// 			if bytes.Compare(node.Keys[i], startKey) >= 0 && bytes.Compare(node.Keys[i], endKey) <= 0 {
+// 				results = append(results, node.records[i])
+// 			}
+// 			// Stop if we exceed endKey
+// 			if bytes.Compare(node.Keys[i], endKey) > 0 {
+// 				return results
+// 			}
+// 		}
+// 		node = node.next // Move to next leaf node
+// 	}
+
+// 	return results
+// }
 
 //------------------------------------------------------------------
 
-// Delete deletes a key from the B+ Tree.
-func (tree *BTree) Delete(key []byte) error {
-	if tree == nil || tree.root == nil {
-		return ErrorTreeNil
-	}
+// // Delete deletes a key from the B+ Tree.
+// func (tree *BTree) Delete(key []byte) error {
+// 	if tree == nil || tree.root == nil {
+// 		return ErrorTreeNil
+// 	}
 
-	leaf := tree.searchLeafNode(key)
-	index := -1
+// 	leaf := tree.searchLeafNode(key)
+// 	index := -1
 
-	// Find the key in the leaf node
-	for i, k := range leaf.Keys {
-		if bytes.Equal(k, key) {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		return ErrorKeyNotFound
-	}
+// 	// Find the key in the leaf node
+// 	for i, k := range leaf.Keys {
+// 		if bytes.Equal(k, key) {
+// 			index = i
+// 			break
+// 		}
+// 	}
+// 	if index == -1 {
+// 		return ErrorKeyNotFound
+// 	}
 
-	// Remove the key and corresponding record
-	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
-	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
-	// leaf.NumKeys--
+// 	// Remove the key and corresponding record
+// 	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
+// 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
+// 	// leaf.NumKeys--
 
-	tree.NodeCheck(leaf)
+// 	tree.NodeCheck(leaf)
 
-	// Handle underflow
-	tree.handleUnderflow(leaf)
+// 	// Handle underflow
+// 	tree.handleUnderflow(leaf)
 
-	return nil
-}
+// 	return nil
+// }
 
 // handleUnderflow handles cases when a node has fewer than the required keys.
 func (tree *BTree) handleUnderflow(node *Node) {
