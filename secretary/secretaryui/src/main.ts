@@ -1,13 +1,13 @@
 import { fetchAllBTree } from './collection';
 import { shapes, dia } from '@joint/core';
-import { BTree, BTreeNode, TreeDef } from './tree';
+import { BTree, BTreeNode, NodeDef, TreeDef } from './tree';
+import { canvasSection } from './dom';
 
 class Ui {
   graph: dia.Graph
   paper: dia.Paper
 
-  NODECOLOR = new Map<number, string>()
-  SELECTEDNODE = new Map<BTreeNode, boolean>()
+  NODEMAP = new Map<number, NodeDef>()
 
   BOXWIDTH = 200
   BOXHEIGHT = 200
@@ -27,10 +27,10 @@ class Ui {
       el: document.getElementById('paper'),
       model: this.graph,
       background: { color: '#F5F5F5' },
-      gridSize: 10,
+      gridSize: 20,
       drawGrid: true,
-      // width: 600,
-      // height: 100,
+      width: canvasSection().clientWidth,
+      height: canvasSection().clientHeight,
       interactive: true,
       cellViewNamespace: shapes,
       async: true,

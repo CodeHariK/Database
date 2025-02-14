@@ -80,6 +80,8 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.AddTree(tree)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("New tree created"))
 }

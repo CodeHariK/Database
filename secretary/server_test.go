@@ -1,6 +1,7 @@
 package secretary
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -85,6 +86,62 @@ func TestInsertHandler(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status OK; got %v", resp.Status)
+	}
+}
+
+// Test /insert with POST data
+func TestNewTreeHandler(t *testing.T) {
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := s.setupRouter()
+
+	tests := []struct {
+		tree NewTreeRequest
+		pass bool
+	}{
+		{
+			tree: NewTreeRequest{
+				CollectionName: "hello",
+				Order:          10,
+				BatchNumLevel:  32,
+				BatchBaseSize:  1024,
+				BatchIncrement: 130,
+				BatchLength:    20,
+			},
+			pass: true,
+		},
+		{
+			tree: NewTreeRequest{
+				CollectionName: "hello",
+				Order:          2,
+				BatchNumLevel:  32,
+				BatchBaseSize:  104,
+				BatchIncrement: 105,
+				BatchLength:    20,
+			},
+			pass: false,
+		},
+	}
+
+	for _, test := range tests {
+		j, err := json.Marshal(test.tree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/newtree", strings.NewReader(string(j)))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		if test.pass != (resp.StatusCode == http.StatusOK) {
+			t.Fatalf("expected status OK; got %v", resp.Status)
+		}
 	}
 }
 

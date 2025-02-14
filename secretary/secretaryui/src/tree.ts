@@ -1,3 +1,5 @@
+import { shapes } from "@joint/core"
+
 export class TreeDef {
     collectionName: string
     order: number
@@ -7,6 +9,14 @@ export class TreeDef {
         this.order = order
     }
 }
+
+export class NodeDef {
+    color: string = "#ECF0F1"
+    selected: boolean = false
+    node: BTreeNode | null = null
+    box: shapes.standard.HeaderedRectangle | null = null
+}
+
 
 export type BTreeNode = {
     nodeID: number;

@@ -36,7 +36,6 @@
     #json-section {
       flex: 15%;
       background: #f8f9fa;
-      white-space: pre-wrap;
     }
 
     #canvas-section {
@@ -62,7 +61,6 @@
       width: 100%;
       flex: 1;
       min-width: 0;
-      margin-right: 10px;
       padding: 10px;
     }
 
@@ -117,7 +115,18 @@
 
   <div class="container">
     <div id="json-section" class="section">
+
+      <form id="treeForm">
+        <input type="text" placeholder="Collection Name" id="collectionName" required>
+        <input type="number" placeholder="Order" id="order" min="3" max="200" required>
+        <input type="number" placeholder="Batch Num Level" id="batchNumLevel" min="32" required>
+        <input type="number" placeholder="Batch Base Size" id="batchBaseSize" min="1024" required>
+        <input type="number" placeholder="Batch Increment" id="batchIncrement" min="110" max="200" required>
+        <input type="number" placeholder="Batch Length" id="batchLength" min="1" required>
+        <button type="submit">Create Tree</button>
+      </form>
       <div id="collections"></div>
+
     </div>
 
     <div id="canvas-section" class="section">
@@ -127,18 +136,22 @@
     <div id="form-section" class="section">
       <button type="button" id="prev-tree">Prev</button>
       <button type="button" id="next-tree">Next</button>
+
       <div>
         <input type="text" id="value" placeholder="Enter value" />
         <button type="button" id="insert-btn">Insert</button>
       </div>
+
       <div>
         <input type="text" id="delete-id" placeholder="Enter ID to delete" />
         <button type="button" id="delete-btn">Delete</button>
       </div>
+
       <div>
         <input type="text" id="search" placeholder="Enter search id" />
         <button type="button" id="search-btn">Query</button>
       </div>
+
       <div id="result"></div>
       <div id="info-box"></div>
     </div>

@@ -176,7 +176,7 @@ async function deleteData() {
     resultDiv.textContent = JSON.stringify(result, null, 2);
 }
 
-async function searchData() {
+async function searchRecord() {
     const search = (document.getElementById("search") as HTMLInputElement).value;
     const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
     if (!response.ok) {
@@ -188,13 +188,47 @@ async function searchData() {
 
     let searchResult = ui.getTree().searchLeafNode(search)
 
-    ui.SELECTEDNODE = new Map()
     searchResult.path.forEach((e) => {
-        ui.SELECTEDNODE.set(e, true)
+        ui.NODEMAP.get(e.nodeID)!.selected = true
     })
 
     showSnapshot()
 }
+
+async function newTreeRequest() {
+    const form = document.getElementById("treeForm") as HTMLFormElement;
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault(); // Prevent page reload
+
+        const requestData = {
+            CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
+            Order: Number((document.getElementById("order") as HTMLInputElement).value),
+            BatchNumLevel: Number((document.getElementById("batchNumLevel") as HTMLInputElement).value),
+            BatchBaseSize: Number((document.getElementById("batchBaseSize") as HTMLInputElement).value),
+            BatchIncrement: Number((document.getElementById("batchIncrement") as HTMLInputElement).value),
+            BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
+        };
+
+        try {
+            const response = await fetch(`${ui.url}/newtree`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData),
+            });
+
+            const result = await response.json();
+            resultDiv.textContent = `Success: ${JSON.stringify(result)}`;
+            resultDiv.style.color = "green";
+
+            fetchAllBTree()
+        } catch (error) {
+            resultDiv.textContent = `Error: ${error}`;
+            resultDiv.style.color = "red";
+        }
+    });
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -213,5 +247,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     insertBtn.addEventListener("click", insertData);
     deleteBtn.addEventListener("click", deleteData);
-    searchBtn.addEventListener("click", searchData);
+    searchBtn.addEventListener("click", searchRecord);
+
+    newTreeRequest()
 });

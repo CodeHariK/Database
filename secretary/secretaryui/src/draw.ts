@@ -2,16 +2,21 @@ import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
 import { randomColor } from './utils';
 import { displayNode } from './collection';
-import { BTree, BTreeNode } from './tree';
+import { BTree, BTreeNode, NodeDef } from './tree';
 import { canvasSection } from './dom';
 
 let newBox = (x: number, y: number, node: BTreeNode) => {
 
-    let nodeColor = ui.NODECOLOR.get(node.nodeID)
-    if (!nodeColor) {
-        ui.NODECOLOR.set(node.nodeID, randomColor())
+    let nodeDef = ui.NODEMAP.get(node.nodeID);
+    if (!nodeDef) {
+        ui.NODEMAP.set(node.nodeID, {
+            color: randomColor(),
+            selected: false,
+            box: null,
+            node: node,
+        })
     }
-    nodeColor = ui.NODECOLOR.get(node.nodeID)
+    nodeDef = ui.NODEMAP.get(node.nodeID)!;
 
     const element = new shapes.standard.HeaderedRectangle();
     element.resize(ui.BOXWIDTH, ui.BOXHEIGHT);
@@ -23,8 +28,8 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
             title: 'shapes.standard.HeaderedRectangle',
         },
         body: {
-            fill: nodeColor,
-            fillOpacity: ui.SELECTEDNODE.get(node) ? 0.5 : 0.1,
+            fill: nodeDef.color,
+            fillOpacity: nodeDef.selected ? 0.5 : 0.1,
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
@@ -43,7 +48,10 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
         },
     });
 
-    element.attr('bodyText/text', "Next " + node.nextID + "\nPrev " + node.prevID + "\nKeys" + node.keys.map((a) => { return "\n" + a }).toString() + "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
+    element.attr('bodyText/text', "Next " + node.nextID + "\nPrev " + node.prevID +
+        "\nKeys" + node.keys.map((a) => { return "\n" + a }).toString() +
+        "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
+
     element.addTo(ui.graph);
 
     const boundaryTool = new elementTools.Boundary();
@@ -72,6 +80,8 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
         ui.MouseCurrentNode = null
     });
 
+    nodeDef.box = element
+
     return element
 }
 
@@ -86,7 +96,18 @@ export function createBPlusTreeFromJSON(
     const height = tree.height();
     const maxSpacing = Math.pow(order, height - 1) * ui.BOXWIDTH / 3;
 
-    return createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
+    createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
+
+    ui.NODEMAP.forEach((nodeDef) => {
+        if (nodeDef.node?.nextID) {
+            let nextDef = ui.NODEMAP.get(nodeDef.node!.nextID)!
+            drawLink(nodeDef, nextDef)
+        }
+        if (nodeDef.node?.prevID) {
+            let prevDef = ui.NODEMAP.get(nodeDef.node!.prevID)!
+            drawLink(nodeDef, prevDef)
+        }
+    })
 }
 
 function createTreeRecursive(
@@ -102,6 +123,8 @@ function createTreeRecursive(
 
     const box = newBox(x, y, node);
 
+    let nodeDef = ui.NODEMAP.get(node.nodeID)!;
+
     if (node.children && node.children.length > 0) {
         const numChildren = node.children.length;
         const spacing = maxSpacing / Math.pow(order, level - 1);
@@ -113,37 +136,10 @@ function createTreeRecursive(
             const childNode = createTreeRecursive(child, order, height, level + 1, childX, childY, maxSpacing);
 
             if (childNode) {
-                const link = new shapes.standard.Link();
-                link.source(box);
-                link.target(childNode);
 
-                link.appendLabel({
-                    attrs: {
-                        text: {
-                            text: 'to the'
-                        }
-                    }
-                });
-                link.router('orthogonal');
-                link.connector('straight', { cornerType: 'line' });
+                let childDef = ui.NODEMAP.get(child.nodeID)!;
 
-                var stroke = "#000000"
-                if (ui.SELECTEDNODE.get(node) && ui.SELECTEDNODE.get(child)) {
-                    stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
-                }
-
-                link.attr(
-                    {
-                        line: {
-                            // connection: true,
-                            stroke: stroke,
-                            strokeWidth: 2,
-                            strokeDasharray: 4
-                        },
-                    },
-                )
-
-                ui.graph.addCell(link);
+                drawLink(nodeDef, childDef);
             }
         });
     }
@@ -161,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let panning = false;
     let lastPosition = { x: 0, y: 0 };
 
-    canvasSection.addEventListener('mousedown', (e) => {
+    canvasSection().addEventListener('mousedown', (e) => {
         if (ui.MouseCurrentNode == null) {
             panning = true;
         } else {
@@ -169,10 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         lastPosition = { x: e.x, y: e.y };
     })
-    canvasSection.addEventListener('mouseup', () => {
+    canvasSection().addEventListener('mouseup', () => {
         panning = false;
     })
-    canvasSection.addEventListener('mousemove', (e) => {
+    canvasSection().addEventListener('mousemove', (e) => {
         if (panning) {
             const dx = (e.x - lastPosition.x); // Reduce speed
             const dy = (e.y - lastPosition.y); // Reduce speed
@@ -182,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 
-    canvasSection.addEventListener('wheel', (event) => {
+    canvasSection().addEventListener('wheel', (event) => {
         event.preventDefault();
         const scaleFactor = 1.1;
         let scale = ui.paper.scale().sx;
@@ -190,3 +186,42 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.paper.scale(Math.max(0.2, Math.min(2, scale)));
     }, { passive: false });
 });
+
+window.onresize = () => {
+    ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
+}
+
+function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
+    const link = new shapes.standard.Link();
+    link.source(nodeDef.box!);
+    link.target(childDef.box!);
+
+    link.appendLabel({
+        attrs: {
+            text: {
+                text: 'to the'
+            }
+        }
+    });
+    link.router('orthogonal');
+    link.connector('straight', { cornerType: 'line' });
+
+    var stroke = "#000000";
+    if (nodeDef.selected && childDef.selected) {
+        stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
+    }
+
+    link.attr(
+        {
+            line: {
+                // connection: true,
+                stroke: stroke,
+                strokeWidth: 2,
+                strokeDasharray: 4
+            },
+        }
+    );
+
+    ui.graph.addCell(link);
+}
+

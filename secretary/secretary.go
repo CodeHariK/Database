@@ -50,3 +50,7 @@ func (s *Secretary) Tree(name string) (*BTree, error) {
 	}
 	return tree, nil
 }
+
+func (s *Secretary) AddTree(tree *BTree) {
+	s.trees[tree.CollectionName] = tree
+}
