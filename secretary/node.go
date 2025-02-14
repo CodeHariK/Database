@@ -29,7 +29,7 @@ For a B+ tree of order  m :
   - Have exactly  m-1  record offsets (since each key maps to a record).
   - Therefore, KeyOffsets should have  m-1  elements (one per key).
 */
-func (tree *BTree) NodeCheck(n *Node) {
+func (tree *BTree) NodeVerify(n *Node) {
 	// A node is either a leaf (has records) or an internal node (has children), not both
 	if (n.records != nil && n.children != nil) || (n.records == nil && n.children == nil) {
 		logFatalWithStack(n.NodeID, ErrorNodeIsEitherLeaforInternal)
@@ -40,15 +40,45 @@ func (tree *BTree) NodeCheck(n *Node) {
 		logFatalWithStack(n.NodeID, ErrorNumKeysNotMatching, len(n.Keys), tree.Order)
 	}
 
+	if n.parent != nil {
+		contains := false
+		for _, c := range n.parent.children {
+			if c == n {
+				contains = true
+			}
+		}
+		if !contains {
+			logFatalWithStack("child:", n.NodeID, " parent:", n.parent.NodeID, ErrorInvalidNodeLink)
+		}
+	}
+
+	if (n.next != nil && n.next.prev != n) || (n.prev != nil && n.prev.next != n) {
+		logFatalWithStack("node:", n.NodeID, "nextprev:", n.next.prev.NodeID, " prevnext:", n.prev.next.NodeID, ErrorInvalidNodeLink)
+	}
+
 	if n.children != nil {
 		// Internal node
 		if len(n.children) != (len(n.Keys) + 1) {
 			// if len(n.children) != int(n.NumKeys+1) {
+
+			for _, c := range n.children {
+				if c.parent != n {
+					logFatalWithStack("child:", c.NodeID, " parent:", n.NodeID, ErrorInvalidNodeLink, len(n.Keys), tree.Order, len(n.children))
+				}
+			}
+
 			logFatalWithStack("child ", n.NodeID, ErrorNumKeysNotMatching, len(n.Keys), tree.Order, len(n.children))
 		}
 	} else if n.records != nil {
 		// Leaf node
 		if len(n.records) != len(n.Keys) {
+
+			for i, r := range n.records {
+				if bytes.Compare(r.Key, n.Keys[i]) != 0 {
+					logFatalWithStack("record ", r.Key, ErrorInvalidKey, len(n.Keys), tree.Order, len(n.records))
+				}
+			}
+
 			logFatalWithStack("leaf ", n.NodeID, ErrorNumKeysNotMatching, len(n.Keys), tree.Order, len(n.records))
 		}
 	}
@@ -59,13 +89,31 @@ func (tree *BTree) NodeCheck(n *Node) {
 			logFatalWithStack(n.NodeID, ErrorInvalidKey)
 		}
 
-		// Bounds check for KeyOffsets
-		if i < len(n.KeyOffsets) {
-			if err := tree.dataLocationCheck(n.KeyOffsets[i]); err != nil {
-				logFatalWithStack(n.NodeID, err)
-			}
+		if i >= 1 && bytes.Compare(n.Keys[i-1], n.Keys[i]) >= 0 {
+			logFatalWithStack("keys out of order in node ", n.NodeID)
+		}
+
+		// // Bounds check for KeyOffsets
+		// if i < len(n.KeyOffsets) {
+		// 	if err := tree.dataLocationCheck(n.KeyOffsets[i]); err != nil {
+		// 		logFatalWithStack(n.NodeID, err)
+		// 	}
+		// }
+	}
+}
+
+func (tree *BTree) RecursiveNodeVerify(node *Node) {
+	if node != nil {
+		tree.NodeVerify(node)
+
+		for _, n := range node.children {
+			tree.RecursiveNodeVerify(n)
 		}
 	}
+}
+
+func (tree *BTree) TreeVerify() {
+	tree.RecursiveNodeVerify(tree.root)
 }
 
 // Create a new internal node
@@ -164,8 +212,8 @@ func (tree *BTree) splitLeaf(leaf *Node) {
 
 	tree.insertIntoParent(leaf, newLeaf.Keys[0], newLeaf)
 
-	tree.NodeCheck(leaf)
-	tree.NodeCheck(newLeaf)
+	tree.NodeVerify(leaf)
+	tree.NodeVerify(newLeaf)
 }
 
 // Insert into an internal node
@@ -181,9 +229,9 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 		right.parent = newRoot
 		tree.root = newRoot
 
-		tree.NodeCheck(left)
-		tree.NodeCheck(right)
-		tree.NodeCheck(tree.root)
+		tree.NodeVerify(left)
+		tree.NodeVerify(right)
+		tree.NodeVerify(tree.root)
 		return
 	}
 
@@ -214,7 +262,7 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 		tree.splitInternal(parent)
 	}
 
-	tree.NodeCheck(parent)
+	tree.NodeVerify(parent)
 }
 
 // Split an internal node
@@ -241,8 +289,8 @@ func (tree *BTree) splitInternal(node *Node) {
 
 	tree.insertIntoParent(node, promotedKey, newInternal)
 
-	tree.NodeCheck(node)
-	tree.NodeCheck(newInternal)
+	tree.NodeVerify(node)
+	tree.NodeVerify(newInternal)
 }
 
 // Insert a key-value pair into the B+ Tree
@@ -255,7 +303,7 @@ func (tree *BTree) Insert(key []byte, value []byte) error {
 		tree.root = tree.createLeafNode()
 		tree.insertIntoLeaf(tree.root, key, value)
 
-		tree.NodeCheck(tree.root)
+		tree.NodeVerify(tree.root)
 		return nil
 	}
 
@@ -272,7 +320,7 @@ func (tree *BTree) Insert(key []byte, value []byte) error {
 		tree.splitLeaf(leaf)
 	}
 
-	tree.NodeCheck(leaf)
+	tree.NodeVerify(leaf)
 	return nil
 }
 
@@ -292,10 +340,24 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 
 // ------------------------------------------------------------------
 
-// BulkLoad inserts sorted records into the B+ Tree efficiently
-func (tree *BTree) BulkLoad(sortedRecords []*Record) {
+// SortedRecordLoad inserts sorted records into the B+ Tree efficiently
+func (tree *BTree) SortedRecordLoad(sortedRecords []*Record) {
+	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
+
+	tree.root = tree.buildInternalNodes(leafNodes)
+
+	tree.NodeVerify(tree.root)
+}
+
+func (tree *BTree) buildSortedLeafNodes(sortedRecords []*Record) []*Node {
+	fmt.Println(len(sortedRecords))
+	for _, r := range sortedRecords {
+		fmt.Println(string(r.Key), string(r.Value))
+	}
+	fmt.Println("---------")
+
 	if len(sortedRecords) == 0 {
-		return
+		return []*Node{}
 	}
 
 	// Step 1: Create leaf nodes
@@ -319,50 +381,82 @@ func (tree *BTree) BulkLoad(sortedRecords []*Record) {
 			leaf.prev = leafNodes[len(leafNodes)-1]
 		}
 
-		tree.NodeCheck(leaf)
+		tree.NodeVerify(leaf)
 
 		leafNodes = append(leafNodes, leaf)
 	}
 
-	// Step 2: Build internal nodes
-	tree.root = tree.buildInternalNodes(leafNodes, tree.Order)
-
-	tree.NodeCheck(tree.root)
+	fmt.Println(len(leafNodes))
+	for _, n := range leafNodes {
+		fmt.Println(n.ConvertNodeToJSON())
+	}
+	fmt.Println("---------")
+	return leafNodes
 }
 
 // Recursively build internal nodes
-func (tree *BTree) buildInternalNodes(children []*Node, order uint8) *Node {
+func (tree *BTree) buildInternalNodes(children []*Node) *Node {
+	fmt.Println(len(children))
 	if len(children) == 1 {
 		return children[0] // Root node
 	}
 
 	internalNodes := []*Node{}
-	keys := [][]byte{}
 
-	for i := 0; i < len(children); i += int(order) {
-		end := i + int(order)
+	// group cant have less than 2 and more than tree.Order, there has to be 1 key atleast
+
+	// Order 4 Keys : 3  Children : 1 : [1]
+	// Order 4 Keys : 5  Children : 2 : [2]
+	// Order 4 Keys : 8  Children : 3 : [3]
+	// Order 4 Keys : 12 Children : 4 : [4]
+	// Order 4 Keys : 14 Children : 5 : [3,2]
+	// Order 4 Keys : 16 Children : 6 : [4,2]
+	// Order 4 Keys : 20 Children : 7 : [4,3]
+	// Order 4 Keys : 24 Children : 8 : [4,4]
+	// Order 4 Keys : 26 Children : 9 : [4,3,2]
+
+	for start := 0; start < len(children); {
+		var end int
+		if (len(children)-start)/int(tree.Order) == 1 {
+			end = start + int(tree.Order) - 1
+		} else {
+			end = start + int(tree.Order)
+		}
+
 		if end > len(children) {
 			end = len(children)
 		}
 
-		node := tree.createInternalNode(children[i:end])
-		for _, child := range children[i:end] {
+		fmt.Println("order:", tree.Order, "start:", start, " end:", end, " len:", len(children))
+
+		// Create an internal node from this chunk of children
+		node := tree.createInternalNode(children[start:end])
+
+		// Assign separator keys (first key of each child, except the first one)
+		// Link parent-child relationships
+		for k, child := range children[start:end] {
 			child.parent = node
+
+			if k != 0 {
+				node.Keys = append(node.Keys, child.Keys[0])
+			}
 		}
 
-		// Pick first key from each child
-		if i > 0 {
-			keys = append(keys, children[i].Keys[0])
-		}
+		// s, _ := json.MarshalIndent(node.ConvertNodeToJSON(), "", "  ")
+		// fmt.Print(string(s), "\n\n\n*******\n\n\n")
 
-		node.Keys = keys
-		// node.NumKeys = uint8(len(keys))
+		tree.NodeVerify(node)
+
 		internalNodes = append(internalNodes, node)
 
-		tree.NodeCheck(node)
+		if (len(children)-start)/int(tree.Order) == 1 {
+			start += int(tree.Order) - 1
+		} else {
+			start += int(tree.Order)
+		}
 	}
 
-	return tree.buildInternalNodes(internalNodes, order)
+	return tree.buildInternalNodes(internalNodes)
 }
 
 //------------------------------------------------------------------
@@ -441,7 +535,6 @@ func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
 		for i := start; i < end; i++ {
 			record := node.records[i]
 			results = append(results, record)
-			fmt.Println(string(record.Value))
 		}
 
 		// Reset startIndex for the next node
@@ -503,7 +596,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			tree.root.parent = nil
 		}
 
-		tree.NodeCheck(tree.root)
+		tree.NodeVerify(tree.root)
 		return
 	}
 
@@ -524,8 +617,8 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
 			parent.Keys[pos-1] = borrowedKey
 
-			tree.NodeCheck(parent)
-			tree.NodeCheck(leftSibling)
+			tree.NodeVerify(parent)
+			tree.NodeVerify(leftSibling)
 
 			return
 		}
@@ -541,8 +634,8 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.Keys = append(node.Keys, borrowedKey)
 			parent.Keys[pos] = rightSibling.Keys[0]
 
-			tree.NodeCheck(parent)
-			tree.NodeCheck(rightSibling)
+			tree.NodeVerify(parent)
+			tree.NodeVerify(rightSibling)
 
 			return
 		}
@@ -557,8 +650,8 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		parent.Keys = append(parent.Keys[:pos-1], parent.Keys[pos:]...)
 		tree.handleUnderflow(parent)
 
-		tree.NodeCheck(parent)
-		tree.NodeCheck(leftSibling)
+		tree.NodeVerify(parent)
+		tree.NodeVerify(leftSibling)
 
 	} else { // Merge with right sibling
 		rightSibling := parent.children[pos+1]
@@ -568,8 +661,8 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		parent.Keys = append(parent.Keys[:pos], parent.Keys[pos+1:]...)
 		tree.handleUnderflow(parent)
 
-		tree.NodeCheck(parent)
-		tree.NodeCheck(rightSibling)
+		tree.NodeVerify(parent)
+		tree.NodeVerify(rightSibling)
 	}
 }
 

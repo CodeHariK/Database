@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/codeharik/secretary"
+	"github.com/codeharik/secretary/utils"
 )
 
 func main() {
@@ -12,25 +13,31 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// users, err := s.Tree("users")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	users, err := s.Tree("users")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// multipleKeys := make([][]byte, 40)
-	// for i := range multipleKeys {
-	// 	multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-	// 	err = users.Insert(multipleKeys[i], multipleKeys[i])
-	// 	if err != nil {
-	// 		fmt.Printf("Insert failed: %s", err)
-	// 	}
-	// }
-	// for i := range multipleKeys {
-	// 	r, err := users.Search(multipleKeys[i])
-	// 	if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-	// 		fmt.Printf("\nSearch failed: %d : %s", i, err)
-	// 	}
-	// }
+	images, err := s.Tree("images")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var sortedRecords []*secretary.Record
+	var sortedValues []string
+	for r := 'a'; r <= 'z'; r++ {
+		sortedRecords = append(sortedRecords, &secretary.Record{
+			Key:   []byte(utils.GenerateSeqString(16)),
+			Value: []byte(string(r)),
+		})
+
+		sortedValues = append(sortedValues, string(r))
+	}
+	images.SortedRecordLoad(sortedRecords)
+
+	for _, r := range sortedRecords {
+		users.Insert(r.Key, r.Value)
+	}
 
 	s.Serve()
 }

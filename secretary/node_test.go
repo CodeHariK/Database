@@ -9,18 +9,24 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func TestSaveRoot(t *testing.T) {
-	tree, err := NewBTree(
-		"TestSaveRoot",
-		10,
+func dummyTree(t *testing.T, collectionName string, order uint8) (*Secretary, *BTree) {
+	s, serr := New()
+	tree, err := s.NewBTree(
+		collectionName,
+		order,
 		32,
 		1024,
 		125,
 		10,
 	)
-	if err != nil {
+	if serr != nil || err != nil {
 		t.Fatal(err)
 	}
+	return s, tree
+}
+
+func TestSaveRoot(t *testing.T) {
+	_, tree := dummyTree(t, "TestSaveRoot", 10)
 
 	tree.root = &Node{
 		ParentOffset: 101,
@@ -31,7 +37,7 @@ func TestSaveRoot(t *testing.T) {
 		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
 	}
 
-	err = tree.saveRoot()
+	err := tree.saveRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,27 +145,6 @@ func TestNodeScan(t *testing.T) {
 			t.Errorf("nodeSearch(%q) = %d, expected %d", test.search, result, test.expectedIndex)
 		}
 	}
-
-	tree, err := NewBTree(
-		"TestInsert",
-		4,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	multipleKeys := make([][]byte, 10)
-	for i := range multipleKeys {
-		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-		err = tree.Insert(multipleKeys[i], multipleKeys[i])
-		if err != nil {
-			t.Errorf("Insert failed: %s", err)
-		}
-	}
 }
 
 func TestSearchLeafNode(t *testing.T) {
@@ -251,17 +236,7 @@ func TestSearchLeafNode(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	tree, err := NewBTree(
-		"TestInsert",
-		10,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, tree := dummyTree(t, "TestInsert", 10)
 
 	r, err := tree.SearchRecord([]byte(utils.GenerateRandomString(16)))
 	if err == nil || r != nil {
@@ -299,17 +274,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	tree, err := NewBTree(
-		"TestInsert",
-		4,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, tree := dummyTree(t, "TestDelete", 10)
 
 	// key := []byte(utils.GenerateRandomString(16))
 	// value := []byte("Hello world!")
@@ -345,7 +310,7 @@ func TestDelete(t *testing.T) {
 	multipleKeys := make([][]byte, 10)
 	for i := range multipleKeys {
 		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-		err = tree.Insert(multipleKeys[i], multipleKeys[i])
+		err := tree.Insert(multipleKeys[i], multipleKeys[i])
 		if err != nil {
 			t.Errorf("Insert failed: %s", err)
 		}
@@ -365,22 +330,12 @@ func TestDelete(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	tree, err := NewBTree(
-		"TestInsert",
-		10,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, tree := dummyTree(t, "TestUpdate", 10)
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
 
-	err = tree.Update(key, value)
+	err := tree.Update(key, value)
 	if err == nil {
 		t.Error(err)
 	}
@@ -472,6 +427,39 @@ func TestRangeScan(t *testing.T) {
 		}
 		if !utils.CompareStringArray(resultKeys, tt.expected) {
 			t.Errorf("RangeScan(%q, %q) = %v, expected %v", tt.startKey, tt.endKey, resultKeys, tt.expected)
+		}
+	}
+}
+
+func TestSortedLoad(t *testing.T) {
+	var sortedRecords []*Record
+	var sortedValues []string
+	for r := 'a'; r <= 'z'; r++ {
+		sortedRecords = append(sortedRecords, &Record{
+			Key:   []byte(utils.GenerateSeqString(16)),
+			Value: []byte(string(r)),
+		})
+
+		sortedValues = append(sortedValues, string(r))
+	}
+
+	startKey := sortedRecords[0].Key
+	endKey := sortedRecords[len(sortedRecords)-1].Key
+
+	_, tree := dummyTree(t, "TestSortedLoad", 4)
+
+	tree.SortedRecordLoad(sortedRecords)
+
+	tree.TreeVerify()
+
+	rangeScan := tree.RangeScan([]byte(startKey), []byte(endKey))
+	if len(sortedValues) != len(rangeScan) {
+		t.Fatal("Range should be equal", len(sortedValues), len(rangeScan))
+	}
+
+	for i, s := range sortedRecords {
+		if string(rangeScan[i].Value) != string(s.Value) || string(rangeScan[i].Key) != string(s.Key) {
+			t.Fatal("Record should be equal")
 		}
 	}
 }

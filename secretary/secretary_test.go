@@ -7,7 +7,11 @@ import (
 )
 
 func TestSecretary(t *testing.T) {
-	usersTree, userErr := NewBTree(
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	usersTree, userErr := s.NewBTree(
 		"users",
 		4,
 		32,
@@ -15,9 +19,10 @@ func TestSecretary(t *testing.T) {
 		125,
 		10,
 	)
-	imagesTree, imagesErr := NewBTree(
+
+	imagesTree, imagesErr := s.NewBTree(
 		"images",
-		100,
+		4,
 		32,
 		1024*1024,
 		125,

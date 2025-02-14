@@ -17,3 +17,7 @@ cover:
 
 run:
 	@go run example/main.go
+
+ui:
+	@cd secretaryui && bun run dev
+	

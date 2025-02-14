@@ -8,7 +8,7 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func NewBTree(
+func (s *Secretary) NewBTree(
 	collectionName string,
 	order uint8,
 	batchNumLevel uint8,
@@ -109,8 +109,8 @@ func (tree *BTree) SaveHeader() error {
 	return tree.nodeBatchStore.WriteAt(0, header)
 }
 
-func NewBTreeReadHeader(collectionName string) (*BTree, error) {
-	temp, err := NewBTree(collectionName,
+func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
+	temp, err := s.NewBTree(collectionName,
 		10,
 		0,
 		0,

@@ -23,17 +23,12 @@ func (s *Secretary) getAllBTreeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error marshaling:", err)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
 
 func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
-	table := r.URL.Query().Get("table")
-	if table == "" {
-		http.Error(w, "Missing key parameter", http.StatusBadRequest)
-		return
-	}
+	table := r.PathValue("table")
 
 	tree, exists := s.trees[table]
 	if !exists {
@@ -51,21 +46,50 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(m)
 }
 
+type NewTreeRequest struct {
+	CollectionName string `json:"CollectionName"`
+	Order          uint8  `json:"Order"`
+	BatchNumLevel  uint8  `json:"BatchNumLevel"`
+	BatchBaseSize  uint32 `json:"BatchBaseSize"`
+	BatchIncrement uint8  `json:"BatchIncrement"`
+	BatchLength    uint8  `json:"BatchLength"`
+}
+
+func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
+	var req NewTreeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	tree, err := s.NewBTree(
+		req.CollectionName,
+		req.Order,
+		req.BatchNumLevel,
+		req.BatchBaseSize,
+		req.BatchIncrement,
+		req.BatchLength,
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tree.SaveHeader()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("New tree created"))
+}
+
 type InsertRequest struct {
 	Value string `json:"value"`
 }
 
 func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	table := r.URL.Query().Get("table")
-	if table == "" {
-		http.Error(w, "Missing table parameter", http.StatusBadRequest)
-		return
-	}
+	table := r.PathValue("table")
 
 	var req InsertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(strings.Trim(req.Value, " ")) == 0 {
@@ -106,9 +130,12 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node, index, found := tree.SearchLeafNode([]byte(id))
-	record := "<nil>"
+	var record string
 	if found {
 		record = string(node.records[index].Value)
+	} else {
+		http.Error(w, "Key not found", http.StatusNotFound)
+		return
 	}
 
 	response := map[string]string{
@@ -123,9 +150,10 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Secretary) setupRouter() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/getallbtree", s.getAllBTreeHandler)
-	mux.HandleFunc("/getbtree", s.getBTreeHandler)
-	mux.HandleFunc("/insert", s.insertHandler)
+	mux.HandleFunc("GET /getallbtree", s.getAllBTreeHandler)
+	mux.HandleFunc("GET /getbtree/{table}", s.getBTreeHandler)
+	mux.HandleFunc("POST /newtree", s.newTreeHandler)
+	mux.HandleFunc("POST /insert/{table}", s.insertHandler)
 	mux.HandleFunc("GET /search/{table}/{id}", s.searchHandler)
 
 	// Enable CORS with custom settings

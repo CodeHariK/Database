@@ -11,17 +11,7 @@ import (
 
 // TestBTreeSerialization tests the serialization and deserialization of BPlusTree
 func TestBTreeSerialization(t *testing.T) {
-	originalTree, err := NewBTree(
-		"TestBTreeSerialization",
-		10,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, originalTree := dummyTree(t, "TestBTreeSerialization", 10)
 
 	// Serialize the tree
 	serializedData, err := binstruct.Serialize(*originalTree)
@@ -47,7 +37,11 @@ func TestBTreeSerialization(t *testing.T) {
 }
 
 func TestBtreeInvalid(t *testing.T) {
-	_, invalidNameErr := NewBTree(
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, invalidNameErr := s.NewBTree(
 		"Tes",
 		10,
 		32,
@@ -55,7 +49,7 @@ func TestBtreeInvalid(t *testing.T) {
 		125,
 		10,
 	)
-	_, invalidIncrementErr := NewBTree(
+	_, invalidIncrementErr := s.NewBTree(
 		"Tes",
 		10,
 		32,
@@ -63,7 +57,7 @@ func TestBtreeInvalid(t *testing.T) {
 		225,
 		10,
 	)
-	_, invalidOrderErr := NewBTree(
+	_, invalidOrderErr := s.NewBTree(
 		"Tes",
 		210,
 		32,
@@ -77,24 +71,14 @@ func TestBtreeInvalid(t *testing.T) {
 }
 
 func TestSaveReadHeader(t *testing.T) {
-	tree, err := NewBTree(
-		"TestSaveHeader",
-		10,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s, tree := dummyTree(t, "TestSaveHeader", 10)
 
-	err = tree.SaveHeader()
+	err := tree.SaveHeader()
 	if err != nil {
 		t.Fatalf("SaveHeader failed: %v", err)
 	}
 
-	deserializedTree, err := NewBTreeReadHeader(tree.CollectionName)
+	deserializedTree, err := s.NewBTreeReadHeader(tree.CollectionName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,22 +96,12 @@ func TestSaveReadHeader(t *testing.T) {
 }
 
 func TestBTreeHeight(t *testing.T) {
-	tree, err := NewBTree(
-		"TestSaveHeader",
-		4,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, tree := dummyTree(t, "TestSaveHeader", 4)
 
 	// Insert more keys to increase height
 	for i := 0; i < 9; i++ {
 		key := []byte(utils.GenerateSeqRandomString(16, 4))
-		err = tree.Insert(key, key)
+		err := tree.Insert(key, key)
 		if err != nil {
 			t.Errorf("Insert failed: %s", err)
 		}
@@ -138,7 +112,7 @@ func TestBTreeHeight(t *testing.T) {
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(16, 4))
-	err = tree.Insert(key, key)
+	err := tree.Insert(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)
 	}
@@ -156,19 +130,9 @@ func TestBTreeHeight(t *testing.T) {
 }
 
 func TestBTreeClose(t *testing.T) {
-	tree, err := NewBTree(
-		"TestSaveHeader",
-		4,
-		32,
-		1024,
-		125,
-		10,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, tree := dummyTree(t, "TestSaveHeader", 4)
 
-	err = tree.close()
+	err := tree.close()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -91,10 +91,10 @@ function showSnapshot() {
 
 async function fetchCurrentTree() {
 
-    const response = await fetch(`${ui.url}/getbtree?table=${ui.currentTreeDef!.collectionName}`);
+    const response = await fetch(`${ui.url}/getbtree/${ui.currentTreeDef!.collectionName}`);
 
     if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        throw new Error(`Error fetch current tree : HTTP error! Status: ${response.statusText} ${response.status}`);
     }
 
     const data = await response.json(); // Assuming data is an array
@@ -111,7 +111,7 @@ export async function fetchAllBTree() {
         const response = await fetch(`${ui.url}/getallbtree`);
 
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            throw new Error(`Error fetch all btree : HTTP error! Status: ${response.statusText} ${response.status}`);
         }
 
         const data: any[] = await response.json(); // Assuming data is an array
@@ -147,11 +147,15 @@ async function insertData() {
     const value = (document.getElementById("value") as HTMLInputElement).value;
     const payload = { value };
     try {
-        const response = await fetch(`${ui.url}/insert?table=${ui.currentTreeDef!.collectionName}`, {
+        const response = await fetch(`${ui.url}/insert/${ui.currentTreeDef!.collectionName}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
+        if (!response.ok) {
+            throw new Error(`Error inserting data : HTTP error! Status: ${response.statusText} ${response.status}`);
+        }
+
         const result = await response.json();
         resultDiv.textContent = JSON.stringify(result, null, 2);
 
@@ -163,33 +167,33 @@ async function insertData() {
 
 async function deleteData() {
     const id = (document.getElementById("delete-id") as HTMLInputElement).value;
-    try {
-        const response = await fetch(`${ui.url}/delete?table=/${ui.currentTreeDef!.collectionName}/${id}`, { method: "DELETE" });
-        const result = await response.json();
-        resultDiv.textContent = JSON.stringify(result, null, 2);
-    } catch (error) {
-        console.error("Error deleting data:", error);
+    const response = await fetch(`${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+        throw new Error(`Error deleting : HTTP error! Status: ${response.statusText} ${response.status}`);
     }
+
+    const result = await response.json();
+    resultDiv.textContent = JSON.stringify(result, null, 2);
 }
 
 async function searchData() {
     const search = (document.getElementById("search") as HTMLInputElement).value;
-    try {
-        const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
-        const result = await response.json();
-        resultDiv.textContent = JSON.stringify(result, null, 2);
-
-        let searchResult = ui.getTree().searchLeafNode(search)
-
-        ui.SELECTEDNODE = new Map()
-        searchResult.path.forEach((e) => {
-            ui.SELECTEDNODE.set(e, true)
-        })
-
-        showSnapshot()
-    } catch (error) {
-        console.error("Error searching data:", error);
+    const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
+    if (!response.ok) {
+        throw new Error(`Error search : HTTP error! Status: ${response.statusText} ${response.status}`);
     }
+
+    const result = await response.json();
+    resultDiv.textContent = JSON.stringify(result, null, 2);
+
+    let searchResult = ui.getTree().searchLeafNode(search)
+
+    ui.SELECTEDNODE = new Map()
+    searchResult.path.forEach((e) => {
+        ui.SELECTEDNODE.set(e, true)
+    })
+
+    showSnapshot()
 }
 
 document.addEventListener("DOMContentLoaded", () => {

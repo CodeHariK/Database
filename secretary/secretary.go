@@ -29,7 +29,7 @@ func New() (*Secretary, error) {
 	for _, file := range files {
 		if file.IsDir() {
 
-			tree, err := NewBTreeReadHeader(file.Name())
+			tree, err := secretary.NewBTreeReadHeader(file.Name())
 			if err == nil && tree.CollectionName == file.Name() {
 				secretary.trees[file.Name()] = tree
 				fmt.Print("\n[DIR] * ", file.Name())
