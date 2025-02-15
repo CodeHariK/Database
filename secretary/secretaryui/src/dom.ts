@@ -1,5 +1,7 @@
 export const canvasSection = () => document.getElementById("canvas-section") as HTMLButtonElement;
 
+export const searchInput = document.getElementById("search") as HTMLInputElement
+
 export const prevTreeBtn = document.getElementById("prev-tree") as HTMLButtonElement;
 export const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonElement;
 

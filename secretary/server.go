@@ -32,11 +32,11 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		http.Error(w, "Tree not found", http.StatusInternalServerError)
 		return
 	}
 
-	m, err := tree.ConvertBTreeToJSON()
+	m, err := tree.ConvertBTreeToJSON(true)
 	if err != nil || m == nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -101,7 +101,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		http.Error(w, "Tree not found", http.StatusInternalServerError)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		http.Error(w, "Tree not found", http.StatusInternalServerError)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 	if found {
 		record = string(node.records[index].Value)
 	} else {
-		http.Error(w, "Key not found", http.StatusNotFound)
+		http.Error(w, "Key not found", http.StatusInternalServerError)
 		return
 	}
 
@@ -149,14 +149,40 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+	id := r.PathValue("id")
+
+	tree, exists := s.trees[table]
+	if !exists {
+		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		return
+	}
+
+	err := tree.Delete([]byte(id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]string{
+		"table":  table,
+		"result": "Delete success " + table + id,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 func (s *Secretary) setupRouter() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /getallbtree", s.getAllBTreeHandler)
-	mux.HandleFunc("GET /getbtree/{table}", s.getBTreeHandler)
+	mux.HandleFunc("GET /getalltree", s.getAllBTreeHandler)
+	mux.HandleFunc("GET /gettree/{table}", s.getBTreeHandler)
 	mux.HandleFunc("POST /newtree", s.newTreeHandler)
 	mux.HandleFunc("POST /insert/{table}", s.insertHandler)
 	mux.HandleFunc("GET /search/{table}/{id}", s.searchHandler)
+	mux.HandleFunc("DELETE /delete/{table}/{id}", s.deleteHandler)
 
 	// Enable CORS with custom settings
 	handler := cors.New(cors.Options{

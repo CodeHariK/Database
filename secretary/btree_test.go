@@ -121,7 +121,7 @@ func TestBTreeHeight(t *testing.T) {
 		t.Errorf("Expected height %d", tree.Height())
 	}
 
-	jsonOutput, err := tree.ConvertBTreeToJSON()
+	jsonOutput, err := tree.ConvertBTreeToJSON(true)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return

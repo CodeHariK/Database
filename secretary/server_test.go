@@ -18,7 +18,7 @@ func TestGetAllBTreeHandler(t *testing.T) {
 	}
 	router := s.setupRouter()
 
-	req := httptest.NewRequest(http.MethodGet, "/getallbtree", nil)
+	req := httptest.NewRequest(http.MethodGet, "/getalltree", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req) // Call handler directly
@@ -47,7 +47,7 @@ func TestGetBTreeHandler(t *testing.T) {
 		t.Errorf("Insert failed: %s", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/getbtree/123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/gettree/123", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	resp := rec.Result()
@@ -56,7 +56,7 @@ func TestGetBTreeHandler(t *testing.T) {
 		t.Errorf("expected status StatusNotFound; got %v", resp.Status)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/getbtree/users", nil)
+	req = httptest.NewRequest(http.MethodGet, "/gettree/users", nil)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	resp = rec.Result()

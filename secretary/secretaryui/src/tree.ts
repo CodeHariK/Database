@@ -31,10 +31,11 @@ export class BTree {
     root: BTreeNode;
 
     constructor(json: any) {
-        this.root = this.convertNode(json.root);
+        this.root = this.convertNode(json);
     }
 
     convertNode = (node: any): BTreeNode => {
+
         return {
             nodeID: node.nodeID,
             nextID: node.nextID,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/codeharik/secretary"
@@ -25,13 +26,13 @@ func main() {
 
 	var sortedRecords []*secretary.Record
 	var sortedValues []string
-	for r := 'a'; r <= 'z'; r++ {
+	for r := 0; r < 26; r++ {
 		sortedRecords = append(sortedRecords, &secretary.Record{
 			Key:   []byte(utils.GenerateSeqString(16)),
-			Value: []byte(string(r)),
+			Value: []byte(fmt.Sprint(r + 1)),
 		})
 
-		sortedValues = append(sortedValues, string(r))
+		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
 	images.SortedRecordLoad(sortedRecords)
 

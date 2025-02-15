@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -432,34 +433,44 @@ func TestRangeScan(t *testing.T) {
 }
 
 func TestSortedLoad(t *testing.T) {
-	var sortedRecords []*Record
-	var sortedValues []string
-	for r := 'a'; r <= 'z'; r++ {
-		sortedRecords = append(sortedRecords, &Record{
-			Key:   []byte(utils.GenerateSeqString(16)),
-			Value: []byte(string(r)),
-		})
-
-		sortedValues = append(sortedValues, string(r))
+	numKeys := make([]int, 64)
+	for i := range numKeys {
+		numKeys[i] = i + 1
 	}
 
-	startKey := sortedRecords[0].Key
-	endKey := sortedRecords[len(sortedRecords)-1].Key
+	for _, numKey := range numKeys {
+		var sortedRecords []*Record
+		var sortedValues []string
+		for r := 0; r < numKey; r++ {
+			sortedRecords = append(sortedRecords, &Record{
+				Key:   []byte(utils.GenerateSeqString(16)),
+				Value: []byte(fmt.Sprint(r)),
+			})
 
-	_, tree := dummyTree(t, "TestSortedLoad", 4)
+			sortedValues = append(sortedValues, fmt.Sprint(r))
+		}
 
-	tree.SortedRecordLoad(sortedRecords)
+		_, tree := dummyTree(t, "TestSortedLoad", 4)
 
-	tree.TreeVerify()
+		err := tree.SortedRecordLoad(sortedRecords)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	rangeScan := tree.RangeScan([]byte(startKey), []byte(endKey))
-	if len(sortedValues) != len(rangeScan) {
-		t.Fatal("Range should be equal", len(sortedValues), len(rangeScan))
-	}
+		tree.TreeVerify()
 
-	for i, s := range sortedRecords {
-		if string(rangeScan[i].Value) != string(s.Value) || string(rangeScan[i].Key) != string(s.Key) {
-			t.Fatal("Record should be equal")
+		startKey := sortedRecords[0].Key
+		endKey := sortedRecords[len(sortedRecords)-1].Key
+
+		rangeScan := tree.RangeScan([]byte(startKey), []byte(endKey))
+		if len(sortedValues) != len(rangeScan) {
+			t.Fatal("Range should be equal", len(sortedValues), len(rangeScan))
+		}
+
+		for i, s := range sortedRecords {
+			if string(rangeScan[i].Value) != string(s.Value) || string(rangeScan[i].Key) != string(s.Key) {
+				t.Fatal("Record should be equal")
+			}
 		}
 	}
 }

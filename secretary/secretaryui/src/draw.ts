@@ -2,20 +2,18 @@ import { dia, elementTools, shapes } from '@joint/core';
 import { ui } from './main';
 import { randomColor } from './utils';
 import { displayNode } from './collection';
-import { BTree, BTreeNode, NodeDef } from './tree';
-import { canvasSection } from './dom';
+import { BTreeNode, NodeDef } from './tree';
+import { canvasSection, searchInput } from './dom';
 
 let newBox = (x: number, y: number, node: BTreeNode) => {
 
     let nodeDef = ui.NODEMAP.get(node.nodeID);
-    if (!nodeDef) {
-        ui.NODEMAP.set(node.nodeID, {
-            color: randomColor(),
-            selected: false,
-            box: null,
-            node: node,
-        })
-    }
+    ui.NODEMAP.set(node.nodeID, {
+        color: nodeDef ? nodeDef.color : randomColor(),
+        selected: false,
+        box: null,
+        node: node,
+    })
     nodeDef = ui.NODEMAP.get(node.nodeID)!;
 
     const element = new shapes.standard.HeaderedRectangle();
@@ -29,7 +27,7 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
         },
         body: {
             fill: nodeDef.color,
-            fillOpacity: nodeDef.selected ? 0.5 : 0.1,
+            fillOpacity: searchInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3,
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
@@ -49,8 +47,8 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
     });
 
     element.attr('bodyText/text', "Next " + node.nextID + "\nPrev " + node.prevID +
-        "\nKeys" + node.keys.map((a) => { return "\n" + a }).toString() +
-        "\n\nValues" + node.value.map((a) => { return "\n" + a }).toString());
+        "\nKeys" + node.keys.map((a) => { return "\n" + (a == searchInput.value ? " > " : "") + a }).toString() +
+        "\n\nValues" + node.value.map((a, i) => { return "\n" + (node.keys[i] == searchInput.value ? " > " : "") + a }).toString());
 
     element.addTo(ui.graph);
 
@@ -85,29 +83,40 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
     return element
 }
 
-export function createBPlusTreeFromJSON(
-    tree: BTree,
-    order: number,
-    x = 400,
-    y = 50
-) {
-    if (!tree) return null;
+function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
+    const link = new shapes.standard.Link();
+    link.source(nodeDef.box!);
+    link.target(childDef.box!);
 
-    const height = tree.height();
-    const maxSpacing = Math.pow(order, height - 1) * ui.BOXWIDTH / 3;
-
-    createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
-
-    ui.NODEMAP.forEach((nodeDef) => {
-        if (nodeDef.node?.nextID) {
-            let nextDef = ui.NODEMAP.get(nodeDef.node!.nextID)!
-            drawLink(nodeDef, nextDef)
+    link.appendLabel({
+        attrs: {
+            text: {
+                text: nodeDef.node?.nodeID + " " + childDef.node?.nodeID,
+                refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? 30 : 0,
+            }
         }
-        if (nodeDef.node?.prevID) {
-            let prevDef = ui.NODEMAP.get(nodeDef.node!.prevID)!
-            drawLink(nodeDef, prevDef)
+    });
+    link.router('orthogonal');
+    link.connector('straight', { cornerType: 'line' });
+
+    var stroke = "#aaa";
+    if (nodeDef.selected && childDef.selected) {
+        stroke = "#000";
+    }
+
+    link.attr(
+        {
+            line: {
+                // connection: true,
+                stroke: stroke,
+                strokeWidth: 2,
+                strokeDasharray: 4,
+                // refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? 30 : 0,
+            },
         }
-    })
+    );
+
+    ui.graph.addCell(link);
 }
 
 function createTreeRecursive(
@@ -146,6 +155,33 @@ function createTreeRecursive(
 
     return box;
 }
+
+export function BuildTreeFromJSON() {
+    ui.graph.clear()
+
+    let x = 400, y = 50
+
+    let tree = ui.getTree()
+    if (!tree) return null;
+    let order = ui.currentTreeDef!.order
+
+    const height = tree.height();
+    const maxSpacing = Math.pow(order, height - 1) * ui.BOXWIDTH / 3;
+
+    createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
+
+    ui.NODEMAP.forEach((nodeDef) => {
+        if (nodeDef.node?.nextID) {
+            let nextDef = ui.NODEMAP.get(nodeDef.node!.nextID)!
+            drawLink(nodeDef, nextDef)
+        }
+        if (nodeDef.node?.prevID) {
+            let prevDef = ui.NODEMAP.get(nodeDef.node!.prevID)!
+            drawLink(nodeDef, prevDef)
+        }
+    })
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -190,38 +226,3 @@ document.addEventListener('DOMContentLoaded', () => {
 window.onresize = () => {
     ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
 }
-
-function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
-    const link = new shapes.standard.Link();
-    link.source(nodeDef.box!);
-    link.target(childDef.box!);
-
-    link.appendLabel({
-        attrs: {
-            text: {
-                text: 'to the'
-            }
-        }
-    });
-    link.router('orthogonal');
-    link.connector('straight', { cornerType: 'line' });
-
-    var stroke = "#000000";
-    if (nodeDef.selected && childDef.selected) {
-        stroke = '#' + ('000000' + Math.floor(Math.random() * 16777215).toString(16)).slice(-6);
-    }
-
-    link.attr(
-        {
-            line: {
-                // connection: true,
-                stroke: stroke,
-                strokeWidth: 2,
-                strokeDasharray: 4
-            },
-        }
-    );
-
-    ui.graph.addCell(link);
-}
-

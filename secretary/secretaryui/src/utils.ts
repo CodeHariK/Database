@@ -4,7 +4,7 @@ const randomInt = (min: number, max: number) => {
 
 export const randomColor = () => {
     var h = randomInt(0, 360);
-    var s = randomInt(30, 98);
-    var l = randomInt(30, 90);
+    var s = randomInt(20, 98);
+    var l = randomInt(20, 90);
     return `hsl(${h},${s}%,${l}%)`;
 }

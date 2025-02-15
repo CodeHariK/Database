@@ -1,8 +1,8 @@
 import { ui } from "./main";
 
-import { createBPlusTreeFromJSON } from "./draw";
+import { BuildTreeFromJSON as RedrawTree } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn } from "./dom";
+import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn, searchInput } from "./dom";
 
 export function displayNode(node: BTreeNode) {
     const infoBox = document.getElementById("info-box");
@@ -83,15 +83,9 @@ export function displayNode(node: BTreeNode) {
     infoBox.appendChild(list);
 }
 
-function showSnapshot() {
-    ui.graph.clear()
-
-    createBPlusTreeFromJSON(ui.getTree(), ui.currentTreeDef!.order);
-}
-
 async function fetchCurrentTree() {
 
-    const response = await fetch(`${ui.url}/getbtree/${ui.currentTreeDef!.collectionName}`);
+    const response = await fetch(`${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`);
 
     if (!response.ok) {
         throw new Error(`Error fetch current tree : HTTP error! Status: ${response.statusText} ${response.status}`);
@@ -103,12 +97,12 @@ async function fetchCurrentTree() {
     ui.TreeSnapshots.push(bPlusTree)
     ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
 
-    showSnapshot()
+    RedrawTree()
 }
 
 export async function fetchAllBTree() {
     try {
-        const response = await fetch(`${ui.url}/getallbtree`);
+        const response = await fetch(`${ui.url}/getalltree`);
 
         if (!response.ok) {
             throw new Error(`Error fetch all btree : HTTP error! Status: ${response.statusText} ${response.status}`);
@@ -174,10 +168,12 @@ async function deleteData() {
 
     const result = await response.json();
     resultDiv.textContent = JSON.stringify(result, null, 2);
+
+    fetchCurrentTree()
 }
 
 async function searchRecord() {
-    const search = (document.getElementById("search") as HTMLInputElement).value;
+    const search = searchInput.value;
     const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
     if (!response.ok) {
         throw new Error(`Error search : HTTP error! Status: ${response.statusText} ${response.status}`);
@@ -188,11 +184,14 @@ async function searchRecord() {
 
     let searchResult = ui.getTree().searchLeafNode(search)
 
+    ui.NODEMAP.forEach((n) => {
+        n.selected = false
+    })
     searchResult.path.forEach((e) => {
         ui.NODEMAP.get(e.nodeID)!.selected = true
     })
 
-    showSnapshot()
+    RedrawTree()
 }
 
 async function newTreeRequest() {
@@ -235,13 +234,13 @@ document.addEventListener("DOMContentLoaded", () => {
     prevTreeBtn.addEventListener("click", () => {
         if (ui.currentTreeSnapshotIndex != 0) {
             ui.currentTreeSnapshotIndex--;
-            showSnapshot()
+            RedrawTree()
         }
     });
     nextTreeBtn.addEventListener("click", () => {
         if (ui.currentTreeSnapshotIndex != (ui.TreeSnapshots.length - 1)) {
             ui.currentTreeSnapshotIndex++;
-            showSnapshot()
+            RedrawTree()
         }
     });
 
