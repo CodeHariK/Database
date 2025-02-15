@@ -28,9 +28,11 @@ export type BTreeNode = {
 };
 
 export class BTree {
+    name: string;
     root: BTreeNode;
 
-    constructor(json: any) {
+    constructor(name: string, json: any) {
+        this.name = name
         this.root = this.convertNode(json);
     }
 

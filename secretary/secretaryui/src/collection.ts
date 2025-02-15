@@ -1,8 +1,8 @@
 import { ui } from "./main";
 
-import { BuildTreeFromJSON as RedrawTree } from "./draw";
+import { RedrawTree } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn, searchInput } from "./dom";
+import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn, searchInput, treeForm } from "./dom";
 
 export function displayNode(node: BTreeNode) {
     const infoBox = document.getElementById("info-box");
@@ -93,9 +93,19 @@ async function fetchCurrentTree() {
 
     const data = await response.json(); // Assuming data is an array
 
-    const bPlusTree = new BTree(data)
-    ui.TreeSnapshots.push(bPlusTree)
+    const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
+
+    if (ui.getTree()?.name != bTree.name) {
+        ui.TreeSnapshots = []
+        ui.currentTreeSnapshotIndex = 0
+        ui.NODEMAP = new Map()
+        ui.MouseCurrentNode = null
+    }
+    ui.TreeSnapshots.push(bTree)
     ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
+
+    let height = ui.currentTreeDef?.order ?? 4
+    ui.BOXHEIGHT = height * 30
 
     RedrawTree()
 }
@@ -194,59 +204,57 @@ async function searchRecord() {
     RedrawTree()
 }
 
-async function newTreeRequest() {
-    const form = document.getElementById("treeForm") as HTMLFormElement;
+async function newTreeRequest(event: SubmitEvent) {
+    event.preventDefault(); // Prevent page reload
 
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault(); // Prevent page reload
+    const requestData = {
+        CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
+        Order: Number((document.getElementById("order") as HTMLInputElement).value),
+        BatchNumLevel: Number((document.getElementById("batchNumLevel") as HTMLInputElement).value),
+        BatchBaseSize: Number((document.getElementById("batchBaseSize") as HTMLInputElement).value),
+        BatchIncrement: Number((document.getElementById("batchIncrement") as HTMLInputElement).value),
+        BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
+    };
 
-        const requestData = {
-            CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
-            Order: Number((document.getElementById("order") as HTMLInputElement).value),
-            BatchNumLevel: Number((document.getElementById("batchNumLevel") as HTMLInputElement).value),
-            BatchBaseSize: Number((document.getElementById("batchBaseSize") as HTMLInputElement).value),
-            BatchIncrement: Number((document.getElementById("batchIncrement") as HTMLInputElement).value),
-            BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
-        };
+    try {
+        const response = await fetch(`${ui.url}/newtree`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestData),
+        });
 
-        try {
-            const response = await fetch(`${ui.url}/newtree`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestData),
-            });
+        const result = await response.json();
+        resultDiv.textContent = `Success: ${JSON.stringify(result)}`;
+        resultDiv.style.color = "green";
 
-            const result = await response.json();
-            resultDiv.textContent = `Success: ${JSON.stringify(result)}`;
-            resultDiv.style.color = "green";
-
-            fetchAllBTree()
-        } catch (error) {
-            resultDiv.textContent = `Error: ${error}`;
-            resultDiv.style.color = "red";
-        }
-    });
+        fetchAllBTree()
+    } catch (error) {
+        resultDiv.textContent = `Error: ${error}`;
+        resultDiv.style.color = "red";
+    }
 }
 
 
-document.addEventListener("DOMContentLoaded", () => {
+export function setupCollectionRequest() {
+    document.addEventListener("DOMContentLoaded", () => {
 
-    prevTreeBtn.addEventListener("click", () => {
-        if (ui.currentTreeSnapshotIndex != 0) {
-            ui.currentTreeSnapshotIndex--;
-            RedrawTree()
-        }
+        prevTreeBtn.addEventListener("click", () => {
+            if (ui.currentTreeSnapshotIndex != 0) {
+                ui.currentTreeSnapshotIndex--;
+                RedrawTree()
+            }
+        });
+        nextTreeBtn.addEventListener("click", () => {
+            if (ui.currentTreeSnapshotIndex != (ui.TreeSnapshots.length - 1)) {
+                ui.currentTreeSnapshotIndex++;
+                RedrawTree()
+            }
+        });
+
+        insertBtn.addEventListener("click", insertData);
+        deleteBtn.addEventListener("click", deleteData);
+        searchBtn.addEventListener("click", searchRecord);
+
+        treeForm.addEventListener("submit", newTreeRequest)
     });
-    nextTreeBtn.addEventListener("click", () => {
-        if (ui.currentTreeSnapshotIndex != (ui.TreeSnapshots.length - 1)) {
-            ui.currentTreeSnapshotIndex++;
-            RedrawTree()
-        }
-    });
-
-    insertBtn.addEventListener("click", insertData);
-    deleteBtn.addEventListener("click", deleteData);
-    searchBtn.addEventListener("click", searchRecord);
-
-    newTreeRequest()
-});
+}

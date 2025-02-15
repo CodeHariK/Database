@@ -36,7 +36,7 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := tree.ConvertBTreeToJSON(true)
+	m, err := tree.ConvertBTreeToJSON()
 	if err != nil || m == nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +106,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(16, 4, req.Value))
-	err := tree.Insert(key, key)
+	err := tree.Set(key, key)
 	if err != nil {
 		http.Error(w, "Tree not found", http.StatusInternalServerError)
 		return
@@ -161,6 +161,7 @@ func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

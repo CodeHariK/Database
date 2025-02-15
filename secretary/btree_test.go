@@ -98,12 +98,12 @@ func TestSaveReadHeader(t *testing.T) {
 func TestBTreeHeight(t *testing.T) {
 	_, tree := dummyTree(t, "TestSaveHeader", 4)
 
-	// Insert more keys to increase height
+	// Set more keys to increase height
 	for i := 0; i < 9; i++ {
 		key := []byte(utils.GenerateSeqRandomString(16, 4))
-		err := tree.Insert(key, key)
+		err := tree.Set(key, key)
 		if err != nil {
-			t.Errorf("Insert failed: %s", err)
+			t.Errorf("Set failed: %s", err)
 		}
 	}
 
@@ -112,9 +112,9 @@ func TestBTreeHeight(t *testing.T) {
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(16, 4))
-	err := tree.Insert(key, key)
+	err := tree.Set(key, key)
 	if err != nil {
-		t.Errorf("Insert failed: %s", err)
+		t.Errorf("Set failed: %s", err)
 	}
 
 	if tree.Height() != 3 {

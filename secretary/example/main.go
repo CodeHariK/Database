@@ -34,10 +34,10 @@ func main() {
 
 		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
-	images.SortedRecordLoad(sortedRecords)
+	images.SortedRecordSet(sortedRecords)
 
 	for _, r := range sortedRecords {
-		users.Insert(r.Key, r.Value)
+		users.Set(r.Key, r.Value)
 	}
 
 	s.Serve()

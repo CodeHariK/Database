@@ -5,7 +5,7 @@ import { displayNode } from './collection';
 import { BTreeNode, NodeDef } from './tree';
 import { canvasSection, searchInput } from './dom';
 
-let newBox = (x: number, y: number, node: BTreeNode) => {
+let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
     let nodeDef = ui.NODEMAP.get(node.nodeID);
     ui.NODEMAP.set(node.nodeID, {
@@ -46,9 +46,12 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
         },
     });
 
-    element.attr('bodyText/text', "Next " + node.nextID + "\nPrev " + node.prevID +
-        "\nKeys" + node.keys.map((a) => { return "\n" + (a == searchInput.value ? " > " : "") + a }).toString() +
-        "\n\nValues" + node.value.map((a, i) => { return "\n" + (node.keys[i] == searchInput.value ? " > " : "") + a }).toString());
+    element.attr('bodyText/text',
+        "< Prev " + node.prevID + "  " + node.nextID + " Next >" + "\n" +
+        node.keys.map((a, i) => {
+            return "\n" + (a == searchInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
+        }).join("")
+    );
 
     element.addTo(ui.graph);
 
@@ -80,11 +83,22 @@ let newBox = (x: number, y: number, node: BTreeNode) => {
 
     nodeDef.box = element
 
-    return element
+    return nodeDef
 }
 
 function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
+
     const link = new shapes.standard.Link();
+
+    if (!nodeDef?.box || (nodeDef?.box && !ui.graph.getCell(nodeDef.box.id))) {
+        console.log("nodeDef.box is not in the graph!");
+        return
+    }
+    if (!childDef?.box || (childDef?.box && !ui.graph.getCell(childDef.box.id))) {
+        console.log("childDef.box is not in the graph!");
+        return
+    }
+
     link.source(nodeDef.box!);
     link.target(childDef.box!);
 
@@ -92,17 +106,15 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
         attrs: {
             text: {
                 text: nodeDef.node?.nodeID + " " + childDef.node?.nodeID,
-                refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? 30 : 0,
+                refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? -10 : 10,
             }
         }
     });
-    link.router('orthogonal');
-    link.connector('straight', { cornerType: 'line' });
 
-    var stroke = "#aaa";
-    if (nodeDef.selected && childDef.selected) {
-        stroke = "#000";
-    }
+    link.router(ui.router);
+    link.connector(ui.connector, { cornerType: 'line' });
+
+    var stroke = (nodeDef.selected && childDef.selected) ? "#000" : "#aaa";
 
     link.attr(
         {
@@ -127,12 +139,10 @@ function createTreeRecursive(
     x: number,
     y: number,
     maxSpacing: number
-): shapes.standard.HeaderedRectangle | null {
-    if (!node) return null;
+): NodeDef | null {
+    if (!node.nodeID) return null;
 
-    const box = newBox(x, y, node);
-
-    let nodeDef = ui.NODEMAP.get(node.nodeID)!;
+    const nodeDef = MapToNodeDef(x, y, node);
 
     if (node.children && node.children.length > 0) {
         const numChildren = node.children.length;
@@ -142,10 +152,10 @@ function createTreeRecursive(
         node.children.forEach((child, index) => {
             const childX = startX + index * spacing;
             const childY = y + ui.BOXHEIGHT * 1.5;
-            const childNode = createTreeRecursive(child, order, height, level + 1, childX, childY, maxSpacing);
 
-            if (childNode) {
+            const childNodeDef = createTreeRecursive(child, order, height, level + 1, childX, childY, maxSpacing);
 
+            if (childNodeDef) {
                 let childDef = ui.NODEMAP.get(child.nodeID)!;
 
                 drawLink(nodeDef, childDef);
@@ -153,10 +163,10 @@ function createTreeRecursive(
         });
     }
 
-    return box;
+    return nodeDef;
 }
 
-export function BuildTreeFromJSON() {
+export function RedrawTree() {
     ui.graph.clear()
 
     let x = 400, y = 50
@@ -171,58 +181,59 @@ export function BuildTreeFromJSON() {
     createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
 
     ui.NODEMAP.forEach((nodeDef) => {
-        if (nodeDef.node?.nextID) {
+        if ((nodeDef.node?.nextID ?? 0) > 0) {
             let nextDef = ui.NODEMAP.get(nodeDef.node!.nextID)!
             drawLink(nodeDef, nextDef)
         }
-        if (nodeDef.node?.prevID) {
+        if ((nodeDef.node?.prevID ?? 0) > 0) {
             let prevDef = ui.NODEMAP.get(nodeDef.node!.prevID)!
             drawLink(nodeDef, prevDef)
         }
     })
 }
 
+export function setupDraw() {
+    document.addEventListener('DOMContentLoaded', () => {
 
-document.addEventListener('DOMContentLoaded', () => {
+        ui.paper.scale(1);
+        ui.paper.setInteractivity({
+            elementMove: true,
+            linkMove: true
+        });
+        let panning = false;
+        let lastPosition = { x: 0, y: 0 };
 
-    ui.paper.scale(1);
-    ui.paper.setInteractivity({
-        elementMove: true,
-        linkMove: true
-    });
-    let panning = false;
-    let lastPosition = { x: 0, y: 0 };
-
-    canvasSection().addEventListener('mousedown', (e) => {
-        if (ui.MouseCurrentNode == null) {
-            panning = true;
-        } else {
-            displayNode(ui.MouseCurrentNode)
-        }
-        lastPosition = { x: e.x, y: e.y };
-    })
-    canvasSection().addEventListener('mouseup', () => {
-        panning = false;
-    })
-    canvasSection().addEventListener('mousemove', (e) => {
-        if (panning) {
-            const dx = (e.x - lastPosition.x); // Reduce speed
-            const dy = (e.y - lastPosition.y); // Reduce speed
-            const currentTranslate = ui.paper.translate();
-            ui.paper.translate(currentTranslate.tx + dx, currentTranslate.ty + dy);
+        document.addEventListener('mousedown', (e) => {
+            if (ui.MouseCurrentNode == null) {
+                panning = true;
+            } else {
+                displayNode(ui.MouseCurrentNode)
+            }
             lastPosition = { x: e.x, y: e.y };
-        }
-    })
+        })
+        document.addEventListener('mouseup', () => {
+            panning = false;
+        })
+        document.addEventListener('mousemove', (e) => {
+            if (panning) {
+                const dx = (e.x - lastPosition.x); // Reduce speed
+                const dy = (e.y - lastPosition.y); // Reduce speed
+                const currentTranslate = ui.paper.translate();
+                ui.paper.translate(currentTranslate.tx + dx, currentTranslate.ty + dy);
+                lastPosition = { x: e.x, y: e.y };
+            }
+        })
 
-    canvasSection().addEventListener('wheel', (event) => {
-        event.preventDefault();
-        const scaleFactor = 1.1;
-        let scale = ui.paper.scale().sx;
-        scale = event.deltaY < 0 ? scale * scaleFactor : scale / scaleFactor;
-        ui.paper.scale(Math.max(0.2, Math.min(2, scale)));
-    }, { passive: false });
-});
+        canvasSection().addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const scaleFactor = 1.1;
+            let scale = ui.paper.scale().sx;
+            scale = event.deltaY < 0 ? scale * scaleFactor : scale / scaleFactor;
+            ui.paper.scale(Math.max(0.2, Math.min(2, scale)));
+        }, { passive: false });
+    });
 
-window.onresize = () => {
-    ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
+    window.onresize = () => {
+        ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
+    }
 }

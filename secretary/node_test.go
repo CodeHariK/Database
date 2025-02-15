@@ -86,7 +86,7 @@ func TestNodeScan(t *testing.T) {
 			true,
 		},
 
-		// Search for non-existing keys (returns insertion index)
+		// Search for non-existing keys (returns set index)
 		{
 			[][]byte{[]byte("b"), []byte("c"), []byte("e")},
 			[]byte("a"),
@@ -236,8 +236,8 @@ func TestSearchLeafNode(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
-	_, tree := dummyTree(t, "TestInsert", 10)
+func TestSet(t *testing.T) {
+	_, tree := dummyTree(t, "TestSet", 10)
 
 	r, err := tree.SearchRecord([]byte(utils.GenerateRandomString(16)))
 	if err == nil || r != nil {
@@ -246,7 +246,7 @@ func TestInsert(t *testing.T) {
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
-	err = tree.Insert(key, value)
+	err = tree.Set(key, value)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -260,7 +260,7 @@ func TestInsert(t *testing.T) {
 	}
 
 	// Duplicate Key error
-	err = tree.Insert(key, append(value, []byte("world1")...))
+	err = tree.Set(key, append(value, []byte("world1")...))
 	if err == nil {
 		t.Fatalf("expected error but got nil %v", err)
 	}
@@ -285,7 +285,7 @@ func TestDelete(t *testing.T) {
 	// 	t.Fatalf("expected error and got nil")
 	// }
 
-	// err = tree.Insert(key, value)
+	// err = tree.Set(key, value)
 	// if err != nil {
 	// 	t.Error(err)
 	// }
@@ -311,9 +311,9 @@ func TestDelete(t *testing.T) {
 	multipleKeys := make([][]byte, 10)
 	for i := range multipleKeys {
 		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-		err := tree.Insert(multipleKeys[i], multipleKeys[i])
+		err := tree.Set(multipleKeys[i], multipleKeys[i])
 		if err != nil {
-			t.Errorf("Insert failed: %s", err)
+			t.Errorf("Set failed: %s", err)
 		}
 	}
 	for i := range multipleKeys {
@@ -341,7 +341,7 @@ func TestUpdate(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = tree.Insert(key, value)
+	err = tree.Set(key, value)
 	if err != nil {
 		t.Error(err)
 	}
@@ -452,7 +452,7 @@ func TestSortedLoad(t *testing.T) {
 
 		_, tree := dummyTree(t, "TestSortedLoad", 4)
 
-		err := tree.SortedRecordLoad(sortedRecords)
+		err := tree.SortedRecordSet(sortedRecords)
 		if err != nil {
 			t.Fatal(err)
 		}

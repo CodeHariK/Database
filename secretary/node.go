@@ -3,17 +3,19 @@ package secretary
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"runtime/debug"
 	"sort"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
 func (tree *BTree) logNodeFatal(n *Node, msg ...any) {
 	log.Println(string(debug.Stack()))
-	tree.PrintNode(n, false)
+	n.PrintNode(2)
 	log.Fatal(msg...)
 }
 
@@ -159,8 +161,8 @@ func (tree *BTree) saveRoot() error {
 
 //------------------------------------------------------------------
 
-// Insert key-value into a leaf node
-func (tree *BTree) insertIntoLeaf(leaf *Node, key []byte, value []byte) {
+// Set key-value in leaf node
+func (tree *BTree) setLeafKV(leaf *Node, key []byte, value []byte) {
 	i, _ := leaf.SearchKey(key)
 
 	leaf.Keys = append(
@@ -208,14 +210,13 @@ func (tree *BTree) splitLeaf(leaf *Node) {
 	leaf.next = newLeaf
 	newLeaf.prev = leaf
 
-	tree.insertIntoParent(leaf, newLeaf.Keys[0], newLeaf)
+	tree.setParentKV(leaf, newLeaf.Keys[0], newLeaf)
 
 	tree.NodeVerify(leaf)
 	tree.NodeVerify(newLeaf)
 }
 
-// Insert into an internal node
-func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
+func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 	// If left is leaf and root, then create new root
 	if left.parent == nil {
 		newRoot := tree.createInternalNode(nil)
@@ -234,20 +235,20 @@ func (tree *BTree) insertIntoParent(left *Node, key []byte, right *Node) {
 	}
 
 	parent := left.parent
-	insertIdx, _ := parent.SearchKey(key)
+	setIdx, _ := parent.SearchKey(key)
 
 	parent.Keys = append(
-		parent.Keys[:insertIdx],
+		parent.Keys[:setIdx],
 		append(
 			[][]byte{key},
-			parent.Keys[insertIdx:]...,
+			parent.Keys[setIdx:]...,
 		)...)
 
 	parent.children = append(
-		parent.children[:insertIdx+1],
+		parent.children[:setIdx+1],
 		append(
 			[]*Node{right},
-			parent.children[insertIdx+1:]...,
+			parent.children[setIdx+1:]...,
 		)...)
 
 	right.parent = parent
@@ -285,21 +286,21 @@ func (tree *BTree) splitInternal(node *Node) {
 	node.children = node.children[:mid+1]
 	// node.NumKeys = uint8(len(node.Keys))
 
-	tree.insertIntoParent(node, promotedKey, newInternal)
+	tree.setParentKV(node, promotedKey, newInternal)
 
 	tree.NodeVerify(node)
 	tree.NodeVerify(newInternal)
 }
 
-// Insert a key-value pair into the B+ Tree
-func (tree *BTree) Insert(key []byte, value []byte) error {
+// Set a key-value pair into the B+ Tree
+func (tree *BTree) Set(key []byte, value []byte) error {
 	if len(key) != 16 {
 		return ErrorInvalidKey
 	}
 
 	if tree.root == nil {
 		tree.root = tree.createLeafNode()
-		tree.insertIntoLeaf(tree.root, key, value)
+		tree.setLeafKV(tree.root, key, value)
 
 		tree.NodeVerify(tree.root)
 		return nil
@@ -310,7 +311,7 @@ func (tree *BTree) Insert(key []byte, value []byte) error {
 		return ErrorDuplicateKey
 	}
 
-	tree.insertIntoLeaf(leaf, key, value)
+	tree.setLeafKV(leaf, key, value)
 
 	// fmt.Println("leaf ", leaf.NodeID, len(leaf.Keys), "split:", len(leaf.Keys) >= int(tree.Order))
 
@@ -347,8 +348,8 @@ func isSorted(records []*Record) bool {
 	return true // Sorted
 }
 
-// SortedRecordLoad inserts sorted records into the B+ Tree efficiently
-func (tree *BTree) SortedRecordLoad(sortedRecords []*Record) error {
+// SortedRecordSet: set sorted records into the B+ Tree efficiently
+func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 	if !isSorted(sortedRecords) || len(sortedRecords) == 0 {
 		return ErrorRecordsNotSorted
 	}
@@ -560,10 +561,25 @@ func (tree *BTree) Delete(key []byte) error {
 		return ErrorKeyNotFound
 	}
 
+	leaf.PrintNode(2)
+	fmt.Println(string(key), index, found)
+
+	if index == 0 {
+		pi, pf := leaf.parent.SearchKey(key)
+		if !pf {
+			return errors.New("Leaf Key 0 not in Parent Keys")
+		}
+		leaf.parent.PrintNode(2)
+		leaf.parent.Keys[pi] = leaf.Keys[index]
+		leaf.parent.PrintNode(2)
+	}
+
 	// Remove the key and corresponding record
 	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
 	// leaf.NumKeys--
+
+	fmt.Print("\nDeleteing ", string(key), "\n")
 
 	// Handle underflow
 	tree.handleUnderflow(leaf)
@@ -599,8 +615,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 	// Try to borrow from left sibling
 	if pos > 0 {
-		leftSibling := parent.children[pos-1]
+		leftSibling := node.prev
+		node.PrintNode(2)
+		leftSibling.PrintNode(2)
 		if len(leftSibling.Keys) > minKeys {
+
+			parent.PrintNode(2)
+
 			// Borrow key from left sibling
 			blen := len(leftSibling.Keys) - 1
 			borrowedKey := leftSibling.Keys[blen]
@@ -613,6 +634,8 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.records = append([]*Record{borrowedRecord}, node.records...)
 
 			parent.Keys[pos-1] = borrowedKey
+
+			fmt.Println("Borrow from left sibling, Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
 			return
 		}
@@ -633,7 +656,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.Keys = append(node.Keys, borrowedKey)
 			node.records = append(node.records, borrowedRecord)
 
-			parent.Keys[pos] = borrowedKey
+			parent.Keys[pos] = rightSibling.Keys[0]
+			parent.Keys[pos-1] = node.Keys[0]
+
+			fmt.Println("Borrow from right sibling, Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
 			return
 		}
@@ -644,16 +670,31 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		leftSibling := parent.children[pos-1]
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
 		leftSibling.records = append(leftSibling.records, node.records...)
+
 		parent.children = append(parent.children[:pos], parent.children[pos+1:]...)
 		parent.Keys = append(parent.Keys[:pos-1], parent.Keys[pos:]...)
+
+		// removeChild := parent.children[pos]
+		// removeChild.prev.next = removeChild.next
+		// removeChild.next.prev = removeChild.prev
+
 		tree.handleUnderflow(parent)
-	} else { // Merge with right sibling
+
+		fmt.Println("Merge from left sibling, Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
+	} else { // Merge right sibling
 		rightSibling := parent.children[pos+1]
 		node.Keys = append(node.Keys, rightSibling.Keys...)
 		node.records = append(node.records, rightSibling.records...)
+
 		parent.children = append(parent.children[:pos+1], parent.children[pos+2:]...)
 		parent.Keys = append(parent.Keys[:pos], parent.Keys[pos+1:]...)
+
+		rightSibling.prev.next = rightSibling.next
+		rightSibling.next.prev = rightSibling.prev
+
 		tree.handleUnderflow(parent)
+
+		fmt.Println("Merge from right sibling, Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
 	}
 }
 
@@ -671,7 +712,7 @@ type NodeJSON struct {
 }
 
 // ConvertNodeJSON recursively converts a Node into a JSON-friendly structure
-func (node *Node) ConvertNodeJSON(recursive bool) NodeJSON {
+func (node *Node) ConvertNodeJSON(height int) NodeJSON {
 	if node == nil {
 		return NodeJSON{}
 	}
@@ -687,9 +728,9 @@ func (node *Node) ConvertNodeJSON(recursive bool) NodeJSON {
 	}
 
 	children := make([]NodeJSON, len(node.children))
-	if recursive {
+	if height != 0 {
 		for i, child := range node.children {
-			children[i] = child.ConvertNodeJSON(recursive)
+			children[i] = child.ConvertNodeJSON(height - 1)
 		}
 	}
 
@@ -714,12 +755,8 @@ func (node *Node) ConvertNodeJSON(recursive bool) NodeJSON {
 }
 
 // ConvertNodeToJSON converts the entire BTree into a JSON structure
-func (tree *BTree) ConvertNodeToJSON(node *Node, recursive bool) ([]byte, error) {
-	if node == nil {
-		return nil, ErrorTreeNil
-	}
-
-	jsonData, err := json.MarshalIndent(node.ConvertNodeJSON(recursive), "", "  ")
+func (node *Node) ConvertNodeToJSON(height int) ([]byte, error) {
+	jsonData, err := json.MarshalIndent(node.ConvertNodeJSON(height), "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -727,12 +764,12 @@ func (tree *BTree) ConvertNodeToJSON(node *Node, recursive bool) ([]byte, error)
 	return jsonData, nil
 }
 
-func (tree *BTree) PrintNode(node *Node, recursive bool) {
-	t, err := tree.ConvertNodeToJSON(node, recursive)
+func (node *Node) PrintNode(height int) {
+	t, err := node.ConvertNodeToJSON(height)
 	fmt.Println(string(t), err)
 }
 
 // ConvertBTreeToJSON converts the entire BTree into a JSON structure
-func (tree *BTree) ConvertBTreeToJSON(recursive bool) ([]byte, error) {
-	return tree.ConvertNodeToJSON(tree.root, true)
+func (tree *BTree) ConvertBTreeToJSON() ([]byte, error) {
+	return tree.root.ConvertNodeToJSON(tree.Height())
 }

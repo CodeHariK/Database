@@ -1,7 +1,8 @@
-import { fetchAllBTree } from './collection';
+import { fetchAllBTree, setupCollectionRequest } from './collection';
 import { shapes, dia } from '@joint/core';
 import { BTree, BTreeNode, NodeDef, TreeDef } from './tree';
 import { canvasSection } from './dom';
+import { setupDraw } from './draw';
 
 class Ui {
   graph: dia.Graph
@@ -9,8 +10,11 @@ class Ui {
 
   NODEMAP = new Map<number, NodeDef>()
 
-  BOXWIDTH = 200
+  BOXWIDTH = 280
   BOXHEIGHT = 200
+
+  router: "normal" | "orthogonal" = "orthogonal"
+  connector: "straight" | "curve" = "straight"
 
   MouseCurrentNode: BTreeNode | null = null
 
@@ -46,3 +50,5 @@ class Ui {
 export const ui = new Ui()
 
 fetchAllBTree()
+setupCollectionRequest()
+setupDraw()

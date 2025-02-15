@@ -9,3 +9,5 @@ export const insertBtn = document.getElementById("insert-btn") as HTMLButtonElem
 export const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
 export const searchBtn = document.getElementById("search-btn") as HTMLButtonElement;
 export const resultDiv = document.getElementById("result") as HTMLDivElement;
+
+export const treeForm = document.getElementById("treeForm") as HTMLFormElement;

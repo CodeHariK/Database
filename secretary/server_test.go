@@ -42,7 +42,7 @@ func TestGetBTreeHandler(t *testing.T) {
 
 	u, _ := s.Tree("users")
 	key := []byte(utils.GenerateSeqRandomString(16, 4))
-	err = u.Insert(key, key)
+	err = u.Set(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)
 	}
@@ -155,7 +155,7 @@ func TestSearchHandler(t *testing.T) {
 
 	u, _ := s.Tree("users")
 	key := []byte(utils.GenerateSeqRandomString(16, 4))
-	err = u.Insert(key, key)
+	err = u.Set(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)
 	}
