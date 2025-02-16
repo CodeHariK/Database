@@ -141,14 +141,14 @@ func TestNodeScan(t *testing.T) {
 
 	for _, test := range tests {
 		node := &Node{Keys: test.keys}
-		result, found := node.SearchKey(test.search)
+		result, found := node.Get(test.search)
 		if result != test.expectedIndex || found != test.expectedFound {
-			t.Errorf("nodeSearch(%q) = %d, expected %d", test.search, result, test.expectedIndex)
+			t.Errorf("NodeScan(%q) = %d, expected %d", test.search, result, test.expectedIndex)
 		}
 	}
 }
 
-func TestSearchLeafNode(t *testing.T) {
+func TestGetLeafNode(t *testing.T) {
 	// Create a simple B+ tree manually
 	root := &Node{
 		Keys: [][]byte{[]byte("h"), []byte("r")},
@@ -208,10 +208,10 @@ func TestSearchLeafNode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, index, found := tree.SearchLeafNode(test.key)
+		result, index, found := tree.GetLeafNode(test.key)
 
 		if result.NodeID != test.expectedNode.NodeID || index != test.expectedIndex || found != test.expectedFound {
-			t.Errorf("searchLeafNode(%q) returned wrong leaf node\n ExpNode:%d - Got:%d\n ExpID:%d - Got:%d\n ExpFound:%v - Got:%v\n %v",
+			t.Errorf("GetLeafNode(%q) returned wrong leaf node\n ExpNode:%d - Got:%d\n ExpID:%d - Got:%d\n ExpFound:%v - Got:%v\n %v",
 				test.key,
 				test.expectedNode.NodeID, result.NodeID,
 				test.expectedIndex, index,
@@ -223,23 +223,23 @@ func TestSearchLeafNode(t *testing.T) {
 
 	// Test empty tree
 	emptyTree := &BTree{root: &Node{}}
-	emptyNode, _, _ := emptyTree.SearchLeafNode([]byte("x"))
+	emptyNode, _, _ := emptyTree.GetLeafNode([]byte("x"))
 	if emptyNode.NodeID != emptyTree.root.NodeID {
-		t.Errorf("searchLeafNode on empty tree should return root")
+		t.Errorf("GetLeafNode on empty tree should return root")
 	}
 
 	// Test single-node tree
 	singleNodeTree := &BTree{root: &Node{Keys: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}}
-	singleNode, _, _ := singleNodeTree.SearchLeafNode([]byte("b"))
+	singleNode, _, _ := singleNodeTree.GetLeafNode([]byte("b"))
 	if singleNode.NodeID != singleNodeTree.root.NodeID {
-		t.Errorf("searchLeafNode on single-node tree should return root")
+		t.Errorf("GetLeafNode on single-node tree should return root")
 	}
 }
 
 func TestSet(t *testing.T) {
 	_, tree := dummyTree(t, "TestSet", 10)
 
-	r, err := tree.SearchRecord([]byte(utils.GenerateRandomString(16)))
+	r, err := tree.GetRecord([]byte(utils.GenerateRandomString(16)))
 	if err == nil || r != nil {
 		t.Error("expected error and got nil", err, r)
 	}
@@ -251,7 +251,7 @@ func TestSet(t *testing.T) {
 		t.Fatalf("%s", err)
 	}
 
-	r, err = tree.SearchRecord(key)
+	r, err = tree.GetRecord(key)
 	if err != nil {
 		t.Fatalf("%s\n", err)
 	}
@@ -265,69 +265,13 @@ func TestSet(t *testing.T) {
 		t.Fatalf("expected error but got nil %v", err)
 	}
 
-	r, err = tree.SearchRecord(key)
+	r, err = tree.GetRecord(key)
 	if err != nil {
 		t.Fatalf("%s\n", err)
 	}
 	if r == nil || bytes.Compare(r.Value, value) != 0 {
 		t.Fatalf("expected %v and got %v \n", value, r)
 	}
-}
-
-func TestDelete(t *testing.T) {
-	_, tree := dummyTree(t, "TestDelete", 10)
-
-	// key := []byte(utils.GenerateRandomString(16))
-	// value := []byte("Hello world!")
-
-	// err = tree.Delete(key)
-	// if err == nil {
-	// 	t.Fatalf("expected error and got nil")
-	// }
-
-	// err = tree.Set(key, value)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-
-	// r, err := tree.SearchRecord(key)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// if r == nil || !reflect.DeepEqual(r.Value, value) {
-	// 	t.Fatalf("expected %v and got %v \n", value, r)
-	// }
-
-	// err = tree.Delete(key)
-	// if err != nil {
-	// 	t.Fatalf("%s\n", err)
-	// }
-
-	// r, err = tree.SearchRecord(key)
-	// if r != nil || err == nil {
-	// 	t.Error("expected error and got struct", err)
-	// }
-
-	multipleKeys := make([][]byte, 10)
-	for i := range multipleKeys {
-		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
-		err := tree.Set(multipleKeys[i], multipleKeys[i])
-		if err != nil {
-			t.Errorf("Set failed: %s", err)
-		}
-	}
-	for i := range multipleKeys {
-		r, err := tree.SearchRecord(multipleKeys[i])
-		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-			t.Errorf("Search failed: %d : %s", i, err)
-		}
-	}
-	// for i := range multipleKeys {
-	// 	err = tree.Delete(multipleKeys[i])
-	// 	if err != nil {
-	// 		t.Errorf("Delete failed: %s", err)
-	// 	}
-	// }
 }
 
 func TestUpdate(t *testing.T) {
@@ -345,7 +289,7 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err := tree.SearchRecord(key)
+	r, err := tree.GetRecord(key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -358,7 +302,7 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r, err = tree.SearchRecord(key)
+	r, err = tree.GetRecord(key)
 	if err != nil {
 		t.Error(err)
 	}
@@ -432,7 +376,7 @@ func TestRangeScan(t *testing.T) {
 	}
 }
 
-func TestSortedLoad(t *testing.T) {
+func TestSortedRecordSet(t *testing.T) {
 	numKeys := make([]int, 64)
 	for i := range numKeys {
 		numKeys[i] = i + 1
@@ -473,4 +417,60 @@ func TestSortedLoad(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestDelete(t *testing.T) {
+	_, tree := dummyTree(t, "TestDelete", 10)
+
+	// key := []byte(utils.GenerateRandomString(16))
+	// value := []byte("Hello world!")
+
+	// err = tree.Delete(key)
+	// if err == nil {
+	// 	t.Fatalf("expected error and got nil")
+	// }
+
+	// err = tree.Set(key, value)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
+	// r, err := tree.SearchRecord(key)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// if r == nil || !reflect.DeepEqual(r.Value, value) {
+	// 	t.Fatalf("expected %v and got %v \n", value, r)
+	// }
+
+	// err = tree.Delete(key)
+	// if err != nil {
+	// 	t.Fatalf("%s\n", err)
+	// }
+
+	// r, err = tree.SearchRecord(key)
+	// if r != nil || err == nil {
+	// 	t.Error("expected error and got struct", err)
+	// }
+
+	multipleKeys := make([][]byte, 10)
+	for i := range multipleKeys {
+		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
+		err := tree.Set(multipleKeys[i], multipleKeys[i])
+		if err != nil {
+			t.Errorf("Set failed: %s", err)
+		}
+	}
+	for i := range multipleKeys {
+		r, err := tree.GetRecord(multipleKeys[i])
+		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
+			t.Errorf("Search failed: %d : %s", i, err)
+		}
+	}
+	// for i := range multipleKeys {
+	// 	err = tree.Delete(multipleKeys[i])
+	// 	if err != nil {
+	// 		t.Errorf("Delete failed: %s", err)
+	// 	}
+	// }
 }

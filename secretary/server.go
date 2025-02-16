@@ -32,7 +32,7 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		http.Error(w, "Tree not found", http.StatusNotFound)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		http.Error(w, "Tree not found", http.StatusNotFound)
 		return
 	}
 
@@ -127,16 +127,16 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		http.Error(w, "Tree not found", http.StatusNotFound)
 		return
 	}
 
-	node, index, found := tree.SearchLeafNode([]byte(id))
+	node, index, found := tree.GetLeafNode([]byte(id))
 	var record string
 	if found {
 		record = string(node.records[index].Value)
 	} else {
-		http.Error(w, "Key not found", http.StatusInternalServerError)
+		http.Error(w, "Key not found", http.StatusNoContent)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		http.Error(w, "Tree not found", http.StatusNotFound)
 		return
 	}
 

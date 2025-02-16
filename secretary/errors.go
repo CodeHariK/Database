@@ -7,8 +7,6 @@ import (
 )
 
 var (
-	ErrorInvalidNodeLink            = errors.New("Invalid Node Links")
-	ErrorNumKeysNotMatching         = errors.New("NumKeys not matching")
 	ErrorInvalidDataLocation        = errors.New("Invalid data location")
 	ErrorNodeNotInTree              = errors.New("Node not in tree")
 	ErrorNodeIsEitherLeaforInternal = errors.New("Node Is Either Leaf or Internal, Node can either have children or record")

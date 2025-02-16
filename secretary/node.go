@@ -40,7 +40,11 @@ func (tree *BTree) NodeVerify(n *Node) {
 
 	if len(n.Keys) >= int(tree.Order) {
 		// if len(n.Keys) != int(n.NumKeys) || n.NumKeys >= tree.Order {
-		tree.logNodeFatal(n, ErrorNumKeysNotMatching)
+		tree.logNodeFatal(n, "len(n.Keys) >= int(tree.Order)")
+	}
+	minKeys := (int(tree.Order) - 1) / 2 // Minimum required keys
+	if n != tree.root && len(n.Keys) < minKeys {
+		tree.logNodeFatal(n, "len(n.Keys) < minKeys")
 	}
 
 	if n.parent != nil {
@@ -51,38 +55,48 @@ func (tree *BTree) NodeVerify(n *Node) {
 			}
 		}
 		if !contains {
-			tree.logNodeFatal(n, ErrorInvalidNodeLink)
+			tree.logNodeFatal(n, "Parent doesn't contain child")
 		}
 	}
 
-	if (n.next != nil && n.next.prev != n) || (n.prev != nil && n.prev.next != n) {
-		tree.logNodeFatal(n, "nextprev:", n.next.prev.NodeID, " prevnext:", n.prev.next.NodeID, ErrorInvalidNodeLink)
+	if n.next != nil && n.next.prev != n {
+		tree.logNodeFatal(n, "n.next.prev != n", n.next.prev.NodeID, " != ", n.NodeID)
+	}
+	if n.prev != nil && n.prev.next != n {
+		tree.logNodeFatal(n, "n.prev.next != n", n.prev.next.NodeID, " != ", n.NodeID)
 	}
 
 	if n.children != nil {
 		// Internal node
 		if len(n.children) != (len(n.Keys) + 1) {
 			// if len(n.children) != int(n.NumKeys+1) {
+			tree.logNodeFatal(n, "len(n.children) != (len(n.Keys) + 1)")
+		}
 
-			for _, c := range n.children {
-				if c.parent != n {
-					tree.logNodeFatal(n, "child:", c.NodeID, ErrorInvalidNodeLink)
-				}
+		for i, c := range n.children {
+			if c.parent != n {
+				tree.logNodeFatal(n, "Node is not parent of child", c.NodeID)
 			}
 
-			tree.logNodeFatal(n, ErrorNumKeysNotMatching)
+			minChildKey := c.GetMinLeafNode().Keys[0]
+
+			if i > 0 && bytes.Compare(minChildKey, n.Keys[i-1]) != 0 {
+				tree.logNodeFatal(n, "Keys should be minKey of child nodes after first child")
+			}
 		}
-	} else if n.records != nil {
+	}
+
+	if n.records != nil {
 		// Leaf node
 		if len(n.records) != len(n.Keys) {
-			tree.logNodeFatal(n, ErrorNumKeysNotMatching)
+			tree.logNodeFatal(n, "len(n.records) != len(n.Keys)")
 		}
 		for i, r := range n.records {
 			if bytes.Compare(r.Key, n.Keys[i]) != 0 {
-				tree.logNodeFatal(n, ErrorInvalidKey)
+				tree.logNodeFatal(n, "record.key != key")
 			}
 		}
-		if !isSorted(n.records) {
+		if !areRecordsSorted(n.records) {
 			tree.logNodeFatal(n, ErrorRecordsNotSorted)
 		}
 	}
@@ -93,6 +107,7 @@ func (tree *BTree) NodeVerify(n *Node) {
 			tree.logNodeFatal(n, ErrorInvalidKey)
 		}
 
+		// Are keys sorted
 		if i >= 1 && bytes.Compare(n.Keys[i-1], n.Keys[i]) >= 0 {
 			tree.logNodeFatal(n, ErrorKeysNotOrdered)
 		}
@@ -163,7 +178,7 @@ func (tree *BTree) saveRoot() error {
 
 // Set key-value in leaf node
 func (tree *BTree) setLeafKV(leaf *Node, key []byte, value []byte) {
-	i, _ := leaf.SearchKey(key)
+	i, _ := leaf.Get(key)
 
 	leaf.Keys = append(
 		leaf.Keys[:i],
@@ -235,7 +250,7 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 	}
 
 	parent := left.parent
-	setIdx, _ := parent.SearchKey(key)
+	setIdx, _ := parent.Get(key)
 
 	parent.Keys = append(
 		parent.Keys[:setIdx],
@@ -306,7 +321,7 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 		return nil
 	}
 
-	leaf, index, found := tree.SearchLeafNode(key)
+	leaf, index, found := tree.GetLeafNode(key)
 	if found && bytes.Compare(leaf.Keys[index], key) == 0 {
 		return ErrorDuplicateKey
 	}
@@ -329,7 +344,7 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 		return ErrorInvalidKey
 	}
 
-	leaf, index, found := tree.SearchLeafNode(key)
+	leaf, index, found := tree.GetLeafNode(key)
 	if found {
 		leaf.records[index].Value = value
 		return nil
@@ -339,7 +354,7 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 
 // ------------------------------------------------------------------
 
-func isSorted(records []*Record) bool {
+func areRecordsSorted(records []*Record) bool {
 	for i := 1; i < len(records); i++ {
 		if bytes.Compare(records[i-1].Key, records[i].Key) > 0 {
 			return false // Not sorted
@@ -350,7 +365,7 @@ func isSorted(records []*Record) bool {
 
 // SortedRecordSet: set sorted records into the B+ Tree efficiently
 func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
-	if !isSorted(sortedRecords) || len(sortedRecords) == 0 {
+	if !areRecordsSorted(sortedRecords) || len(sortedRecords) == 0 {
 		return ErrorRecordsNotSorted
 	}
 
@@ -434,7 +449,7 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 			child.parent = node
 
 			if k != 0 {
-				node.Keys = append(node.Keys, tree.SearchMinLeafNode(child).Keys[0])
+				node.Keys = append(node.Keys, child.GetMinLeafNode().Keys[0])
 			}
 		}
 
@@ -455,7 +470,7 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 //------------------------------------------------------------------
 
 // Binary search helper function
-func (n *Node) SearchKey(key []byte) (index int, found bool) {
+func (n *Node) Get(key []byte) (index int, found bool) {
 	index = sort.Search(
 		len(n.Keys),
 		func(i int) bool {
@@ -469,22 +484,22 @@ func (n *Node) SearchKey(key []byte) (index int, found bool) {
 	return index, found
 }
 
-func (tree *BTree) SearchMinLeafNode(node *Node) *Node {
+func (node *Node) GetMinLeafNode() *Node {
 	if len(node.children) == 0 {
 		return node
 	}
-	return tree.SearchMinLeafNode(node.children[0])
+	return node.children[0].GetMinLeafNode()
 }
 
 // Find the appropriate leaf node
-func (tree *BTree) SearchLeafNode(key []byte) (node *Node, index int, found bool) {
+func (tree *BTree) GetLeafNode(key []byte) (node *Node, index int, found bool) {
 	node = tree.root
 
 	// fmt.Println(node.NodeID, utils.BytesToStrings(node.Keys))
 
 	// Traverse internal nodes
 	for len(node.children) > 0 {
-		index, found := node.SearchKey(key)
+		index, found := node.Get(key)
 		if found {
 			node = node.children[index+1]
 		} else {
@@ -494,14 +509,14 @@ func (tree *BTree) SearchLeafNode(key []byte) (node *Node, index int, found bool
 	}
 
 	// Search within the leaf node
-	index, found = node.SearchKey(key)
+	index, found = node.Get(key)
 	// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
 
 	return node, index, found
 }
 
-func (tree *BTree) SearchRecord(key []byte) (*Record, error) {
-	node, index, found := tree.SearchLeafNode(key)
+func (tree *BTree) GetRecord(key []byte) (*Record, error) {
+	node, index, found := tree.GetLeafNode(key)
 	if found {
 		return node.records[index], nil
 	}
@@ -516,8 +531,8 @@ func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
 
 	var results []*Record
 
-	startNode, startIndex, _ := tree.SearchLeafNode(startKey)
-	endNode, endIndex, endFound := tree.SearchLeafNode(endKey)
+	startNode, startIndex, _ := tree.GetLeafNode(startKey)
+	endNode, endIndex, endFound := tree.GetLeafNode(endKey)
 
 	// Iterate over nodes
 	for node := startNode; node != nil; node = node.next {
@@ -555,23 +570,20 @@ func (tree *BTree) Delete(key []byte) error {
 		return ErrorTreeNil
 	}
 
-	leaf, index, found := tree.SearchLeafNode(key)
+	leaf, index, found := tree.GetLeafNode(key)
 
 	if !found {
 		return ErrorKeyNotFound
 	}
 
-	leaf.PrintNode(2)
-	fmt.Println(string(key), index, found)
-
-	if index == 0 {
-		pi, pf := leaf.parent.SearchKey(key)
+	// If first key of leaf is deleted && leaf is not first child of its parent, then update parent key
+	if index == 0 && len(leaf.Keys) > 1 && bytes.Compare(key, leaf.parent.Keys[0]) >= 0 {
+		pi, pf := leaf.parent.Get(key)
 		if !pf {
 			return errors.New("Leaf Key 0 not in Parent Keys")
 		}
-		leaf.parent.PrintNode(2)
-		leaf.parent.Keys[pi] = leaf.Keys[index]
-		leaf.parent.PrintNode(2)
+		fmt.Println("Removed child parent seperator key")
+		leaf.parent.Keys[pi] = leaf.Keys[index+1]
 	}
 
 	// Remove the key and corresponding record
@@ -579,7 +591,7 @@ func (tree *BTree) Delete(key []byte) error {
 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
 	// leaf.NumKeys--
 
-	fmt.Print("\nDeleteing ", string(key), "\n")
+	fmt.Print("\nDeleting ", string(key), " index:", index, " found:", found, "\n")
 
 	// Handle underflow
 	tree.handleUnderflow(leaf)
@@ -591,6 +603,9 @@ func (tree *BTree) Delete(key []byte) error {
 
 // handleUnderflow handles cases when a node has fewer than the required keys.
 func (tree *BTree) handleUnderflow(node *Node) {
+	fmt.Println("-----------handleUnderflow")
+	node.PrintNode(2)
+
 	minKeys := (int(tree.Order) - 1) / 2 // Minimum required keys
 	if len(node.Keys) >= minKeys {
 		return // No underflow
@@ -615,25 +630,57 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 	// Try to borrow from left sibling
 	if pos > 0 {
-		leftSibling := node.prev
-		node.PrintNode(2)
-		leftSibling.PrintNode(2)
-		if len(leftSibling.Keys) > minKeys {
 
-			parent.PrintNode(2)
+		fmt.Println("Borrow from left sibling")
+		// leftSibling := node.prev
+		leftSibling := parent.children[pos-1]
+		fmt.Println("----leftSibling")
+		leftSibling.PrintNode(2)
+
+		if len(leftSibling.Keys) > minKeys {
 
 			// Borrow key from left sibling
 			blen := len(leftSibling.Keys) - 1
 			borrowedKey := leftSibling.Keys[blen]
-			borrowedRecord := leftSibling.records[blen]
+			fmt.Println("leftSibling.Keys : ", utils.BytesToStrings(leftSibling.Keys), "BorrowedKey : ", string(borrowedKey))
+
+			fmt.Println("----parent")
+			parent.PrintNode(2)
 
 			leftSibling.Keys = leftSibling.Keys[:blen]
-			leftSibling.records = leftSibling.records[:blen]
 
 			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
-			node.records = append([]*Record{borrowedRecord}, node.records...)
 
 			parent.Keys[pos-1] = borrowedKey
+
+			if leftSibling.children == nil {
+				rlen := len(leftSibling.records) - 1
+				borrowedRecord := leftSibling.records[rlen]
+				fmt.Println("**********BorrowedRecord : ", rlen, string(borrowedKey), string(borrowedRecord.Value))
+				leftSibling.records = leftSibling.records[:rlen]
+				node.records = append([]*Record{borrowedRecord}, node.records...)
+			} else {
+				clen := len(leftSibling.children) - 1
+				borrowedChild := leftSibling.children[clen]
+				fmt.Println("**********BorrowedChild : ", clen, string(borrowedKey))
+				borrowedChild.PrintNode(1)
+				leftSibling.children = leftSibling.children[:clen]
+				node.children = append([]*Node{borrowedChild}, node.children...)
+
+				node.Keys = [][]byte{}
+				fmt.Println("~~~~~~~~~", len(node.children))
+				for i, c := range node.children {
+					fmt.Println("~~~~~~~~~", i > 1, utils.BytesToStrings(c.Keys), c.GetMinLeafNode().Keys[0])
+					if i > 0 {
+						node.Keys = append(node.Keys, c.GetMinLeafNode().Keys[0])
+					}
+				}
+			}
+
+			fmt.Println("----leftSibling")
+			leftSibling.PrintNode(2)
+			fmt.Println("----node")
+			node.PrintNode(2)
 
 			fmt.Println("Borrow from left sibling, Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
@@ -643,12 +690,22 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 	// Try to borrow from right sibling
 	if pos < len(parent.children)-1 {
+
+		fmt.Println("Borrow from right sibling")
+		fmt.Println("----rightSibling")
 		rightSibling := parent.children[pos+1]
+		// rightSibling := node.next
+		rightSibling.PrintNode(2)
+
 		if len(rightSibling.Keys) > minKeys {
 			// Borrow key from right sibling
 
 			borrowedKey := rightSibling.Keys[0]
 			borrowedRecord := rightSibling.records[0]
+
+			fmt.Println(string(borrowedKey), borrowedRecord)
+			fmt.Println("----parent")
+			parent.PrintNode(2)
 
 			rightSibling.Keys = rightSibling.Keys[1:]
 			rightSibling.records = rightSibling.records[1:]
@@ -667,7 +724,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 	// Merge with left sibling
 	if pos > 0 {
+		fmt.Println("Merge with left sibling")
+
 		leftSibling := parent.children[pos-1]
+		// leftSibling := node.prev
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
 		leftSibling.records = append(leftSibling.records, node.records...)
 
@@ -682,7 +742,12 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 		fmt.Println("Merge from left sibling, Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
 	} else { // Merge right sibling
+
+		fmt.Println("Merge right sibling")
+
 		rightSibling := parent.children[pos+1]
+		// rightSibling := node.next
+
 		node.Keys = append(node.Keys, rightSibling.Keys...)
 		node.records = append(node.records, rightSibling.records...)
 
@@ -694,7 +759,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 		tree.handleUnderflow(parent)
 
-		fmt.Println("Merge from right sibling, Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
+		fmt.Println("Merge right sibling, Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
 	}
 }
 
