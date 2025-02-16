@@ -25,10 +25,15 @@ func main() {
 	}
 
 	var sortedRecords []*secretary.Record
+	var sortedKeys [][]byte
 	var sortedValues []string
 	for r := 0; r < 26; r++ {
+
+		key := []byte(utils.GenerateSeqString(16))
+		sortedKeys = append(sortedKeys, key)
+
 		sortedRecords = append(sortedRecords, &secretary.Record{
-			Key:   []byte(utils.GenerateSeqString(16)),
+			Key:   key,
 			Value: []byte(fmt.Sprint(r + 1)),
 		})
 
@@ -38,6 +43,14 @@ func main() {
 
 	for _, r := range sortedRecords {
 		users.Set(r.Key, r.Value)
+	}
+
+	for r := 0; r < 4; r++ {
+
+		err := users.Delete(sortedKeys[r])
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	s.Serve()

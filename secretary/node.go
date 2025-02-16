@@ -495,6 +495,16 @@ func (node *Node) GetMinLeafNode() *Node {
 	return node.children[0].GetMinLeafNode()
 }
 
+// func (node *Node) GetMinLeafKey() ([]byte, error) {
+// 	if len(node.children) == 0 {
+// 		if len(node.Keys) > 0 {
+// 			return node.Keys[0], nil
+// 		}
+// 		return nil, ErrorKeyNotFound
+// 	}
+// 	return node.children[0].GetMinLeafKey()
+// }
+
 // Find the appropriate leaf node
 func (tree *BTree) GetLeafNode(key []byte) (node *Node, index int, found bool) {
 	node = tree.root
@@ -607,12 +617,12 @@ func (tree *BTree) Delete(key []byte) error {
 
 // handleUnderflow handles cases when a node has fewer than the required keys.
 func (tree *BTree) handleUnderflow(node *Node) {
-	fmt.Println("handleUnderflow")
-
 	minKeys := (int(tree.Order) - 1) / 2 // Minimum required keys
 	if len(node.Keys) >= minKeys {
 		return // No underflow
 	}
+
+	fmt.Println("handleUnderflow", node.NodeID, utils.BytesToStrings(node.Keys))
 
 	// Check if the node is the root
 	if node == tree.root {
@@ -636,15 +646,14 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		// leftSibling := node.prev
 		leftSibling := parent.children[pos-1]
 
-		fmt.Println("**** Try to borrow from left sibling len(leftSibling.Keys) > minKeys", len(leftSibling.Keys), minKeys, len(leftSibling.Keys) > minKeys)
+		fmt.Printf("**** Try to borrow from leftSibling(%d) len(leftSibling.Keys)[%d] > minKeys[%d] %v\n", leftSibling.NodeID, len(leftSibling.Keys), minKeys, len(leftSibling.Keys) > minKeys)
 
 		if len(leftSibling.Keys) > minKeys {
 			// Borrow key from left sibling
 			blen := len(leftSibling.Keys) - 1
 			borrowedKey := leftSibling.Keys[blen]
-			fmt.Println("**** Borrow from left sibling -> leftSibling.Keys : ", utils.BytesToStrings(leftSibling.Keys), "BorrowedKey : ", string(borrowedKey))
-
 			leftSibling.Keys = leftSibling.Keys[:blen]
+			fmt.Printf("**** Borrow from leftSibling[%d] -> leftSibling.Keys %v : BorrowedKey : %s\n", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys), string(borrowedKey))
 
 			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
 
@@ -654,26 +663,23 @@ func (tree *BTree) handleUnderflow(node *Node) {
 				rlen := len(leftSibling.records) - 1
 				borrowedRecord := leftSibling.records[rlen]
 				fmt.Println("BorrowedRecord : ", rlen, string(borrowedKey), string(borrowedRecord.Value))
+
 				leftSibling.records = leftSibling.records[:rlen]
 				node.records = append([]*Record{borrowedRecord}, node.records...)
 			} else {
 				clen := len(leftSibling.children) - 1
 				borrowedChild := leftSibling.children[clen]
 				fmt.Println("BorrowedChild : ", clen, string(borrowedKey))
+
 				leftSibling.children = leftSibling.children[:clen]
 				node.children = append([]*Node{borrowedChild}, node.children...)
 
 				borrowedChild.parent = node
 
-				node.Keys = [][]byte{}
-				fmt.Println("len(node.children)", len(node.children))
-				for i, c := range node.children {
-					fmt.Println(i, i > 1, utils.BytesToStrings(c.Keys), "MinLeafKey", string(c.GetMinLeafNode().Keys[0]))
-					if i > 0 {
-						node.Keys = append(node.Keys, c.GetMinLeafNode().Keys[0])
-					}
-				}
+				FixNodeParentChildLink(node)
 			}
+
+			FixNodeParentChildLink(parent)
 
 			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
@@ -686,24 +692,39 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
 
-		fmt.Println("**** Try to borrow from right sibling len(rightSibling.Keys) > minKeys", len(rightSibling.Keys), minKeys, len(rightSibling.Keys) > minKeys)
+		fmt.Printf("**** Try to borrow from rightSibling(%d) len(rightSibling.Keys)[%d] > minKeys[%d] %v\n", rightSibling.NodeID, len(rightSibling.Keys), minKeys, len(rightSibling.Keys) > minKeys)
 
 		if len(rightSibling.Keys) > minKeys {
 			// Borrow key from right sibling
 
 			borrowedKey := rightSibling.Keys[0]
-			borrowedRecord := rightSibling.records[0]
-
-			fmt.Println("**** Borrow from right sibling -> ", string(borrowedKey), borrowedRecord)
-
 			rightSibling.Keys = rightSibling.Keys[1:]
-			rightSibling.records = rightSibling.records[1:]
+			fmt.Printf("**** Borrow from rightSibling[%d] -> rightSibling.Keys : %v BorrowedKey : %s\n", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys), string(borrowedKey))
 
 			node.Keys = append(node.Keys, borrowedKey)
-			node.records = append(node.records, borrowedRecord)
 
-			parent.Keys[pos] = rightSibling.Keys[0]
-			parent.Keys[pos-1] = node.Keys[0]
+			// parent.Keys[pos] = rightSibling.Keys[0]
+			// parent.Keys[pos-1] = node.Keys[0]
+
+			if rightSibling.children == nil {
+				borrowedRecord := rightSibling.records[0]
+				fmt.Println("BorrowedRecord : ", string(borrowedKey), string(borrowedRecord.Value))
+
+				rightSibling.records = rightSibling.records[1:]
+				node.records = append(node.records, borrowedRecord)
+			} else {
+				borrowedChild := rightSibling.children[0]
+				fmt.Println("BorrowedChild : ", string(borrowedKey))
+
+				rightSibling.children = rightSibling.children[1:]
+				node.children = append(node.children, borrowedChild)
+
+				borrowedChild.parent = node
+
+				FixNodeParentChildLink(node)
+			}
+
+			FixNodeParentChildLink(parent)
 
 			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
@@ -734,19 +755,43 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
 
+		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys))
+
 		node.Keys = append(node.Keys, rightSibling.Keys...)
-		node.records = append(node.records, rightSibling.records...)
 
+		if rightSibling.children == nil {
+			node.records = append(node.records, rightSibling.records...)
+		} else {
+			node.children = append(node.children, rightSibling.children...)
+		}
+
+		// parent.Keys = append(parent.Keys[:pos], parent.Keys[pos+1:]...)
 		parent.children = append(parent.children[:pos+1], parent.children[pos+2:]...)
-		parent.Keys = append(parent.Keys[:pos], parent.Keys[pos+1:]...)
 
-		rightSibling.prev.next = rightSibling.next
-		rightSibling.next.prev = rightSibling.prev
+		if rightSibling.prev != nil {
+			rightSibling.prev.next = rightSibling.next
+		}
+		if rightSibling.next != nil {
+			rightSibling.next.prev = rightSibling.prev
+		}
 
-		fmt.Println("**** Merge right sibling -> Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
+		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys))
+
+		FixNodeParentChildLink(parent)
+		// FixNodeParentChildLink(node)
 
 		tree.handleUnderflow(parent)
 	}
+}
+
+func FixNodeParentChildLink(parent *Node) {
+	parent.Keys = [][]byte{}
+	for i, child := range parent.children {
+		if i > 0 {
+			parent.Keys = append(parent.Keys, child.GetMinLeafNode().Keys[0])
+		}
+	}
+	fmt.Println("FixNodeParentChildLink ", parent.NodeID, " len(parent.children)", len(parent.children), utils.BytesToStrings(parent.Keys))
 }
 
 // ------------------------------------------------------------------
