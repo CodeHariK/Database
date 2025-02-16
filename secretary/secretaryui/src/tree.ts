@@ -22,9 +22,11 @@ export type BTreeNode = {
     nodeID: number;
     nextID: number;
     prevID: number;
+    parentID: number;
     keys: string[];
     value: string[];
     children: BTreeNode[];
+    error: string;
 };
 
 export class BTree {
@@ -42,9 +44,11 @@ export class BTree {
             nodeID: node.nodeID,
             nextID: node.nextID,
             prevID: node.prevID,
+            parentID: node.parentID,
             keys: node.key,
             value: node.value,
             children: node.children ? node.children.map((child: any) => this.convertNode(child)) : [],
+            error: node.error
         };
     };
 

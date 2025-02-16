@@ -9,7 +9,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
     let nodeDef = ui.NODEMAP.get(node.nodeID);
     ui.NODEMAP.set(node.nodeID, {
-        color: nodeDef ? nodeDef.color : randomColor(),
+        color: nodeDef ? nodeDef.color : (node.error ? "#f55" : randomColor()),
         selected: false,
         box: null,
         node: node,
@@ -27,7 +27,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
         },
         body: {
             fill: nodeDef.color,
-            fillOpacity: searchInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3,
+            fillOpacity: node.error ? .7 : (searchInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3),
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
@@ -47,7 +47,8 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
     });
 
     element.attr('bodyText/text',
-        "< Prev " + node.prevID + "  " + node.nextID + " Next >" + "\n" +
+        node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n\n" +
+        (node.error ? (node.error + "\n") : "") +
         node.keys.map((a, i) => {
             return "\n" + (a == searchInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
         }).join("")
