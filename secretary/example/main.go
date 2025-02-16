@@ -41,17 +41,23 @@ func main() {
 	}
 	images.SortedRecordSet(sortedRecords)
 
+	// users.SortedRecordSet(sortedRecords)
 	for _, r := range sortedRecords {
 		users.Set(r.Key, r.Value)
 	}
 
-	for r := 0; r < 4; r++ {
-
-		err := users.Delete(sortedKeys[r])
+	for _, k := range utils.Shuffle(sortedKeys[:2]) {
+		err := users.Delete(k)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
+	// for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-4:]) {
+	// 	err := users.Delete(k)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// }
 
 	s.Serve()
 }
