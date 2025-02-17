@@ -7,7 +7,7 @@ import (
 
 const (
 	SECRETARY                  = "SECRETARY"
-	SECRETARY_HEADER_LENGTH    = 64
+	SECRETARY_HEADER_LENGTH    = 128
 	MAX_COLLECTION_NAME_LENGTH = 30
 
 	MIN_ORDER = 3   // Minimum allowed order for the B+ Tree
@@ -34,13 +34,15 @@ type Secretary struct {
 /*
 **HEADER AND NODES**
 
-------64 bytes------
-SECRETARY				(9 bytes) 9
-order 					(uint8)   10
-batchNumLevel  			(uint8)   11
-batchBaseSize  			(uint32)  15
-batchIncrement 			(uint8)   16
-batchLength    			(uint8)   17
+------128 bytes------
+SECRETARY				(9 bytes)  9
+order 					(uint8)    10
+batchNumLevel  			(uint8)    11
+batchBaseSize  			(uint32)   15
+batchIncrement 			(uint8)    16
+batchLength    			(uint8)    17
+nodeSeq    				(uint64)   25
+keySeq    				(uint64)   33
 collectionName			(string)
 ---------------------
 1  			Root		(5*1024 = 5120)
@@ -66,9 +68,11 @@ type BTree struct {
 	BatchBaseSize  uint32 `json:"batchBaseSize" bin:"batchBaseSize"`   // 1024MB
 	BatchIncrement uint8  `json:"batchIncrement" bin:"batchIncrement"` // 125 => 1.25
 	BatchLength    uint8  `json:"batchLength" bin:"batchLength"`       // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
-	NumNodes       uint64 `json:"numNodes" bin:"numNodes"`             // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
+	NodeSeq        uint64 `json:"nodeSeq" bin:"nodeSeq"`               // Incrementing Node sequence
+	KeySeq         uint64 `json:"keySeq" bin:"keySeq"`                 // Incrementing Key sequence
 
-	nodeSize uint32
+	nodeSize   uint32
+	minNumKeys uint32 // Minimum required keys in node
 }
 
 /*

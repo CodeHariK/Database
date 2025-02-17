@@ -47,6 +47,8 @@ func (s *Secretary) NewBTree(
 		BatchLength:    batchLength,
 
 		nodeSize: uint32(nodeSize),
+
+		minNumKeys: uint32(int(order)-1) / 2,
 	}
 
 	nodeBatchStore, err := tree.NewBatchStore("index", 0)

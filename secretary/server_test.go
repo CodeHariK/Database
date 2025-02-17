@@ -40,9 +40,14 @@ func TestGetBTreeHandler(t *testing.T) {
 
 	router := s.setupRouter()
 
-	u, _ := s.Tree("users")
-	key := []byte(utils.GenerateSeqRandomString(16, 4))
-	err = u.Set(key, key)
+	users, err := s.Tree("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var keySeq uint64 = 0
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	err = users.Set(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)
 	}
@@ -145,36 +150,41 @@ func TestNewTreeHandler(t *testing.T) {
 	}
 }
 
-// func TestSearchHandler(t *testing.T) {
-// 	s, err := New()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+func TestSearchHandler(t *testing.T) {
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	router := s.setupRouter()
+	router := s.setupRouter()
 
-// 	u, _ := s.Tree("users")
-// 	key := []byte(utils.GenerateSeqRandomString(16, 4))
-// 	err = u.Set(key, key)
-// 	if err != nil {
-// 		t.Errorf("Insert failed: %s", err)
-// 	}
+	u, err := s.Tree("users")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	req := httptest.NewRequest(http.MethodGet, "/search/users/123", nil)
-// 	rec := httptest.NewRecorder()
-// 	router.ServeHTTP(rec, req)
-// 	resp := rec.Result()
-// 	defer resp.Body.Close()
-// 	if resp.StatusCode != http.StatusNotFound {
-// 		t.Errorf("expected status StatusOK; got %v", resp.Status)
-// 	}
+	var keySeq uint64 = 0
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	err = u.Set(key, key)
+	if err != nil {
+		t.Errorf("Insert failed: %s", err)
+	}
 
-// 	req = httptest.NewRequest(http.MethodGet, "/search/users/"+string(key), nil)
-// 	rec = httptest.NewRecorder()
-// 	router.ServeHTTP(rec, req)
-// 	resp = rec.Result()
-// 	defer resp.Body.Close()
-// 	if resp.StatusCode != http.StatusOK {
-// 		t.Errorf("expected status StatusNotFound; got %v", resp.Status)
-// 	}
-// }
+	req := httptest.NewRequest(http.MethodGet, "/search/users/123", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	resp := rec.Result()
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("expected status StatusNoContent; got %v", resp.Status)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/search/users/"+string(key), nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	resp = rec.Result()
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status StatusOK; got %v", resp.Status)
+	}
+}

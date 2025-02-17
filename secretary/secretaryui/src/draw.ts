@@ -92,11 +92,11 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
     const link = new shapes.standard.Link();
 
     if (!nodeDef?.box || (nodeDef?.box && !ui.graph.getCell(nodeDef.box.id))) {
-        console.log("nodeDef.box is not in the graph!");
+        // console.log("nodeDef.box is not in the graph!");
         return
     }
     if (!childDef?.box || (childDef?.box && !ui.graph.getCell(childDef.box.id))) {
-        console.log("childDef.box is not in the graph!");
+        // console.log("childDef.box is not in the graph!");
         return
     }
 

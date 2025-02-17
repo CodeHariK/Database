@@ -24,12 +24,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var keySeq uint64 = 0
 	var sortedRecords []*secretary.Record
 	var sortedKeys [][]byte
 	var sortedValues []string
-	for r := 0; r < 26; r++ {
+	for r := 0; r < 1; r++ {
 
-		key := []byte(utils.GenerateSeqString(16))
+		key := []byte(utils.GenerateSeqString(&keySeq, 16))
 		sortedKeys = append(sortedKeys, key)
 
 		sortedRecords = append(sortedRecords, &secretary.Record{

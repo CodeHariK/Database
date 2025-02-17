@@ -90,6 +90,8 @@ type InsertRequest struct {
 	Value string `json:"value"`
 }
 
+var keySeq uint64 = 0
+
 func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
@@ -105,7 +107,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := []byte(utils.GenerateSeqRandomString(16, 4, req.Value))
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4, req.Value))
 	err := tree.Set(key, key)
 	if err != nil {
 		http.Error(w, "Tree not found", http.StatusInternalServerError)

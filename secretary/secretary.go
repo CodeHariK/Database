@@ -1,14 +1,13 @@
 package secretary
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/codeharik/secretary/utils"
 )
 
 func New() (*Secretary, error) {
-	fmt.Println("Hello Secretary!")
+	utils.Print("Hello Secretary!")
 
 	secretary := &Secretary{
 		trees: map[string]*BTree{},
@@ -32,10 +31,10 @@ func New() (*Secretary, error) {
 			tree, err := secretary.NewBTreeReadHeader(file.Name())
 			if err == nil && tree.CollectionName == file.Name() {
 				secretary.trees[file.Name()] = tree
-				fmt.Print("\n[DIR] * ", file.Name())
+				utils.Print("\n[DIR] * ", file.Name())
 
 			} else {
-				fmt.Print("\n[DIR] ", file.Name(), " ", err)
+				utils.Print("\n[DIR] ", file.Name(), " ", err)
 			}
 		}
 	}

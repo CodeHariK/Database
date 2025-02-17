@@ -2,7 +2,6 @@ package secretary
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/codeharik/secretary/utils"
@@ -98,9 +97,11 @@ func TestSaveReadHeader(t *testing.T) {
 func TestBTreeHeight(t *testing.T) {
 	_, tree := dummyTree(t, "TestSaveHeader", 4)
 
+	var keySeq uint64 = 0
+
 	// Set more keys to increase height
 	for i := 0; i < 9; i++ {
-		key := []byte(utils.GenerateSeqRandomString(16, 4))
+		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
 		err := tree.Set(key, key)
 		if err != nil {
 			t.Errorf("Set failed: %s", err)
@@ -111,7 +112,7 @@ func TestBTreeHeight(t *testing.T) {
 		t.Errorf("Expected height %d", tree.Height())
 	}
 
-	key := []byte(utils.GenerateSeqRandomString(16, 4))
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
 	err := tree.Set(key, key)
 	if err != nil {
 		t.Errorf("Set failed: %s", err)
@@ -123,7 +124,7 @@ func TestBTreeHeight(t *testing.T) {
 
 	jsonOutput, err := tree.SerializeTreeJSON()
 	if err != nil {
-		fmt.Println("Error:", err)
+		t.Fatal("Error:", err)
 		return
 	}
 	t.Log(tree.Order, string(jsonOutput))

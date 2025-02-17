@@ -377,6 +377,8 @@ func TestRangeScan(t *testing.T) {
 }
 
 func TestSortedRecordSet(t *testing.T) {
+	var keySeq uint64 = 0
+
 	numKeys := make([]int, 64)
 	for i := range numKeys {
 		numKeys[i] = i + 1
@@ -387,7 +389,7 @@ func TestSortedRecordSet(t *testing.T) {
 		var sortedValues []string
 		for r := 0; r < numKey; r++ {
 			sortedRecords = append(sortedRecords, &Record{
-				Key:   []byte(utils.GenerateSeqString(16)),
+				Key:   []byte(utils.GenerateSeqString(&keySeq, 16)),
 				Value: []byte(fmt.Sprint(r)),
 			})
 
@@ -420,6 +422,8 @@ func TestSortedRecordSet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	var keySeq uint64 = 0
+
 	_, tree := dummyTree(t, "TestDelete", 4)
 
 	key := []byte(utils.GenerateRandomString(16))
@@ -455,7 +459,7 @@ func TestDelete(t *testing.T) {
 
 	multipleKeys := make([][]byte, 10)
 	for i := range multipleKeys {
-		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(16, 4))
+		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
 		err := tree.Set(multipleKeys[i], multipleKeys[i])
 		if err != nil {
 			t.Errorf("Set failed: %s", err)
@@ -476,12 +480,12 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDeleteRightSide(t *testing.T) {
+	var keySeq uint64 = 0
 	var sortedRecords []*Record
 	var sortedKeys [][]byte
 	var sortedValues []string
 	for r := 0; r < 26; r++ {
-
-		key := []byte(utils.GenerateSeqString(16))
+		key := []byte(utils.GenerateSeqString(&keySeq, 16))
 		sortedKeys = append(sortedKeys, key)
 
 		sortedRecords = append(sortedRecords, &Record{
@@ -493,12 +497,14 @@ func TestDeleteRightSide(t *testing.T) {
 	}
 
 	numTest := 10
-	shuffledKeys := make([][][]byte, numTest*10)
+	shuffledKeys := make([][][]byte, numTest*100)
 	for i := range shuffledKeys {
 		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-numTest:])
 	}
 
 	for _, keys := range shuffledKeys {
+
+		t.Log("~~~~~~~~~~~~ ", utils.ArrayToStrings(keys))
 
 		_, tree := dummyTree(t, "TestDelete", 4)
 
@@ -510,7 +516,7 @@ func TestDeleteRightSide(t *testing.T) {
 		for _, k := range keys {
 			err := tree.Delete(k)
 			if err != nil {
-				t.Fatal(err, utils.ArrayToStrings(keys))
+				t.Fatal(err)
 			}
 		}
 
@@ -521,12 +527,13 @@ func TestDeleteRightSide(t *testing.T) {
 }
 
 func TestDeleteLeftSide(t *testing.T) {
+	var keySeq uint64 = 0
 	var sortedRecords []*Record
 	var sortedKeys [][]byte
 	var sortedValues []string
-	for r := 0; r < 26; r++ {
 
-		key := []byte(utils.GenerateSeqString(16))
+	for r := 0; r < 26; r++ {
+		key := []byte(utils.GenerateSeqString(&keySeq, 16))
 		sortedKeys = append(sortedKeys, key)
 
 		sortedRecords = append(sortedRecords, &Record{

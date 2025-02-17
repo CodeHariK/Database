@@ -3,7 +3,6 @@ package secretary
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 
@@ -27,83 +26,83 @@ For a B+ tree of order  m :
   - Have exactly  m-1  record offsets (since each key maps to a record).
   - Therefore, KeyOffsets should have  m-1  elements (one per key).
 */
-func (tree *BTree) NodeVerify(n *Node) error {
+func (tree *BTree) NodeVerify(node *Node) error {
 	// A node is either a leaf (has records) or an internal node (has children), not both
-	if (n.records != nil && n.children != nil) || (n.records == nil && n.children == nil) {
+	if (node.records != nil && node.children != nil) || (node.records == nil && node.children == nil) {
 		return ErrorNodeIsEitherLeaforInternal
 	}
 
-	if len(n.Keys) >= int(tree.Order) {
-		// if len(n.Keys) != int(n.NumKeys) || n.NumKeys >= tree.Order {
-		return errors.New("len(n.Keys) >= int(tree.Order)")
+	// Check len(keys)
+	if len(node.Keys) >= int(tree.Order) {
+		return ErrorKeysGTEOrder
 	}
-	minKeys := (int(tree.Order) - 1) / 2 // Minimum required keys
-	if n != tree.root && len(n.Keys) < minKeys {
-		return errors.New("len(n.Keys) < minKeys")
+	if node != tree.root && len(node.Keys) < int(tree.minNumKeys) {
+		return ErrorKeysLTOrder
 	}
 
-	if n.parent != nil {
+	// Check if Parent knows Node
+	if node.parent != nil {
 		contains := false
-		for _, c := range n.parent.children {
-			if c == n {
+		for _, c := range node.parent.children {
+			if c == node {
 				contains = true
 			}
 		}
 		if !contains {
-			return fmt.Errorf("Parent %d doesn't contain child", n.parent.NodeID)
+			return ErrorParentNotKnowChild(node)
 		}
 	}
 
-	if n.next != nil && n.next.prev != n {
-		return fmt.Errorf("n.next.prev (%d) != n(%d)", n.next.prev.NodeID, n.NodeID)
+	// Check Next and Prev Pointers
+	if node.next != nil && node.next.prev != node {
+		return ErrorNextNodeLink(node)
 	}
-	if n.prev != nil && n.prev.next != n {
-		return fmt.Errorf("n.prev.next (%d) != n (%d)", n.prev.next.NodeID, n.NodeID)
+	if node.prev != nil && node.prev.next != node {
+		return ErrorPrevNodeLink(node)
 	}
 
-	if n.children != nil {
-		// Internal node
-		if len(n.children) != (len(n.Keys) + 1) {
-			// if len(n.children) != int(n.NumKeys+1) {
-			return errors.New("len(n.children) != (len(n.Keys) + 1)")
+	// Internal node, check len(children), check Children knows Node, Check MinKeys
+	if node.children != nil {
+		if len(node.children) != (len(node.Keys) + 1) {
+			return ErrorInternalLenChildren
 		}
 
-		for i, child := range n.children {
-			if child.parent != n {
-				return fmt.Errorf("Node is not parent of child %d", child.NodeID)
+		for i, child := range node.children {
+			if child.parent != node {
+				return ErrorChildNotKnowParent(node, child)
 			}
 
 			minLeafKey, err := child.getMinLeafKey()
 
-			if i > 0 && err == nil && bytes.Compare(minLeafKey, n.Keys[i-1]) != 0 {
-				return errors.New("Keys should be minKey of child nodes after first child")
+			if i > 0 && err == nil && bytes.Compare(minLeafKey, node.Keys[i-1]) != 0 {
+				return ErrorNodeMinKeyMismatch
 			}
 		}
 	}
 
-	if n.records != nil {
-		// Leaf node
-		if len(n.records) != len(n.Keys) {
-			return errors.New("len(n.records) != len(n.Keys)")
+	// Leaf node, check len(records), check nodekey match recordkey,
+	if node.records != nil {
+		if len(node.records) != len(node.Keys) {
+			return ErrorLeafLenRecords
 		}
-		for i, r := range n.records {
-			if bytes.Compare(r.Key, n.Keys[i]) != 0 {
-				return errors.New("record.key != key")
+		for i, r := range node.records {
+			if bytes.Compare(r.Key, node.Keys[i]) != 0 {
+				return ErrorRecordKeyMismatch
 			}
 		}
-		if !areRecordsSorted(n.records) {
+		if !areRecordsSorted(node.records) {
 			return ErrorRecordsNotSorted
 		}
 	}
 
 	// Validate each key size and key offset
-	for i, el := range n.Keys {
+	for i, el := range node.Keys {
 		if len(el) != KEY_SIZE {
 			return ErrorInvalidKey
 		}
 
 		// Are keys sorted
-		if i >= 1 && bytes.Compare(n.Keys[i-1], n.Keys[i]) >= 0 {
+		if i >= 1 && bytes.Compare(node.Keys[i-1], node.Keys[i]) >= 0 {
 			return ErrorKeysNotOrdered
 		}
 
@@ -147,7 +146,7 @@ func (tree *BTree) TreeVerify() []error {
 
 // Create a new internal node
 func (tree *BTree) createInternalNode(children []*Node) *Node {
-	tree.NumNodes += 1
+	tree.NodeSeq += 1
 
 	if children == nil {
 		children = make([]*Node, 0)
@@ -158,20 +157,20 @@ func (tree *BTree) createInternalNode(children []*Node) *Node {
 		children: children,
 		// NumKeys:  0,
 
-		NodeID: tree.NumNodes,
+		NodeID: tree.NodeSeq,
 	}
 }
 
 // Create a new leaf node
 func (tree *BTree) createLeafNode() *Node {
-	tree.NumNodes += 1
+	tree.NodeSeq += 1
 
 	return &Node{
 		Keys:    make([][]byte, 0),
 		records: make([]*Record, 0),
 		// NumKeys: 0,
 
-		NodeID: tree.NumNodes,
+		NodeID: tree.NodeSeq,
 	}
 }
 
@@ -287,17 +286,17 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 func (tree *BTree) splitInternal(node *Node) {
 	mid := len(node.Keys) / 2
 
-	newInternal := tree.createInternalNode(nil)
-	newInternal.Keys = append(
-		newInternal.Keys,
+	newRightInternal := tree.createInternalNode(nil)
+	newRightInternal.Keys = append(
+		newRightInternal.Keys,
 		node.Keys[mid+1:]...)
-	newInternal.children = append(
-		newInternal.children,
+	newRightInternal.children = append(
+		newRightInternal.children,
 		node.children[mid+1:]...)
 	// newInternal.NumKeys = uint8(len(newInternal.Keys))
 
-	for _, child := range newInternal.children {
-		child.parent = newInternal
+	for _, child := range newRightInternal.children {
+		child.parent = newRightInternal
 	}
 
 	promotedKey := node.Keys[mid]
@@ -305,7 +304,11 @@ func (tree *BTree) splitInternal(node *Node) {
 	node.children = node.children[:mid+1]
 	// node.NumKeys = uint8(len(node.Keys))
 
-	tree.setParentKV(node, promotedKey, newInternal)
+	newRightInternal.next = node.next
+	node.next = newRightInternal
+	newRightInternal.prev = node
+
+	tree.setParentKV(node, promotedKey, newRightInternal)
 }
 
 // Set a key-value pair into the B+ Tree
