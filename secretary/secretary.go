@@ -7,7 +7,7 @@ import (
 )
 
 func New() (*Secretary, error) {
-	utils.Print("Hello Secretary!")
+	utils.Log("Hello Secretary!")
 
 	secretary := &Secretary{
 		trees: map[string]*BTree{},
@@ -31,10 +31,10 @@ func New() (*Secretary, error) {
 			tree, err := secretary.NewBTreeReadHeader(file.Name())
 			if err == nil && tree.CollectionName == file.Name() {
 				secretary.trees[file.Name()] = tree
-				utils.Print("\n[DIR] * ", file.Name())
+				utils.Log("[DIR] * ", file.Name())
 
 			} else {
-				utils.Print("\n[DIR] ", file.Name(), " ", err)
+				utils.Log("[DIR] ", file.Name(), " ", err)
 			}
 		}
 	}

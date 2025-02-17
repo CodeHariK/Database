@@ -20,7 +20,7 @@ func (s *Secretary) getAllBTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonData, err := json.MarshalIndent(hello, "", "  ")
 	if err != nil {
-		fmt.Println("Error marshaling:", err)
+		utils.Log("Error marshaling:", err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -163,7 +163,7 @@ func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
-		fmt.Println(err)
+		utils.Log(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -200,6 +200,6 @@ func (s *Secretary) setupRouter() http.Handler {
 
 func (s *Secretary) Serve() {
 	port := 8080
-	fmt.Printf("\nServer running on port %d...\n", port)
+	utils.Log("Server running on port", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), s.setupRouter()))
 }

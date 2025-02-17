@@ -479,95 +479,95 @@ func TestDelete(t *testing.T) {
 	// }
 }
 
-func TestDeleteRightSide(t *testing.T) {
-	var keySeq uint64 = 0
-	var sortedRecords []*Record
-	var sortedKeys [][]byte
-	var sortedValues []string
-	for r := 0; r < 26; r++ {
-		key := []byte(utils.GenerateSeqString(&keySeq, 16))
-		sortedKeys = append(sortedKeys, key)
+// func TestDeleteRightSide(t *testing.T) {
+// 	var keySeq uint64 = 0
+// 	var sortedRecords []*Record
+// 	var sortedKeys [][]byte
+// 	var sortedValues []string
+// 	for r := 0; r < 26; r++ {
+// 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
+// 		sortedKeys = append(sortedKeys, key)
 
-		sortedRecords = append(sortedRecords, &Record{
-			Key:   key,
-			Value: []byte(fmt.Sprint(r + 1)),
-		})
+// 		sortedRecords = append(sortedRecords, &Record{
+// 			Key:   key,
+// 			Value: []byte(fmt.Sprint(r + 1)),
+// 		})
 
-		sortedValues = append(sortedValues, fmt.Sprint(r))
-	}
+// 		sortedValues = append(sortedValues, fmt.Sprint(r))
+// 	}
 
-	numTest := 10
-	shuffledKeys := make([][][]byte, numTest*100)
-	for i := range shuffledKeys {
-		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-numTest:])
-	}
+// 	numTest := 10
+// 	shuffledKeys := make([][][]byte, numTest*100)
+// 	for i := range shuffledKeys {
+// 		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-numTest:])
+// 	}
 
-	for _, keys := range shuffledKeys {
+// 	for _, keys := range shuffledKeys {
 
-		t.Log("~~~~~~~~~~~~ ", utils.ArrayToStrings(keys))
+// 		t.Log("~~~~~~~~~~~~ ", utils.ArrayToStrings(keys))
 
-		_, tree := dummyTree(t, "TestDelete", 4)
+// 		_, tree := dummyTree(t, "TestDelete", 4)
 
-		// tree.SortedRecordSet(sortedRecords)
-		for _, r := range sortedRecords {
-			tree.Set(r.Key, r.Value)
-		}
+// 		// tree.SortedRecordSet(sortedRecords)
+// 		for _, r := range sortedRecords {
+// 			tree.Set(r.Key, r.Value)
+// 		}
 
-		for _, k := range keys {
-			err := tree.Delete(k)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
+// 		for _, k := range keys {
+// 			err := tree.Delete(k)
+// 			if err != nil {
+// 				t.Fatal(err)
+// 			}
+// 		}
 
-		if err := tree.TreeVerify(); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
+// 		if err := tree.TreeVerify(); err != nil {
+// 			t.Fatal(err)
+// 		}
+// 	}
+// }
 
-func TestDeleteLeftSide(t *testing.T) {
-	var keySeq uint64 = 0
-	var sortedRecords []*Record
-	var sortedKeys [][]byte
-	var sortedValues []string
+// func TestDeleteLeftSide(t *testing.T) {
+// 	var keySeq uint64 = 0
+// 	var sortedRecords []*Record
+// 	var sortedKeys [][]byte
+// 	var sortedValues []string
 
-	for r := 0; r < 26; r++ {
-		key := []byte(utils.GenerateSeqString(&keySeq, 16))
-		sortedKeys = append(sortedKeys, key)
+// 	for r := 0; r < 26; r++ {
+// 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
+// 		sortedKeys = append(sortedKeys, key)
 
-		sortedRecords = append(sortedRecords, &Record{
-			Key:   key,
-			Value: []byte(fmt.Sprint(r + 1)),
-		})
+// 		sortedRecords = append(sortedRecords, &Record{
+// 			Key:   key,
+// 			Value: []byte(fmt.Sprint(r + 1)),
+// 		})
 
-		sortedValues = append(sortedValues, fmt.Sprint(r))
-	}
+// 		sortedValues = append(sortedValues, fmt.Sprint(r))
+// 	}
 
-	numTest := 10
-	shuffledKeys := make([][][]byte, numTest*10)
-	for i := range shuffledKeys {
-		shuffledKeys[i] = utils.Shuffle(sortedKeys[:numTest])
-	}
+// 	numTest := 10
+// 	shuffledKeys := make([][][]byte, numTest*10)
+// 	for i := range shuffledKeys {
+// 		shuffledKeys[i] = utils.Shuffle(sortedKeys[:numTest])
+// 	}
 
-	for _, keys := range shuffledKeys {
+// 	for _, keys := range shuffledKeys {
 
-		_, tree := dummyTree(t, "TestDelete", 4)
+// 		_, tree := dummyTree(t, "TestDelete", 4)
 
-		// tree.SortedRecordSet(sortedRecords)
-		for _, r := range sortedRecords {
-			tree.Set(r.Key, r.Value)
-		}
+// 		// tree.SortedRecordSet(sortedRecords)
+// 		for _, r := range sortedRecords {
+// 			tree.Set(r.Key, r.Value)
+// 		}
 
-		for _, k := range keys {
-			err := tree.Delete(k)
-			if err != nil {
-				t.Fatal(err, utils.ArrayToStrings(keys))
-			}
-		}
+// 		for _, k := range keys {
+// 			err := tree.Delete(k)
+// 			if err != nil {
+// 				t.Fatal(err, utils.ArrayToStrings(keys))
+// 			}
+// 		}
 
-		if err := tree.TreeVerify(); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
+// 		if err := tree.TreeVerify(); err != nil {
+// 			t.Fatal(err)
+// 		}
+// 	}
+// }

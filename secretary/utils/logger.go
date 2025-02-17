@@ -27,65 +27,32 @@ const (
 
 var colors = []string{magenta, blue, green}
 
-const ProjectName = "/secretary/"
+const (
+	PROJECTNAME = "/secretary/"
+	TESTMODE    = false
+)
 
-func Print(msgs ...any) {
-	i := rand.IntN(len(colors))
-	fmt.Fprintf(os.Stdout, "%s", colors[i%len(colors)]+fmt.Sprint(msgs...)+colorNone)
-}
+func Log(msgs ...any) {
+	randomColor := rand.IntN(len(colors))
 
-func Warn(msgs ...any) {
-	i := rand.IntN(len(colors))
-	fmt.Fprintf(os.Stdout, "%s", colors[i%len(colors)]+fmt.Sprint(msgs...)+colorNone+"\n")
-
-	lines := strings.Split(string(debug.Stack()), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ProjectName) && strings.Contains(line, ".go") {
-			fmt.Fprintf(os.Stderr, "%s", red+line+colorNone+"\n")
-		}
-	}
-}
-
-func Info(msgs ...any) {
-	for i, msg := range msgs {
-		b, err := json.MarshalIndent(msg, "", "  ")
-		if err != nil {
-			fmt.Println("Print Error")
-		}
-		fmt.Fprintf(os.Stdout, "%s", colors[i%len(colors)]+string(b)+colorNone+"\n")
-	}
-	lines := strings.Split(string(debug.Stack()), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, ProjectName) && strings.Contains(line, ".go") {
-			fmt.Fprintf(os.Stderr, "%s", red+line+colorNone+"\n")
-		}
-	}
-}
-
-func Debug(msgs ...any) {
-	for i, msg := range msgs {
-
+	for _, msg := range msgs {
 		if err, ok := msg.(error); ok {
 			fmt.Fprintf(os.Stderr, "%s", red+err.Error()+colorNone+"\n")
 
 			lines := strings.Split(string(debug.Stack()), "\n")
-
-			// Filter and print lines containing the search string
 			for _, line := range lines {
-				if strings.Contains(line, ProjectName) {
+				if strings.Contains(line, PROJECTNAME) && strings.Contains(line, ".go") {
 					fmt.Fprintf(os.Stderr, "%s", red+line+colorNone+"\n")
-				} else {
-					fmt.Fprintf(os.Stderr, "%s", line+"\n")
 				}
 			}
 
 			continue
+		} else {
+			b, err := json.MarshalIndent(msg, "", "  ")
+			if err != nil {
+				fmt.Print(msg)
+			}
+			fmt.Fprintf(os.Stdout, "%s", colors[randomColor%len(colors)]+string(b)+colorNone)
 		}
-
-		b, err := json.MarshalIndent(msg, "", "  ")
-		if err != nil {
-			fmt.Println("Log Error")
-		}
-		fmt.Fprintf(os.Stdout, "%s", colors[i%len(colors)]+string(b)+colorNone+"\n")
 	}
 }
