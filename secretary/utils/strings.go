@@ -40,23 +40,3 @@ func GenerateSeqRandomString(length int, pad int, value ...string) string {
 	s := fmt.Sprintf("%0*d:%s:%s", pad, generateSeq, value, string(b))
 	return s[:length]
 }
-
-func BytesToStrings(byteSlices [][]byte) []string {
-	strs := make([]string, len(byteSlices))
-	for i, b := range byteSlices {
-		strs[i] = string(b) // Convert []byte to string
-	}
-	return strs
-}
-
-func CompareStringArray(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}

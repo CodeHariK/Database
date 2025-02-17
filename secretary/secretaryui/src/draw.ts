@@ -47,11 +47,11 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
     });
 
     element.attr('bodyText/text',
-        node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n\n" +
-        (node.error ? (node.error + "\n") : "") +
+        "\n" + node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
         node.keys.map((a, i) => {
             return "\n" + (a == searchInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
-        }).join("")
+        }).join("") +
+        "\n\n" + (node.error ? (node.error + "\n") : "")
     );
 
     element.addTo(ui.graph);

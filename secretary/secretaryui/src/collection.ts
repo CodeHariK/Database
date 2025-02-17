@@ -105,7 +105,7 @@ async function fetchCurrentTree() {
     ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
 
     let height = ui.currentTreeDef?.order ?? 4
-    ui.BOXHEIGHT = height * 30
+    ui.BOXHEIGHT = height * 36
 
     RedrawTree()
 }

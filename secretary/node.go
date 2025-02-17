@@ -5,24 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
-	"runtime/debug"
 	"sort"
 
 	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func (tree *BTree) FatalNodeVerify(n *Node) {
-	if err := tree.NodeVerify(n); err != nil {
-		log.Println(string(debug.Stack()))
-		tree.PrintNode(n, 2)
-		log.Fatal(err)
-	}
-}
+//------------------------------------------------------------------
+// Node Verification
+//------------------------------------------------------------------
 
 /*
-*
 For a B+ tree of order  m :
 *	Internal Nodes:
   - Have at most  m-1  keys (separators).
@@ -80,7 +73,7 @@ func (tree *BTree) NodeVerify(n *Node) error {
 				return fmt.Errorf("Node is not parent of child %d", child.NodeID)
 			}
 
-			minLeafKey, err := child.GetMinLeafKey()
+			minLeafKey, err := child.getMinLeafKey()
 
 			if i > 0 && err == nil && bytes.Compare(minLeafKey, n.Keys[i-1]) != 0 {
 				return errors.New("Keys should be minKey of child nodes after first child")
@@ -125,27 +118,32 @@ func (tree *BTree) NodeVerify(n *Node) error {
 	return nil
 }
 
-func (tree *BTree) RecursiveNodeVerify(node *Node) error {
+func (tree *BTree) recursiveNodeVerify(node *Node) []error {
+	errs := []error{}
 	if node != nil {
 		err := tree.NodeVerify(node)
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 
 		for _, n := range node.children {
-			err = tree.RecursiveNodeVerify(n)
+			err := tree.recursiveNodeVerify(n)
 			if err != nil {
-				return err
+				errs = append(errs, err...)
 			}
 		}
 		return nil
 	}
-	return ErrorTreeNil
+	return errs
 }
 
-func (tree *BTree) TreeVerify() error {
-	return tree.RecursiveNodeVerify(tree.root)
+func (tree *BTree) TreeVerify() []error {
+	return tree.recursiveNodeVerify(tree.root)
 }
+
+//------------------------------------------------------------------
+// Create Nodes
+//------------------------------------------------------------------
 
 // Create a new internal node
 func (tree *BTree) createInternalNode(children []*Node) *Node {
@@ -187,10 +185,12 @@ func (tree *BTree) saveRoot() error {
 }
 
 //------------------------------------------------------------------
+// Set/Update Key
+//------------------------------------------------------------------
 
 // Set key-value in leaf node
-func (tree *BTree) setLeafKV(leaf *Node, key []byte, value []byte) {
-	i, _ := leaf.GetKey(key)
+func (leaf *Node) setLeafKV(key []byte, value []byte) {
+	i, _ := leaf.getKey(key)
 
 	leaf.Keys = append(
 		leaf.Keys[:i],
@@ -238,9 +238,6 @@ func (tree *BTree) splitLeaf(leaf *Node) {
 	newLeaf.prev = leaf
 
 	tree.setParentKV(leaf, newLeaf.Keys[0], newLeaf)
-
-	tree.FatalNodeVerify(leaf)
-	tree.FatalNodeVerify(newLeaf)
 }
 
 func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
@@ -255,14 +252,11 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 		right.parent = newRoot
 		tree.root = newRoot
 
-		tree.FatalNodeVerify(left)
-		tree.FatalNodeVerify(right)
-		tree.FatalNodeVerify(tree.root)
 		return
 	}
 
 	parent := left.parent
-	setIdx, _ := parent.GetKey(key)
+	setIdx, _ := parent.getKey(key)
 
 	parent.Keys = append(
 		parent.Keys[:setIdx],
@@ -287,8 +281,6 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 	if len(parent.Keys) >= int(tree.Order) {
 		tree.splitInternal(parent)
 	}
-
-	tree.FatalNodeVerify(parent)
 }
 
 // Split an internal node
@@ -314,9 +306,6 @@ func (tree *BTree) splitInternal(node *Node) {
 	// node.NumKeys = uint8(len(node.Keys))
 
 	tree.setParentKV(node, promotedKey, newInternal)
-
-	tree.FatalNodeVerify(node)
-	tree.FatalNodeVerify(newInternal)
 }
 
 // Set a key-value pair into the B+ Tree
@@ -327,18 +316,17 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 
 	if tree.root == nil {
 		tree.root = tree.createLeafNode()
-		tree.setLeafKV(tree.root, key, value)
+		tree.root.setLeafKV(key, value)
 
-		tree.FatalNodeVerify(tree.root)
 		return nil
 	}
 
-	leaf, index, found := tree.GetLeafNode(key)
+	leaf, index, found := tree.getLeafNode(key)
 	if found && bytes.Compare(leaf.Keys[index], key) == 0 {
 		return ErrorDuplicateKey
 	}
 
-	tree.setLeafKV(leaf, key, value)
+	leaf.setLeafKV(key, value)
 
 	// fmt.Println("leaf ", leaf.NodeID, len(leaf.Keys), "split:", len(leaf.Keys) >= int(tree.Order))
 
@@ -346,7 +334,6 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 		tree.splitLeaf(leaf)
 	}
 
-	tree.FatalNodeVerify(leaf)
 	return nil
 }
 
@@ -356,7 +343,7 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 		return ErrorInvalidKey
 	}
 
-	leaf, index, found := tree.GetLeafNode(key)
+	leaf, index, found := tree.getLeafNode(key)
 	if found {
 		leaf.records[index].Value = value
 		return nil
@@ -364,7 +351,9 @@ func (tree *BTree) Update(key []byte, value []byte) error {
 	return ErrorKeyNotFound
 }
 
-// ------------------------------------------------------------------
+//------------------------------------------------------------------
+// Sorted Records Set
+//------------------------------------------------------------------
 
 func areRecordsSorted(records []*Record) bool {
 	for i := 1; i < len(records); i++ {
@@ -384,8 +373,6 @@ func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
 
 	tree.root = tree.buildInternalNodes(leafNodes)
-
-	tree.FatalNodeVerify(tree.root)
 
 	return nil
 }
@@ -411,8 +398,6 @@ func (tree *BTree) buildSortedLeafNodes(sortedRecords []*Record) []*Node {
 			leafNodes[len(leafNodes)-1].next = leaf
 			leaf.prev = leafNodes[len(leafNodes)-1]
 		}
-
-		tree.FatalNodeVerify(leaf)
 
 		leafNodes = append(leafNodes, leaf)
 	}
@@ -460,13 +445,11 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 		for i, child := range children[start:end] {
 			child.parent = node
 
-			minLeafKey, err := child.GetMinLeafKey()
+			minLeafKey, err := child.getMinLeafKey()
 			if err == nil && i != 0 {
 				node.Keys = append(node.Keys, minLeafKey)
 			}
 		}
-
-		tree.FatalNodeVerify(node)
 
 		internalNodes = append(internalNodes, node)
 
@@ -481,9 +464,11 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 }
 
 //------------------------------------------------------------------
+// Get Key
+//------------------------------------------------------------------
 
 // Binary search helper function
-func (n *Node) GetKey(key []byte) (index int, found bool) {
+func (n *Node) getKey(key []byte) (index int, found bool) {
 	index = sort.Search(
 		len(n.Keys),
 		func(i int) bool {
@@ -497,25 +482,25 @@ func (n *Node) GetKey(key []byte) (index int, found bool) {
 	return index, found
 }
 
-func (node *Node) GetMinLeafKey() ([]byte, error) {
+func (node *Node) getMinLeafKey() ([]byte, error) {
 	if len(node.children) == 0 {
 		if len(node.Keys) > 0 {
 			return node.Keys[0], nil
 		}
 		return nil, ErrorKeyNotFound
 	}
-	return node.children[0].GetMinLeafKey()
+	return node.children[0].getMinLeafKey()
 }
 
 // Find the appropriate leaf node
-func (tree *BTree) GetLeafNode(key []byte) (node *Node, index int, found bool) {
+func (tree *BTree) getLeafNode(key []byte) (node *Node, index int, found bool) {
 	node = tree.root
 
 	// fmt.Println(node.NodeID, utils.BytesToStrings(node.Keys))
 
 	// Traverse internal nodes
 	for len(node.children) > 0 {
-		index, found := node.GetKey(key)
+		index, found := node.getKey(key)
 		if found {
 			node = node.children[index+1]
 		} else {
@@ -525,14 +510,14 @@ func (tree *BTree) GetLeafNode(key []byte) (node *Node, index int, found bool) {
 	}
 
 	// Search within the leaf node
-	index, found = node.GetKey(key)
+	index, found = node.getKey(key)
 	// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
 
 	return node, index, found
 }
 
 func (tree *BTree) Get(key []byte) (*Record, error) {
-	node, index, found := tree.GetLeafNode(key)
+	node, index, found := tree.getLeafNode(key)
 	if found {
 		return node.records[index], nil
 	}
@@ -547,8 +532,8 @@ func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
 
 	var results []*Record
 
-	startNode, startIndex, _ := tree.GetLeafNode(startKey)
-	endNode, endIndex, endFound := tree.GetLeafNode(endKey)
+	startNode, startIndex, _ := tree.getLeafNode(startKey)
+	endNode, endIndex, endFound := tree.getLeafNode(endKey)
 
 	// Iterate over nodes
 	for node := startNode; node != nil; node = node.next {
@@ -579,6 +564,8 @@ func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
 }
 
 //------------------------------------------------------------------
+// Delete
+//------------------------------------------------------------------
 
 // Delete deletes a key from the B+ Tree.
 func (tree *BTree) Delete(key []byte) error {
@@ -586,21 +573,21 @@ func (tree *BTree) Delete(key []byte) error {
 		return ErrorTreeNil
 	}
 
-	leaf, index, found := tree.GetLeafNode(key)
+	leaf, index, found := tree.getLeafNode(key)
 
 	if !found {
 		return ErrorKeyNotFound
 	}
 
-	// If first key of leaf is deleted && leaf is not first child of its parent, then update parent key
-	if index == 0 && len(leaf.Keys) > 1 && bytes.Compare(key, leaf.parent.Keys[0]) >= 0 {
-		pi, pf := leaf.parent.GetKey(key)
-		if !pf {
-			return errors.New("Leaf Key 0 not in Parent Keys")
-		}
-		fmt.Println("Removed child parent seperator key")
-		leaf.parent.Keys[pi] = leaf.Keys[index+1]
-	}
+	// // If first key of leaf is deleted && leaf is not first child of its parent, then update parent key
+	// if index == 0 && len(leaf.Keys) > 1 && bytes.Compare(key, leaf.parent.Keys[0]) >= 0 {
+	// 	pi, pf := leaf.parent.getKey(key)
+	// 	if !pf {
+	// 		return errors.New("Leaf Key 0 not in Parent Keys")
+	// 	}
+	// 	fmt.Println("Removed child parent seperator key")
+	// 	leaf.parent.Keys[pi] = leaf.Keys[index+1]
+	// }
 
 	// Remove the key and corresponding record
 	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
@@ -612,7 +599,7 @@ func (tree *BTree) Delete(key []byte) error {
 	// Handle underflow
 	tree.handleUnderflow(leaf)
 
-	// tree.TreeVerify()
+	recursiveFixInternalNodeChildLinks(leaf)
 
 	return nil
 }
@@ -624,7 +611,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		return // No underflow
 	}
 
-	fmt.Println("handleUnderflow", node.NodeID, utils.BytesToStrings(node.Keys))
+	fmt.Println("handleUnderflow", node.NodeID, utils.ArrayToStrings(node.Keys))
 
 	// Check if the node is the root
 	if node == tree.root {
@@ -655,7 +642,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			blen := len(leftSibling.Keys) - 1
 			borrowedKey := leftSibling.Keys[blen]
 			leftSibling.Keys = leftSibling.Keys[:blen]
-			fmt.Printf("**** Borrow from leftSibling[%d] -> leftSibling.Keys %v : BorrowedKey : %s\n", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys), string(borrowedKey))
+			fmt.Printf("**** Borrow from leftSibling[%d] -> leftSibling.Keys %v : BorrowedKey : %s\n", leftSibling.NodeID, utils.ArrayToStrings(leftSibling.Keys), string(borrowedKey))
 
 			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
 
@@ -678,12 +665,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 				borrowedChild.parent = node
 
-				FixInternalNodeChildLinks(node)
+				// recursiveFixInternalNodeChildLinks(node)
 			}
 
-			FixInternalNodeChildLinks(parent)
+			// recursiveFixInternalNodeChildLinks(parent)
+			recursiveFixInternalNodeChildLinks(node)
 
-			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
+			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.ArrayToStrings(parent.Keys))
 
 			return
 		}
@@ -701,7 +689,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 			borrowedKey := rightSibling.Keys[0]
 			rightSibling.Keys = rightSibling.Keys[1:]
-			fmt.Printf("**** Borrow from rightSibling[%d] -> rightSibling.Keys : %v BorrowedKey : %s\n", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys), string(borrowedKey))
+			fmt.Printf("**** Borrow from rightSibling[%d] -> rightSibling.Keys : %v BorrowedKey : %s\n", rightSibling.NodeID, utils.ArrayToStrings(rightSibling.Keys), string(borrowedKey))
 
 			node.Keys = append(node.Keys, borrowedKey)
 
@@ -723,12 +711,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 				borrowedChild.parent = node
 
-				FixInternalNodeChildLinks(node)
+				// recursiveFixInternalNodeChildLinks(node)
 			}
 
-			FixInternalNodeChildLinks(parent)
+			// recursiveFixInternalNodeChildLinks(parent)
+			recursiveFixInternalNodeChildLinks(node)
 
-			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
+			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.ArrayToStrings(parent.Keys))
 
 			return
 		}
@@ -739,7 +728,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		leftSibling := parent.children[pos-1]
 		// leftSibling := node.prev
 
-		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys))
+		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.ArrayToStrings(parent.Keys), " NodeID ", node.NodeID, utils.ArrayToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.ArrayToStrings(leftSibling.Keys))
 
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
 
@@ -759,11 +748,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.next.prev = leftSibling
 		}
 
-		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys))
+		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.ArrayToStrings(parent.Keys), " NodeID ", node.NodeID, utils.ArrayToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.ArrayToStrings(leftSibling.Keys))
 
-		FixInternalNodeChildLinks(parent)
-
-		FixInternalNodeChildLinks(leftSibling)
+		// recursiveFixInternalNodeChildLinks(parent)
+		recursiveFixInternalNodeChildLinks(leftSibling)
 
 		tree.handleUnderflow(parent)
 	} else
@@ -772,7 +760,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
 
-		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys))
+		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.ArrayToStrings(parent.Keys), " NodeID ", node.NodeID, utils.ArrayToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.ArrayToStrings(rightSibling.Keys))
 
 		node.Keys = append(node.Keys, rightSibling.Keys...)
 
@@ -792,31 +780,39 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			rightSibling.next.prev = rightSibling.prev
 		}
 
-		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys))
+		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.ArrayToStrings(parent.Keys), " NodeID ", node.NodeID, utils.ArrayToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.ArrayToStrings(rightSibling.Keys))
 
-		FixInternalNodeChildLinks(parent)
-
-		FixInternalNodeChildLinks(node)
+		// recursiveFixInternalNodeChildLinks(parent)
+		recursiveFixInternalNodeChildLinks(node)
 
 		tree.handleUnderflow(parent)
 	}
 }
 
-func FixInternalNodeChildLinks(parent *Node) {
-	if parent.children != nil {
-		parent.Keys = [][]byte{}
-		for i, child := range parent.children {
-			minLeafKey, err := child.GetMinLeafKey()
+func fixInternalNodeChildLinks(node *Node) {
+	if node != nil && node.children != nil {
+		node.Keys = [][]byte{}
+		for i, child := range node.children {
+			minLeafKey, err := child.getMinLeafKey()
 			if i > 0 && err == nil {
-				parent.Keys = append(parent.Keys, minLeafKey)
+				node.Keys = append(node.Keys, minLeafKey)
 			}
-			child.parent = parent
+			child.parent = node
 		}
-		fmt.Println("FixNodeParentChildLink ", parent.NodeID, " len(parent.children)", len(parent.children), utils.BytesToStrings(parent.Keys))
+		fmt.Println("FixInternalNodeChildLinks", node.NodeID, "len(parent.children)", len(node.children), utils.ArrayToStrings(node.Keys))
 	}
 }
 
-// ------------------------------------------------------------------
+func recursiveFixInternalNodeChildLinks(node *Node) {
+	fixInternalNodeChildLinks(node)
+	if node.parent != nil {
+		recursiveFixInternalNodeChildLinks(node.parent)
+	}
+}
+
+//------------------------------------------------------------------
+// Node/Tree to JSON
+//------------------------------------------------------------------
 
 // NodeJSON represents a node in a JSON-friendly structure
 type NodeJSON struct {
@@ -879,7 +875,7 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 	if tree.root == node {
 		rootErr := tree.TreeVerify()
 		if rootErr != nil {
-			rootError = rootErr.Error()
+			rootError = fmt.Sprint(utils.ArrayToStrings(rootErr))
 		}
 	}
 
@@ -897,8 +893,8 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 	}
 }
 
-// ConvertNodeToJSON converts the entire BTree into a JSON structure
-func (tree *BTree) ConvertNodeToJSON(node *Node, height int) ([]byte, error) {
+// SerializeNodeJSON converts the entire BTree into a JSON structure
+func (tree *BTree) SerializeNodeJSON(node *Node, height int) ([]byte, error) {
 	jsonData, err := json.MarshalIndent(tree.ConvertNodeJSON(node, height), "", "  ")
 	if err != nil {
 		return nil, err
@@ -908,11 +904,11 @@ func (tree *BTree) ConvertNodeToJSON(node *Node, height int) ([]byte, error) {
 }
 
 func (tree *BTree) PrintNode(node *Node, height int) {
-	t, err := tree.ConvertNodeToJSON(node, height)
+	t, err := tree.SerializeNodeJSON(node, height)
 	fmt.Println(string(t), err)
 }
 
-// ConvertBTreeToJSON converts the entire BTree into a JSON structure
-func (tree *BTree) ConvertBTreeToJSON() ([]byte, error) {
-	return tree.ConvertNodeToJSON(tree.root, tree.Height())
+// SerializeTreeJSON converts the entire BTree into a JSON structure
+func (tree *BTree) SerializeTreeJSON() ([]byte, error) {
+	return tree.SerializeNodeJSON(tree.root, tree.Height())
 }

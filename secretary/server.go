@@ -36,7 +36,7 @@ func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := tree.ConvertBTreeToJSON()
+	m, err := tree.SerializeTreeJSON()
 	if err != nil || m == nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -131,7 +131,7 @@ func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	node, index, found := tree.GetLeafNode([]byte(id))
+	node, index, found := tree.getLeafNode([]byte(id))
 	var record string
 	if found {
 		record = string(node.records[index].Value)

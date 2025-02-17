@@ -141,7 +141,7 @@ func TestNodeScan(t *testing.T) {
 
 	for _, test := range tests {
 		node := &Node{Keys: test.keys}
-		result, found := node.GetKey(test.search)
+		result, found := node.getKey(test.search)
 		if result != test.expectedIndex || found != test.expectedFound {
 			t.Errorf("NodeScan(%q) = %d, expected %d", test.search, result, test.expectedIndex)
 		}
@@ -208,7 +208,7 @@ func TestGetLeafNode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, index, found := tree.GetLeafNode(test.key)
+		result, index, found := tree.getLeafNode(test.key)
 
 		if result.NodeID != test.expectedNode.NodeID || index != test.expectedIndex || found != test.expectedFound {
 			t.Errorf("GetLeafNode(%q) returned wrong leaf node\n ExpNode:%d - Got:%d\n ExpID:%d - Got:%d\n ExpFound:%v - Got:%v\n %v",
@@ -216,21 +216,21 @@ func TestGetLeafNode(t *testing.T) {
 				test.expectedNode.NodeID, result.NodeID,
 				test.expectedIndex, index,
 				test.expectedFound, found,
-				utils.BytesToStrings(result.Keys),
+				utils.ArrayToStrings(result.Keys),
 			)
 		}
 	}
 
 	// Test empty tree
 	emptyTree := &BTree{root: &Node{}}
-	emptyNode, _, _ := emptyTree.GetLeafNode([]byte("x"))
+	emptyNode, _, _ := emptyTree.getLeafNode([]byte("x"))
 	if emptyNode.NodeID != emptyTree.root.NodeID {
 		t.Errorf("GetLeafNode on empty tree should return root")
 	}
 
 	// Test single-node tree
 	singleNodeTree := &BTree{root: &Node{Keys: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}}
-	singleNode, _, _ := singleNodeTree.GetLeafNode([]byte("b"))
+	singleNode, _, _ := singleNodeTree.getLeafNode([]byte("b"))
 	if singleNode.NodeID != singleNodeTree.root.NodeID {
 		t.Errorf("GetLeafNode on single-node tree should return root")
 	}
@@ -370,7 +370,7 @@ func TestRangeScan(t *testing.T) {
 		for _, record := range results {
 			resultKeys = append(resultKeys, string(record.Value))
 		}
-		if !utils.CompareStringArray(resultKeys, tt.expected) {
+		if !utils.CompareArray(resultKeys, tt.expected) {
 			t.Errorf("RangeScan(%q, %q) = %v, expected %v", tt.startKey, tt.endKey, resultKeys, tt.expected)
 		}
 	}
@@ -492,9 +492,10 @@ func TestDeleteRightSide(t *testing.T) {
 		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
 
-	shuffledKeys := make([][][]byte, 10)
+	numTest := 10
+	shuffledKeys := make([][][]byte, numTest*10)
 	for i := range shuffledKeys {
-		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-10:])
+		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-numTest:])
 	}
 
 	for _, keys := range shuffledKeys {
@@ -509,7 +510,7 @@ func TestDeleteRightSide(t *testing.T) {
 		for _, k := range keys {
 			err := tree.Delete(k)
 			if err != nil {
-				t.Fatal(err, utils.BytesToStrings(keys))
+				t.Fatal(err, utils.ArrayToStrings(keys))
 			}
 		}
 
@@ -536,9 +537,10 @@ func TestDeleteLeftSide(t *testing.T) {
 		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
 
-	shuffledKeys := make([][][]byte, 10)
+	numTest := 10
+	shuffledKeys := make([][][]byte, numTest*10)
 	for i := range shuffledKeys {
-		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-10:])
+		shuffledKeys[i] = utils.Shuffle(sortedKeys[:numTest])
 	}
 
 	for _, keys := range shuffledKeys {
@@ -553,7 +555,7 @@ func TestDeleteLeftSide(t *testing.T) {
 		for _, k := range keys {
 			err := tree.Delete(k)
 			if err != nil {
-				t.Fatal(err, utils.BytesToStrings(keys))
+				t.Fatal(err, utils.ArrayToStrings(keys))
 			}
 		}
 
