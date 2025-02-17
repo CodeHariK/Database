@@ -492,15 +492,9 @@ func TestDeleteRightSide(t *testing.T) {
 		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
 
-	numKeys := 7
-	shuffledKeys := [][][]byte{
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
-		utils.Shuffle(sortedKeys[len(sortedKeys)-numKeys:]),
+	shuffledKeys := make([][][]byte, 10)
+	for i := range shuffledKeys {
+		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-10:])
 	}
 
 	for _, keys := range shuffledKeys {
@@ -542,15 +536,9 @@ func TestDeleteLeftSide(t *testing.T) {
 		sortedValues = append(sortedValues, fmt.Sprint(r))
 	}
 
-	numKeys := 2
-	shuffledKeys := [][][]byte{
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
-		utils.Shuffle(sortedKeys[:numKeys]),
+	shuffledKeys := make([][][]byte, 10)
+	for i := range shuffledKeys {
+		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-10:])
 	}
 
 	for _, keys := range shuffledKeys {

@@ -9,7 +9,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
     let nodeDef = ui.NODEMAP.get(node.nodeID);
     ui.NODEMAP.set(node.nodeID, {
-        color: nodeDef ? nodeDef.color : (node.error ? "#f55" : randomColor()),
+        color: node.error ? "#f55" : (nodeDef ? nodeDef.color : randomColor()),
         selected: false,
         box: null,
         node: node,

@@ -46,18 +46,18 @@ func main() {
 		users.Set(r.Key, r.Value)
 	}
 
-	for _, k := range utils.Shuffle(sortedKeys[:2]) {
-		err := users.Delete(k)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	// for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-4:]) {
+	// for _, k := range utils.Shuffle(sortedKeys[:6]) {
 	// 	err := users.Delete(k)
 	// 	if err != nil {
 	// 		fmt.Println(err)
 	// 	}
 	// }
+	for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-7:]) {
+		err := users.Delete(k)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 
 	s.Serve()
 }

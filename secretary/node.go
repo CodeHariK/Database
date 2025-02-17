@@ -678,10 +678,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 				borrowedChild.parent = node
 
-				FixInternalNodeParentChildLink(node)
+				FixInternalNodeChildLinks(node)
 			}
 
-			FixInternalNodeParentChildLink(parent)
+			FixInternalNodeChildLinks(parent)
 
 			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
@@ -723,10 +723,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 				borrowedChild.parent = node
 
-				FixInternalNodeParentChildLink(node)
+				FixInternalNodeChildLinks(node)
 			}
 
-			FixInternalNodeParentChildLink(parent)
+			FixInternalNodeChildLinks(parent)
 
 			fmt.Println("Pos:", pos, "BorrowedKey:", string(borrowedKey), " parent.keys", utils.BytesToStrings(parent.Keys))
 
@@ -738,17 +738,32 @@ func (tree *BTree) handleUnderflow(node *Node) {
 	if pos > 0 {
 		leftSibling := parent.children[pos-1]
 		// leftSibling := node.prev
+
+		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys))
+
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
-		leftSibling.records = append(leftSibling.records, node.records...)
 
+		if leftSibling.children == nil {
+			leftSibling.records = append(leftSibling.records, node.records...)
+		} else {
+			leftSibling.children = append(leftSibling.children, node.children...)
+		}
+
+		// parent.Keys = append(parent.Keys[:pos-1], parent.Keys[pos:]...)
 		parent.children = append(parent.children[:pos], parent.children[pos+1:]...)
-		parent.Keys = append(parent.Keys[:pos-1], parent.Keys[pos:]...)
 
-		// removeChild := parent.children[pos]
-		// removeChild.prev.next = removeChild.next
-		// removeChild.next.prev = removeChild.prev
+		if node.prev != nil {
+			leftSibling.next = node.next
+		}
+		if node.next != nil {
+			node.next.prev = leftSibling
+		}
 
-		fmt.Println("**** Merge with left sibling -> Pos:", pos, " parent.keys", utils.BytesToStrings(parent.Keys))
+		fmt.Println("**** Merge with left sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " leftSiblingID ", leftSibling.NodeID, utils.BytesToStrings(leftSibling.Keys))
+
+		FixInternalNodeChildLinks(parent)
+
+		FixInternalNodeChildLinks(leftSibling)
 
 		tree.handleUnderflow(parent)
 	} else
@@ -779,23 +794,15 @@ func (tree *BTree) handleUnderflow(node *Node) {
 
 		fmt.Println("**** Merge right sibling -> Pos:", pos, " Parent ", parent.NodeID, " parent.keys", utils.BytesToStrings(parent.Keys), " NodeID ", node.NodeID, utils.BytesToStrings(node.Keys), " rightSiblingID ", rightSibling.NodeID, utils.BytesToStrings(rightSibling.Keys))
 
-		tree.PrintNode(parent, 2)
+		FixInternalNodeChildLinks(parent)
 
-		FixInternalNodeParentChildLink(parent)
-
-		tree.PrintNode(parent, 2)
-
-		FixInternalNodeParentChildLink(node)
-
-		tree.PrintNode(parent, 2)
+		FixInternalNodeChildLinks(node)
 
 		tree.handleUnderflow(parent)
-
-		tree.PrintNode(parent, 2)
 	}
 }
 
-func FixInternalNodeParentChildLink(parent *Node) {
+func FixInternalNodeChildLinks(parent *Node) {
 	if parent.children != nil {
 		parent.Keys = [][]byte{}
 		for i, child := range parent.children {
@@ -803,6 +810,7 @@ func FixInternalNodeParentChildLink(parent *Node) {
 			if i > 0 && err == nil {
 				parent.Keys = append(parent.Keys, minLeafKey)
 			}
+			child.parent = parent
 		}
 		fmt.Println("FixNodeParentChildLink ", parent.NodeID, " len(parent.children)", len(parent.children), utils.BytesToStrings(parent.Keys))
 	}
@@ -867,6 +875,13 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 	if err != nil {
 		error = err.Error()
 	}
+	rootError := ""
+	if tree.root == node {
+		rootErr := tree.TreeVerify()
+		if rootErr != nil {
+			rootError = rootErr.Error()
+		}
+	}
 
 	return NodeJSON{
 		NodeId:   node.NodeID,
@@ -878,7 +893,7 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 		Children: children,
 		// NumKeys:  node.NumKeys,
 
-		Error: error,
+		Error: error + "" + rootError,
 	}
 }
 
