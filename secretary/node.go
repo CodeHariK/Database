@@ -976,3 +976,8 @@ func (tree *BTree) PrintNode(node *Node, height int) {
 func (tree *BTree) SerializeTreeJSON() ([]byte, error) {
 	return tree.SerializeNodeJSON(tree.root, tree.Height())
 }
+
+func (tree *BTree) PrintTree() {
+	t, err := tree.SerializeTreeJSON()
+	utils.Log(string(t), err)
+}

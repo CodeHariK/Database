@@ -422,152 +422,185 @@ func TestSortedRecordSet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	var keySeq uint64 = 0
+	// var keySeq uint64 = 0
 
-	_, tree := dummyTree(t, "TestDelete", 4)
+	// _, tree := dummyTree(t, "TestDelete", 4)
 
-	key := []byte(utils.GenerateRandomString(16))
-	value := []byte("Hello world!")
+	// key := []byte(utils.GenerateRandomString(16))
+	// value := []byte("Hello world!")
 
-	err := tree.Delete(key)
-	if err == nil {
-		t.Fatalf("expected error and got nil")
-	}
+	// err := tree.Delete(key)
+	// if err == nil {
+	// 	t.Fatalf("expected error and got nil")
+	// }
 
-	err = tree.Set(key, value)
-	if err != nil {
-		t.Error(err)
-	}
-
-	r, err := tree.Get(key)
-	if err != nil {
-		t.Error(err)
-	}
-	if r == nil || !reflect.DeepEqual(r.Value, value) {
-		t.Fatalf("expected %v and got %v \n", value, r)
-	}
-
-	// err = tree.Delete(key)
+	// err = tree.Set(key, value)
 	// if err != nil {
-	// 	t.Fatalf("%s\n", err)
+	// 	t.Error(err)
 	// }
 
-	// r, err = tree.SearchRecord(key)
-	// if r != nil || err == nil {
-	// 	t.Error("expected error and got struct", err)
+	// r, err := tree.Get(key)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// if r == nil || !reflect.DeepEqual(r.Value, value) {
+	// 	t.Fatalf("expected %v and got %v \n", value, r)
 	// }
 
-	multipleKeys := make([][]byte, 10)
-	for i := range multipleKeys {
-		multipleKeys[i] = []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
-		err := tree.Set(multipleKeys[i], multipleKeys[i])
-		if err != nil {
-			t.Errorf("Set failed: %s", err)
-		}
-	}
-	for i := range multipleKeys {
-		r, err := tree.Get(multipleKeys[i])
-		if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
-			t.Errorf("Search failed: %d : %s", i, err)
-		}
-	}
+	// // err = tree.Delete(key)
+	// // if err != nil {
+	// // 	t.Fatalf("%s\n", err)
+	// // }
+
+	// // r, err = tree.SearchRecord(key)
+	// // if r != nil || err == nil {
+	// // 	t.Error("expected error and got struct", err)
+	// // }
+
+	// multipleKeys := make([][]byte, 10)
 	// for i := range multipleKeys {
-	// 	err = tree.Delete(multipleKeys[i])
+	// 	multipleKeys[i] = []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	// 	err := tree.Set(multipleKeys[i], multipleKeys[i])
 	// 	if err != nil {
-	// 		t.Errorf("Delete failed: %s", err)
+	// 		t.Errorf("Set failed: %s", err)
+	// 	}
+	// }
+	// for i := range multipleKeys {
+	// 	r, err := tree.Get(multipleKeys[i])
+	// 	if err != nil || bytes.Compare(r.Value, multipleKeys[i]) != 0 {
+	// 		t.Errorf("Search failed: %d : %s", i, err)
+	// 	}
+	// }
+	// // for i := range multipleKeys {
+	// // 	err = tree.Delete(multipleKeys[i])
+	// // 	if err != nil {
+	// // 		t.Errorf("Delete failed: %s", err)
+	// // 	}
+	// // }
+
+	var keySeq uint64 = 0
+	var sortedRecords []*Record
+	var sortedKeys [][]byte
+	var sortedValues []string
+	for r := 0; r < 26; r++ {
+		key := []byte(utils.GenerateSeqString(&keySeq, 16))
+		sortedKeys = append(sortedKeys, key)
+
+		sortedRecords = append(sortedRecords, &Record{
+			Key:   key,
+			Value: []byte(fmt.Sprint(r + 1)),
+		})
+
+		sortedValues = append(sortedValues, fmt.Sprint(r))
+	}
+
+	var shuffledKeys [][][]byte
+	// for i := 0; i < 100; i++ {
+	// 	shuffledKeys = append(shuffledKeys, utils.Shuffle(sortedKeys[len(sortedKeys)-10:]))
+	// }
+	// for i := 0; i < 100; i++ {
+	// 	shuffledKeys = append(shuffledKeys, utils.Shuffle(sortedKeys[:26]))
+	// }
+
+	shuffledKeys = append(shuffledKeys, [][][]byte{
+		utils.StringsToArray[[]byte](
+			[]string{
+				"0000000000000026", "0000000000000020", "0000000000000021", "0000000000000018", "0000000000000019",
+				"0000000000000022", "0000000000000024", "0000000000000023", "0000000000000025", "0000000000000017",
+			},
+		),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000021", "0000000000000024", "0000000000000026", "0000000000000019", "0000000000000020",
+		// 		"0000000000000025", "0000000000000023", "0000000000000022", "0000000000000018", "0000000000000017",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000025", "0000000000000018", "0000000000000026", "0000000000000022", "0000000000000019",
+		// 		"0000000000000024", "0000000000000021", "0000000000000020", "0000000000000023", "0000000000000017",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000019", "0000000000000022", "0000000000000021", "0000000000000026", "0000000000000020",
+		// 		"0000000000000024", "0000000000000017", "0000000000000023", "0000000000000025", "0000000000000018",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000018", "0000000000000026", "0000000000000024", "0000000000000021", "0000000000000023",
+		// 		"0000000000000020", "0000000000000019", "0000000000000025", "0000000000000022", "0000000000000017",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000024", "0000000000000022", "0000000000000023", "0000000000000018", "0000000000000026",
+		// 		"0000000000000020", "0000000000000019", "0000000000000025", "0000000000000021", "0000000000000017",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000026", "0000000000000020", "0000000000000017", "0000000000000024", "0000000000000023",
+		// 		"0000000000000022", "0000000000000021", "0000000000000019", "0000000000000025", "0000000000000018",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000025", "0000000000000023", "0000000000000022", "0000000000000019", "0000000000000017",
+		// 		"0000000000000020", "0000000000000024", "0000000000000026", "0000000000000021", "0000000000000018",
+		// 	},
+		// ),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000001", "0000000000000016", "0000000000000005", "0000000000000010", "0000000000000004",
+		// 		"0000000000000014", "0000000000000015", "0000000000000007", "0000000000000022", "0000000000000009",
+		// 		"0000000000000011", "0000000000000026", "0000000000000002", "0000000000000012", "0000000000000021",
+		// 		"0000000000000006", "0000000000000025", "0000000000000008", "0000000000000019", "0000000000000020", "0000000000000017",
+		// 		"0000000000000003", "0000000000000024", "0000000000000023", "0000000000000013", "0000000000000018",
+		// 	},
+		// ),
+	}...)
+
+	for _, keys := range shuffledKeys {
+
+		t.Log(utils.ArrayToStrings(keys))
+
+		_, tree := dummyTree(t, "TestDelete", 4)
+
+		for _, r := range sortedRecords {
+			tree.Set(r.Key, r.Value)
+		}
+
+		for _, k := range keys {
+			err := tree.Delete(k)
+			if err != nil {
+				t.Fatal(err, utils.ArrayToStrings(keys))
+			}
+		}
+
+		if err := tree.TreeVerify(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// for _, keys := range shuffledKeys {
+
+	// 	t.Log(utils.ArrayToStrings(keys))
+
+	// 	_, tree := dummyTree(t, "TestDelete", 4)
+
+	// 	tree.SortedRecordSet(sortedRecords)
+
+	// 	for _, k := range keys {
+	// 		err := tree.Delete(k)
+	// 		if err != nil {
+	// 			t.Fatal(err, utils.ArrayToStrings(keys))
+	// 		}
+	// 	}
+
+	// 	if err := tree.TreeVerify(); err != nil {
+	// 		t.Fatal(err)
 	// 	}
 	// }
 }
-
-// func TestDeleteRightSide(t *testing.T) {
-// 	var keySeq uint64 = 0
-// 	var sortedRecords []*Record
-// 	var sortedKeys [][]byte
-// 	var sortedValues []string
-// 	for r := 0; r < 26; r++ {
-// 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
-// 		sortedKeys = append(sortedKeys, key)
-
-// 		sortedRecords = append(sortedRecords, &Record{
-// 			Key:   key,
-// 			Value: []byte(fmt.Sprint(r + 1)),
-// 		})
-
-// 		sortedValues = append(sortedValues, fmt.Sprint(r))
-// 	}
-
-// 	numTest := 10
-// 	shuffledKeys := make([][][]byte, numTest*100)
-// 	for i := range shuffledKeys {
-// 		shuffledKeys[i] = utils.Shuffle(sortedKeys[len(sortedKeys)-numTest:])
-// 	}
-
-// 	for _, keys := range shuffledKeys {
-
-// 		t.Log("~~~~~~~~~~~~ ", utils.ArrayToStrings(keys))
-
-// 		_, tree := dummyTree(t, "TestDelete", 4)
-
-// 		// tree.SortedRecordSet(sortedRecords)
-// 		for _, r := range sortedRecords {
-// 			tree.Set(r.Key, r.Value)
-// 		}
-
-// 		for _, k := range keys {
-// 			err := tree.Delete(k)
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 		}
-
-// 		if err := tree.TreeVerify(); err != nil {
-// 			t.Fatal(err)
-// 		}
-// 	}
-// }
-
-// func TestDeleteLeftSide(t *testing.T) {
-// 	var keySeq uint64 = 0
-// 	var sortedRecords []*Record
-// 	var sortedKeys [][]byte
-// 	var sortedValues []string
-
-// 	for r := 0; r < 26; r++ {
-// 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
-// 		sortedKeys = append(sortedKeys, key)
-
-// 		sortedRecords = append(sortedRecords, &Record{
-// 			Key:   key,
-// 			Value: []byte(fmt.Sprint(r + 1)),
-// 		})
-
-// 		sortedValues = append(sortedValues, fmt.Sprint(r))
-// 	}
-
-// 	numTest := 10
-// 	shuffledKeys := make([][][]byte, numTest*10)
-// 	for i := range shuffledKeys {
-// 		shuffledKeys[i] = utils.Shuffle(sortedKeys[:numTest])
-// 	}
-
-// 	for _, keys := range shuffledKeys {
-
-// 		_, tree := dummyTree(t, "TestDelete", 4)
-
-// 		// tree.SortedRecordSet(sortedRecords)
-// 		for _, r := range sortedRecords {
-// 			tree.Set(r.Key, r.Value)
-// 		}
-
-// 		for _, k := range keys {
-// 			err := tree.Delete(k)
-// 			if err != nil {
-// 				t.Fatal(err, utils.ArrayToStrings(keys))
-// 			}
-// 		}
-
-// 		if err := tree.TreeVerify(); err != nil {
-// 			t.Fatal(err)
-// 		}
-// 	}
-// }

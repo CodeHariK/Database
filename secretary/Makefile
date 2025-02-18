@@ -1,23 +1,26 @@
-test:
-	@rm -r SECRETARY
-	@go clean -testcache
-	@go test -cover -coverprofile=cover.txt ./...
+test ?= ".*"  # Default: Run all tests if no name is given
 
-vtest:
-	@rm -r SECRETARY
+clean:
+	@([ -d "SECRETARY" ] && rm -rf SECRETARY/* || true)
 	@go clean -testcache
-	@go test -cover -coverprofile=cover.txt -v ./...
 
-cover:
-	@rm -r SECRETARY
-	@go clean -testcache
-	@go test -cover -coverprofile=cover.txt ./...
-	@go tool cover -func=cover.txt
-	@go tool cover -html=cover.txt
+one: clean
+	go test ./... -run $(test)
+
+test: clean
+	go test -cover -coverprofile=cover.txt ./...
+
+vtest: clean
+	go test -cover -coverprofile=cover.txt -v ./...
+
+cover: clean
+	go test -cover -coverprofile=cover.txt ./...
+	go tool cover -func=cover.txt
+	go tool cover -html=cover.txt
 
 run:
-	@go run example/main.go
+	go run example/main.go
 
 ui:
-	@cd secretaryui && bun run dev
+	cd secretaryui && bun run dev
 	
