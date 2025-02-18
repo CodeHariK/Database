@@ -976,28 +976,3 @@ func (tree *BTree) PrintNode(node *Node, height int) {
 func (tree *BTree) SerializeTreeJSON() ([]byte, error) {
 	return tree.SerializeNodeJSON(tree.root, tree.Height())
 }
-
-///
-///
-///
-///
-///
-///
-///
-///
-///
-///
-///
-///
-// // Custom JSON Marshal function
-// func (p Person) MarshalJSON() ([]byte, error) {
-// 	// Custom format: Change keys, add computed fields, etc.
-// 	type Alias Person // Prevent recursion
-// 	return json.Marshal(&struct {
-// 		Alias
-// 		AgeInMonths int `json:"age_in_months"`
-// 	}{
-// 		Alias:      Alias(p),
-// 		AgeInMonths: p.Age * 12, // Custom computed field
-// 	})
-// }

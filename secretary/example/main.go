@@ -54,20 +54,12 @@ func main() {
 	// 	}
 	// }
 
-	colors := []string{
-		"\033[38;2;255;0;255m",
-		"\033[48;2;0;255;255m",
+	for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-1:]) {
+		err := users.Delete(k)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
-	for _, c := range colors {
-		fmt.Println(c + "Hello world!" + "\033[0m")
-	}
-
-	// for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-5:]) {
-	// 	err := users.Delete(k)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
 
 	s.Serve()
 }
