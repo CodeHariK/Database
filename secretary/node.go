@@ -596,7 +596,7 @@ func (tree *BTree) Delete(key []byte) error {
 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
 	// leaf.NumKeys--
 
-	utils.Log(map[string]any{"Deleting": string(key), "index": index, "found": found})
+	utils.Log("key", string(key), "index", index, "found", found)
 
 	// Handle underflow
 	tree.handleUnderflow(leaf)
@@ -613,7 +613,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		return // No underflow
 	}
 
-	utils.Log(map[string]any{"handleUnderflow": node.NodeID, "node.keys": utils.ArrayToStrings(node.Keys)})
+	utils.Log("handleUnderflow", node.NodeID, "node.keys", utils.ArrayToStrings(node.Keys))
 
 	// Check if the node is the root
 	if node == tree.root {
@@ -637,12 +637,12 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		// leftSibling := node.prev
 		leftSibling := parent.children[pos-1]
 
-		utils.Log(map[string]any{
-			"**** Try to borrow from leftSibling": leftSibling.NodeID,
-			"len(leftSibling.Keys)":               len(leftSibling.Keys),
-			"minKeys":                             minKeys,
-			"len(leftSibling.Keys) > minKeys)":    len(leftSibling.Keys) > minKeys,
-		})
+		utils.Log(
+			"**** Try to borrow from leftSibling", leftSibling.NodeID,
+			"len(leftSibling.Keys)", len(leftSibling.Keys),
+			"minKeys", minKeys,
+			"len(leftSibling.Keys) > minKeys)", len(leftSibling.Keys) > minKeys,
+		)
 
 		if len(leftSibling.Keys) > minKeys {
 			// Borrow key from left sibling
@@ -650,11 +650,11 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			borrowedKey := leftSibling.Keys[blen]
 			leftSibling.Keys = leftSibling.Keys[:blen]
 
-			utils.Log(map[string]any{
-				"**** Borrow from leftSibling": leftSibling.NodeID,
-				"leftSibling.Keys":             utils.ArrayToStrings(leftSibling.Keys),
-				"borrowedKey":                  string(borrowedKey),
-			})
+			utils.Log(
+				"**** Borrow from leftSibling", leftSibling.NodeID,
+				"leftSibling.Keys", utils.ArrayToStrings(leftSibling.Keys),
+				"borrowedKey", string(borrowedKey),
+			)
 
 			node.Keys = append([][]byte{borrowedKey}, node.Keys...)
 
@@ -664,11 +664,11 @@ func (tree *BTree) handleUnderflow(node *Node) {
 				rlen := len(leftSibling.records) - 1
 				borrowedRecord := leftSibling.records[rlen]
 
-				utils.Log(map[string]any{
-					"BorrowedRecord":               rlen,
-					"string(borrowedKey)":          string(borrowedKey),
-					"string(borrowedRecord.Value)": string(borrowedRecord.Value),
-				})
+				utils.Log(
+					"BorrowedRecord", rlen,
+					"string(borrowedKey)", string(borrowedKey),
+					"string(borrowedRecord.Value)", string(borrowedRecord.Value),
+				)
 
 				leftSibling.records = leftSibling.records[:rlen]
 				node.records = append([]*Record{borrowedRecord}, node.records...)
@@ -676,10 +676,7 @@ func (tree *BTree) handleUnderflow(node *Node) {
 				clen := len(leftSibling.children) - 1
 				borrowedChild := leftSibling.children[clen]
 
-				utils.Log(map[string]any{
-					"BorrowedChild": borrowedChild.NodeID,
-					"borrowedKey":   string(borrowedKey),
-				})
+				utils.Log("BorrowedChild", borrowedChild.NodeID, "borrowedKey", string(borrowedKey))
 
 				leftSibling.children = leftSibling.children[:clen]
 				node.children = append([]*Node{borrowedChild}, node.children...)
@@ -692,11 +689,9 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			// recursiveFixInternalNodeChildLinks(parent)
 			recursiveFixInternalNodeChildLinks(node)
 
-			utils.Log(map[string]any{
-				"Pos":         pos,
-				"BorrowedKey": string(borrowedKey),
-				"parent.keys": utils.ArrayToStrings(parent.Keys),
-			})
+			utils.Log("Pos", pos,
+				"BorrowedKey", string(borrowedKey),
+				"parent.keys", utils.ArrayToStrings(parent.Keys))
 
 			return
 		}
@@ -707,12 +702,12 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
 
-		utils.Log(map[string]any{
-			"**** Try to borrow from rightSibling": rightSibling.NodeID,
-			"len(rightSibling.Keys)":               len(rightSibling.Keys),
-			"minKeys":                              minKeys,
-			"len(rightSibling.Keys) > minKeys":     len(rightSibling.Keys) > minKeys,
-		})
+		utils.Log(
+			"**** Try to borrow from rightSibling", rightSibling.NodeID,
+			"len(rightSibling.Keys)", len(rightSibling.Keys),
+			"minKeys", minKeys,
+			"len(rightSibling.Keys) > minKeys", len(rightSibling.Keys) > minKeys,
+		)
 
 		if len(rightSibling.Keys) > minKeys {
 			// Borrow key from right sibling
@@ -720,11 +715,9 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			borrowedKey := rightSibling.Keys[0]
 			rightSibling.Keys = rightSibling.Keys[1:]
 
-			utils.Log(map[string]any{
-				"**** Borrow from rightSibling ": rightSibling.NodeID,
-				"rightSibling.Keys":              utils.ArrayToStrings(rightSibling.Keys),
-				"BorrowedKey":                    string(borrowedKey),
-			})
+			utils.Log("**** Borrow from rightSibling ", rightSibling.NodeID,
+				"rightSibling.Keys", utils.ArrayToStrings(rightSibling.Keys),
+				"BorrowedKey", string(borrowedKey))
 
 			node.Keys = append(node.Keys, borrowedKey)
 
@@ -734,14 +727,14 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			if rightSibling.children == nil {
 				borrowedRecord := rightSibling.records[0]
 
-				utils.Log(map[string]any{"BorrowedRecord": borrowedRecord})
+				utils.Log("BorrowedRecord", borrowedRecord)
 
 				rightSibling.records = rightSibling.records[1:]
 				node.records = append(node.records, borrowedRecord)
 			} else {
 				borrowedChild := rightSibling.children[0]
 
-				utils.Log(map[string]any{"BorrowedChild": borrowedChild})
+				utils.Log("BorrowedChild", borrowedChild)
 
 				rightSibling.children = rightSibling.children[1:]
 				node.children = append(node.children, borrowedChild)
@@ -754,11 +747,9 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			// recursiveFixInternalNodeChildLinks(parent)
 			recursiveFixInternalNodeChildLinks(node)
 
-			utils.Log(map[string]any{
-				"Pos:":         pos,
-				"BorrowedKey:": string(borrowedKey),
-				"parent.keys":  utils.ArrayToStrings(parent.Keys),
-			})
+			utils.Log("Pos:", pos,
+				"BorrowedKey:", string(borrowedKey),
+				"parent.keys", utils.ArrayToStrings(parent.Keys))
 
 			return
 		}
@@ -769,15 +760,15 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		leftSibling := parent.children[pos-1]
 		// leftSibling := node.prev
 
-		utils.Log(map[string]any{
-			"**** Merge with left sibling -> Pos": pos,
-			"Parent":                              parent.NodeID,
-			"parent.keys":                         utils.ArrayToStrings(parent.Keys),
-			"NodeID ":                             node.NodeID,
-			"node.Keys":                           utils.ArrayToStrings(node.Keys),
-			"leftSiblingID":                       leftSibling.NodeID,
-			"leftSibling.Keys":                    utils.ArrayToStrings(leftSibling.Keys),
-		})
+		utils.Log(
+			"**** Merge with left sibling -> Pos", pos,
+			"Parent", parent.NodeID,
+			"parent.keys", utils.ArrayToStrings(parent.Keys),
+			"NodeID ", node.NodeID,
+			"node.Keys", utils.ArrayToStrings(node.Keys),
+			"leftSiblingID", leftSibling.NodeID,
+			"leftSibling.Keys", utils.ArrayToStrings(leftSibling.Keys),
+		)
 
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
 
@@ -797,15 +788,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			node.next.prev = leftSibling
 		}
 
-		utils.Log(map[string]any{
-			"**** Merge with left sibling -> Pos": pos,
-			"Parent":                              parent.NodeID,
-			"parent.keys":                         utils.ArrayToStrings(parent.Keys),
-			"NodeID ":                             node.NodeID,
-			"node.Keys":                           utils.ArrayToStrings(node.Keys),
-			"leftSiblingID":                       leftSibling.NodeID,
-			"leftSibling.Keys":                    utils.ArrayToStrings(leftSibling.Keys),
-		})
+		utils.Log("**** Merge with left sibling -> Pos", pos,
+			"Parent", parent.NodeID,
+			"parent.keys", utils.ArrayToStrings(parent.Keys),
+			"NodeID ", node.NodeID,
+			"node.Keys", utils.ArrayToStrings(node.Keys),
+			"leftSiblingID", leftSibling.NodeID,
+			"leftSibling.Keys", utils.ArrayToStrings(leftSibling.Keys))
 
 		// recursiveFixInternalNodeChildLinks(parent)
 		recursiveFixInternalNodeChildLinks(leftSibling)
@@ -817,15 +806,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
 
-		utils.Log(map[string]any{
-			"**** Merge right sibling -> Pos": pos,
-			"Parent":                          parent.NodeID,
-			"parent.keys":                     utils.ArrayToStrings(parent.Keys),
-			"NodeID":                          node.NodeID,
-			"node.Keys":                       utils.ArrayToStrings(node.Keys),
-			"rightSiblingID":                  rightSibling.NodeID,
-			"rightSibling.Keys":               utils.ArrayToStrings(rightSibling.Keys),
-		})
+		utils.Log("**** Merge right sibling -> Pos", pos,
+			"Parent", parent.NodeID,
+			"parent.keys", utils.ArrayToStrings(parent.Keys),
+			"NodeID", node.NodeID,
+			"node.Keys", utils.ArrayToStrings(node.Keys),
+			"rightSiblingID", rightSibling.NodeID,
+			"rightSibling.Keys", utils.ArrayToStrings(rightSibling.Keys))
 
 		node.Keys = append(node.Keys, rightSibling.Keys...)
 
@@ -845,15 +832,13 @@ func (tree *BTree) handleUnderflow(node *Node) {
 			rightSibling.next.prev = rightSibling.prev
 		}
 
-		utils.Log(map[string]any{
-			"**** Merge right sibling -> Pos": pos,
-			"Parent":                          parent.NodeID,
-			"parent.keys":                     utils.ArrayToStrings(parent.Keys),
-			"NodeID":                          node.NodeID,
-			"node.Keys":                       utils.ArrayToStrings(node.Keys),
-			"rightSiblingID":                  rightSibling.NodeID,
-			"rightSibling.Keys":               utils.ArrayToStrings(rightSibling.Keys),
-		})
+		utils.Log("**** Merge right sibling -> Pos", pos,
+			"Parent", parent.NodeID,
+			"parent.keys", utils.ArrayToStrings(parent.Keys),
+			"NodeID", node.NodeID,
+			"node.Keys", utils.ArrayToStrings(node.Keys),
+			"rightSiblingID", rightSibling.NodeID,
+			"rightSibling.Keys", utils.ArrayToStrings(rightSibling.Keys))
 
 		// recursiveFixInternalNodeChildLinks(parent)
 		recursiveFixInternalNodeChildLinks(node)
@@ -873,11 +858,12 @@ func fixInternalNodeChildLinks(node *Node) {
 			child.parent = node
 		}
 
-		utils.Log(map[string]any{
-			"FixInternalNodeChildLinks": node.NodeID,
-			"len(node.children)":        len(node.children),
-			"node.keys":                 utils.ArrayToStrings(node.Keys),
-		})
+		utils.Log(
+			"nodeID", node.NodeID,
+			"node.keys", utils.ArrayToStrings(node.Keys),
+			"len(node.children)", len(node.children),
+			"node", *node,
+		)
 	}
 }
 
@@ -990,3 +976,28 @@ func (tree *BTree) PrintNode(node *Node, height int) {
 func (tree *BTree) SerializeTreeJSON() ([]byte, error) {
 	return tree.SerializeNodeJSON(tree.root, tree.Height())
 }
+
+///
+///
+///
+///
+///
+///
+///
+///
+///
+///
+///
+///
+// // Custom JSON Marshal function
+// func (p Person) MarshalJSON() ([]byte, error) {
+// 	// Custom format: Change keys, add computed fields, etc.
+// 	type Alias Person // Prevent recursion
+// 	return json.Marshal(&struct {
+// 		Alias
+// 		AgeInMonths int `json:"age_in_months"`
+// 	}{
+// 		Alias:      Alias(p),
+// 		AgeInMonths: p.Age * 12, // Custom computed field
+// 	})
+// }
