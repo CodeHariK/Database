@@ -2,7 +2,26 @@ import { ui } from "./main";
 
 import { RedrawTree } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, insertBtn, nextTreeBtn, prevTreeBtn, resultDiv, searchBtn, searchInput, treeForm } from "./dom";
+import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setInput, treeForm } from "./dom";
+
+let TestCounter = 0
+let Tests = [
+    "0000000000000026", "0000000000000020", "0000000000000021",
+    "0000000000000018", "0000000000000019", "0000000000000022",
+    "0000000000000024", "0000000000000023", "0000000000000025",
+    "0000000000000017",
+]
+function runTest() {
+    if (TestCounter < Tests.length) {
+        runTestBtn.innerHTML = `Test ${TestCounter + 1}/${Tests.length}`
+
+        let t = Tests[TestCounter]
+
+        deleteRecord(t)
+    }
+    TestCounter++
+}
+
 
 export function displayNode(node: BTreeNode) {
     const infoBox = document.getElementById("info-box");
@@ -83,128 +102,107 @@ export function displayNode(node: BTreeNode) {
     infoBox.appendChild(list);
 }
 
-async function fetchCurrentTree() {
+function fetchCurrentTree() {
+    makeRequest(
+        "FetchCurrentTree",
+        `${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`,
+        undefined,
+        (data) => {
+            const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
 
-    const response = await fetch(`${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`);
+            if (ui.getTree()?.name != bTree.name) {
+                ui.TreeSnapshots = []
+                ui.currentTreeSnapshotIndex = 0
+                ui.NODEMAP = new Map()
+                ui.MouseCurrentNode = null
+            }
+            ui.TreeSnapshots.push(bTree)
+            ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
 
-    if (!response.ok) {
-        throw new Error(`Error fetch current tree : HTTP error! Status: ${response.statusText} ${response.status}`);
-    }
+            let height = ui.currentTreeDef?.order ?? 4
+            ui.BOXHEIGHT = height * 36
 
-    const data = await response.json(); // Assuming data is an array
-
-    const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
-
-    if (ui.getTree()?.name != bTree.name) {
-        ui.TreeSnapshots = []
-        ui.currentTreeSnapshotIndex = 0
-        ui.NODEMAP = new Map()
-        ui.MouseCurrentNode = null
-    }
-    ui.TreeSnapshots.push(bTree)
-    ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
-
-    let height = ui.currentTreeDef?.order ?? 4
-    ui.BOXHEIGHT = height * 36
-
-    RedrawTree()
-}
-
-export async function fetchAllBTree() {
-    try {
-        const response = await fetch(`${ui.url}/getalltree`);
-
-        if (!response.ok) {
-            throw new Error(`Error fetch all btree : HTTP error! Status: ${response.statusText} ${response.status}`);
+            RedrawTree()
         }
-
-        const data: any[] = await response.json(); // Assuming data is an array
-
-        const collectionsDiv = document.getElementById("collections")!;
-        collectionsDiv.innerHTML = ""; // Clear existing content
-
-        data.forEach((tree, _) => {
-            const card = document.createElement("div");
-            card.className = "card";
-            card.innerHTML = `<p>${JSON.stringify(tree, null, 2)}</p>`;
-            card.onclick = () => {
-                Array.from(document.getElementsByClassName("highlight")).
-                    forEach((e) => {
-                        e.classList.remove("highlight")
-                    })
-                card.classList.add("highlight");
-
-                ui.currentTreeDef = tree
-                fetchCurrentTree()
-            };
-
-            collectionsDiv.appendChild(card);
-        });
-
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        document.getElementById("collections")!.textContent = "Error fetching data";
-    }
+    )
 }
 
-async function insertData() {
-    const value = (document.getElementById("value") as HTMLInputElement).value;
+export function fetchAllBTree() {
+    makeRequest(
+        "FetchAllBTree",
+        `${ui.url}/getalltree`,
+        undefined,
+        (data: any[]) => {
+            const collectionsDiv = document.getElementById("collections")!;
+            collectionsDiv.innerHTML = "";
+
+            data.forEach((tree, _) => {
+                const card = document.createElement("div");
+                card.className = "card";
+                card.innerHTML = `<p>${JSON.stringify(tree, null, 2)}</p>`;
+                card.onclick = () => {
+                    Array.from(document.getElementsByClassName("highlight")).
+                        forEach((e) => {
+                            e.classList.remove("highlight")
+                        })
+                    card.classList.add("highlight");
+
+                    ui.currentTreeDef = tree
+                    fetchCurrentTree()
+                };
+
+                collectionsDiv.appendChild(card);
+            });
+        }
+    )
+}
+
+function setData(value: string | null) {
+    value = value ?? setInput.value;
     const payload = { value };
-    try {
-        const response = await fetch(`${ui.url}/insert/${ui.currentTreeDef!.collectionName}`, {
+    makeRequest("SetData",
+        `${ui.url}/set/${ui.currentTreeDef!.collectionName}`,
+        {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
-        });
-        if (!response.ok) {
-            throw new Error(`Error inserting data : HTTP error! Status: ${response.statusText} ${response.status}`);
+        },
+        () => {
+            fetchCurrentTree()
         }
-
-        const result = await response.json();
-        resultDiv.textContent = JSON.stringify(result, null, 2);
-
-        fetchCurrentTree()
-    } catch (error) {
-        console.error("Error inserting data:", error);
-    }
+    )
 }
 
-async function deleteData() {
-    const id = (document.getElementById("delete-id") as HTMLInputElement).value;
-    const response = await fetch(`${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id}`, { method: "DELETE" });
-    if (!response.ok) {
-        throw new Error(`Error deleting : HTTP error! Status: ${response.statusText} ${response.status}`);
-    }
-
-    const result = await response.json();
-    resultDiv.textContent = JSON.stringify(result, null, 2);
-
-    fetchCurrentTree()
+function deleteRecord(id: string | null) {
+    makeRequest("DeleteRecord",
+        `${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id ?? deleteInput.value}`,
+        { method: "DELETE" },
+        () => {
+            fetchCurrentTree()
+        }
+    )
 }
 
-async function searchRecord() {
-    const search = searchInput.value;
-    const response = await fetch(`${ui.url}/search/${ui.currentTreeDef!.collectionName}/${search}`);
-    if (!response.ok) {
-        throw new Error(`Error search : HTTP error! Status: ${response.statusText} ${response.status}`);
-    }
+function getRecord(getId: string | null) {
+    makeRequest(
+        "GetRecord",
+        `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId ?? getInput.value}`,
+        undefined, () => {
+            let result = ui.getTree().searchLeafNode(getId ?? getInput.value)
 
-    const result = await response.json();
-    resultDiv.textContent = JSON.stringify(result, null, 2);
+            ui.NODEMAP.forEach((n) => {
+                n.selected = false
+            })
+            result.path.forEach((e) => {
+                ui.NODEMAP.get(e.nodeID)!.selected = true
+            })
 
-    let searchResult = ui.getTree().searchLeafNode(search)
-
-    ui.NODEMAP.forEach((n) => {
-        n.selected = false
-    })
-    searchResult.path.forEach((e) => {
-        ui.NODEMAP.get(e.nodeID)!.selected = true
-    })
-
-    RedrawTree()
+            RedrawTree()
+        }
+    )
 }
 
-async function newTreeRequest(event: SubmitEvent) {
+function newTreeRequest(event: SubmitEvent) {
     event.preventDefault(); // Prevent page reload
 
     const requestData = {
@@ -216,24 +214,38 @@ async function newTreeRequest(event: SubmitEvent) {
         BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
     };
 
-    try {
-        const response = await fetch(`${ui.url}/newtree`, {
+    makeRequest(
+        "NewTreeRequest",
+        `${ui.url}/newtree`,
+        {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestData),
-        });
-
-        const result = await response.json();
-        resultDiv.textContent = `Success: ${JSON.stringify(result)}`;
-        resultDiv.style.color = "green";
-
-        fetchAllBTree()
-    } catch (error) {
-        resultDiv.textContent = `Error: ${error}`;
-        resultDiv.style.color = "red";
-    }
+        },
+        () => {
+            fetchAllBTree()
+        }
+    )
 }
 
+async function makeRequest(name: string, url: RequestInfo | URL, parameters: RequestInit | undefined, after: (result: any) => void) {
+    try {
+        const response = await fetch(url, parameters);
+
+        if (!response.ok) {
+            let error = new Error(`${name} : ${response.statusText} ${response.status}`)
+            resultDiv.innerHTML = `<div style="background-color:#ffdddd; border:1px solid; padding:5px;">${error}</div>` + resultDiv.innerHTML
+            throw error
+        } else {
+            const result = await response.json();
+            resultDiv.innerHTML = `<div style="background-color:#bdffbd; border:1px solid; padding:5px;">${JSON.stringify(result)}</div>` + resultDiv.innerHTML
+            after(result)
+        }
+
+    } catch (err) {
+        console.log(err)
+    }
+}
 
 export function setupCollectionRequest() {
     document.addEventListener("DOMContentLoaded", () => {
@@ -251,9 +263,10 @@ export function setupCollectionRequest() {
             }
         });
 
-        insertBtn.addEventListener("click", insertData);
-        deleteBtn.addEventListener("click", deleteData);
-        searchBtn.addEventListener("click", searchRecord);
+        runTestBtn.addEventListener("click", runTest);
+        setBtn.addEventListener("click", () => setData(null));
+        deleteBtn.addEventListener("click", () => deleteRecord(null));
+        getBtn.addEventListener("click", () => getRecord(null));
 
         treeForm.addEventListener("submit", newTreeRequest)
     });

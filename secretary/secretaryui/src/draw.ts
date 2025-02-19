@@ -3,7 +3,7 @@ import { ui } from './main';
 import { randomColor } from './utils';
 import { displayNode } from './collection';
 import { BTreeNode, NodeDef } from './tree';
-import { canvasSection, searchInput } from './dom';
+import { canvasSection, getInput } from './dom';
 
 let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
@@ -27,7 +27,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
         },
         body: {
             fill: nodeDef.color,
-            fillOpacity: node.error ? .7 : (searchInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3),
+            fillOpacity: node.error ? .7 : (getInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3),
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
@@ -49,7 +49,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
     element.attr('bodyText/text',
         "\n" + node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
         node.keys.map((a, i) => {
-            return "\n" + (a == searchInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
+            return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
         }).join("") +
         "\n\n" + (node.error ? (node.error + "\n") : "")
     );
@@ -141,7 +141,7 @@ function createTreeRecursive(
     y: number,
     maxSpacing: number
 ): NodeDef | null {
-    if (!node.nodeID) return null;
+    if (!node) return null;
 
     const nodeDef = MapToNodeDef(x, y, node);
 

@@ -30,7 +30,7 @@ func New() (*Secretary, error) {
 
 			tree, err := secretary.NewBTreeReadHeader(file.Name())
 			if err == nil && tree.CollectionName == file.Name() {
-				secretary.trees[file.Name()] = tree
+				secretary.AddTree(tree)
 				utils.Log("[DIR] *", file.Name())
 
 			} else {

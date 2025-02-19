@@ -20,6 +20,13 @@ const (
 var colorIndex = 0
 
 const (
+	MODE   = LIGHT
+	NIGHT  = 0
+	LIGHT  = 1
+	SWITCH = -1
+)
+
+const (
 	PROJECTNAME     = "/secretary/"
 	PROJECTFUNCNAME = "/secretary."
 )
@@ -36,12 +43,12 @@ func Log(msgs ...any) {
 	}
 
 	colorIndex++
-	randomColor := Ternary(
-		colorIndex%2 == 1,
+	color := Ternary(
+		MODE == NIGHT || (MODE == SWITCH && colorIndex%2 == 0),
 		nightColor(),
 		lightColor())
 
-	log := randomColor
+	log := color
 
 	extracTrace := func(lines []string, i int) string {
 		nameLoc := ""
@@ -132,7 +139,7 @@ func Log(msgs ...any) {
 		}
 	}
 
-	log = processParagraph(log, len(randomColor), width) + COLORRESET
+	log = processParagraph(log, len(color), width) + COLORRESET
 
 	fmt.Println(log)
 }
@@ -170,16 +177,16 @@ func processParagraph(paragraph string, colorlen int, width int) string {
 }
 
 func lightColor() string {
-	dlFR, dlFG, dlFB := randomColor(0, 30)
-	dlBR, dlBG, dlBB := randomColor(180, 240)
+	dlFR, dlFG, dlFB := 0, 0, 0
+	dlBR, dlBG, dlBB := randomColor(225, 256)
 
 	return fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
 		dlFR, dlFG, dlFB, dlBR, dlBG, dlBB)
 }
 
 func nightColor() string {
-	ldFR, ldFG, ldFB := randomColor(220, 250)
-	ldBR, ldBG, ldBB := randomColor(10, 50)
+	ldFR, ldFG, ldFB := 255, 255, 255
+	ldBR, ldBG, ldBB := randomColor(10, 60)
 
 	return fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
 		ldFR, ldFG, ldFB, ldBR, ldBG, ldBB)

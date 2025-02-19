@@ -34,7 +34,7 @@
     }
 
     #json-section {
-      flex: 15%;
+      flex: 10%;
       background: #f8f9fa;
     }
 
@@ -52,7 +52,7 @@
     }
 
     #form-section {
-      flex: 15%;
+      flex: 20%;
       background: #f1f3f5;
       border-right: none;
     }
@@ -75,14 +75,14 @@
     button {
       width: 100%;
       padding: 10px;
-      background: #edf99e;
+      background: #fff;
       color: rgb(0, 0, 0);
       border: none;
       cursor: pointer;
     }
 
     button:hover {
-      background: #e2f65e;
+      background: #eee;
     }
 
     #collections {
@@ -115,6 +115,7 @@
 
   <div class="container">
     <div id="json-section" class="section">
+      <button type="button" id="SECRETARY">SECRETARY</button>
 
       <form id="treeForm">
         <input type="text" placeholder="Collection Name" id="collectionName" required>
@@ -134,12 +135,13 @@
     </div>
 
     <div id="form-section" class="section">
+      <button type="button" id="run-test">Test</button>
       <button type="button" id="prev-tree">Prev</button>
       <button type="button" id="next-tree">Next</button>
 
       <div>
-        <input type="text" id="value" placeholder="Enter value" />
-        <button type="button" id="insert-btn">Insert</button>
+        <input type="text" id="set-value" placeholder="Enter value" />
+        <button type="button" id="set-btn">Set</button>
       </div>
 
       <div>
@@ -148,12 +150,13 @@
       </div>
 
       <div>
-        <input type="text" id="search" placeholder="Enter search id" />
-        <button type="button" id="search-btn">Query</button>
+        <input type="text" id="get-id" placeholder="Enter query id" />
+        <button type="button" id="get-btn">Query</button>
       </div>
 
-      <div id="result"></div>
       <div id="info-box"></div>
+
+      <div id="result"></div>
     </div>
   </div>
 

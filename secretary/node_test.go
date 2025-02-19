@@ -379,7 +379,7 @@ func TestRangeScan(t *testing.T) {
 func TestSortedRecordSet(t *testing.T) {
 	var keySeq uint64 = 0
 
-	numKeys := make([]int, 64)
+	numKeys := make([]int, 1024)
 	for i := range numKeys {
 		numKeys[i] = i + 1
 	}
@@ -403,7 +403,9 @@ func TestSortedRecordSet(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree.TreeVerify()
+		if err := tree.TreeVerify(); err != nil {
+			t.Fatal(err)
+		}
 
 		startKey := sortedRecords[0].Key
 		endKey := sortedRecords[len(sortedRecords)-1].Key
@@ -503,12 +505,12 @@ func TestDelete(t *testing.T) {
 	// }
 
 	shuffledKeys = append(shuffledKeys, [][][]byte{
-		utils.StringsToArray[[]byte](
-			[]string{
-				"0000000000000026", "0000000000000020", "0000000000000021", "0000000000000018", "0000000000000019",
-				"0000000000000022", "0000000000000024", "0000000000000023", "0000000000000025", "0000000000000017",
-			},
-		),
+		// utils.StringsToArray[[]byte](
+		// 	[]string{
+		// 		"0000000000000026", "0000000000000020", "0000000000000021", "0000000000000018", "0000000000000019",
+		// 		"0000000000000022", "0000000000000024", "0000000000000023", "0000000000000025", "0000000000000017",
+		// 	},
+		// ),
 		// utils.StringsToArray[[]byte](
 		// 	[]string{
 		// 		"0000000000000021", "0000000000000024", "0000000000000026", "0000000000000019", "0000000000000020",

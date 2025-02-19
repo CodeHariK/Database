@@ -11,7 +11,7 @@ import (
 	"github.com/rs/cors"
 )
 
-func (s *Secretary) getAllBTreeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) getAllTreeHandler(w http.ResponseWriter, r *http.Request) {
 	var hello []*BTree
 
 	for _, o := range s.trees {
@@ -27,7 +27,7 @@ func (s *Secretary) getAllBTreeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-func (s *Secretary) getBTreeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
 	tree, exists := s.trees[table]
@@ -86,16 +86,16 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("New tree created"))
 }
 
-type InsertRequest struct {
+type SetRequest struct {
 	Value string `json:"value"`
 }
 
 var keySeq uint64 = 0
 
-func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) setHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
-	var req InsertRequest
+	var req SetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(strings.Trim(req.Value, " ")) == 0 {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -115,7 +115,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]string{
-		"message": "Data inserted successfully",
+		"message": "Data set successfully",
 		"table":   table,
 	}
 
@@ -123,7 +123,7 @@ func (s *Secretary) insertHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func (s *Secretary) searchHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) getHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 	id := r.PathValue("id")
 
@@ -163,7 +163,6 @@ func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
-		utils.Log(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -180,11 +179,11 @@ func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Secretary) setupRouter() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /getalltree", s.getAllBTreeHandler)
-	mux.HandleFunc("GET /gettree/{table}", s.getBTreeHandler)
+	mux.HandleFunc("GET /getalltree", s.getAllTreeHandler)
+	mux.HandleFunc("GET /gettree/{table}", s.getTreeHandler)
 	mux.HandleFunc("POST /newtree", s.newTreeHandler)
-	mux.HandleFunc("POST /insert/{table}", s.insertHandler)
-	mux.HandleFunc("GET /search/{table}/{id}", s.searchHandler)
+	mux.HandleFunc("POST /set/{table}", s.setHandler)
+	mux.HandleFunc("GET /get/{table}/{id}", s.getHandler)
 	mux.HandleFunc("DELETE /delete/{table}/{id}", s.deleteHandler)
 
 	// Enable CORS with custom settings
