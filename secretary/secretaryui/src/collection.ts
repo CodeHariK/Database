@@ -33,8 +33,8 @@ export function displayNode(node: BTreeNode) {
     // Create Node ID section
     const nodeIdDiv = document.createElement("div");
     nodeIdDiv.textContent = `Node ID: ${node.nodeID}`;
-    nodeIdDiv.style.fontSize = "17px";
-    nodeIdDiv.style.marginBottom = "10px";
+    nodeIdDiv.style.fontSize = "15px";
+    nodeIdDiv.style.marginBottom = "5px";
     infoBox.appendChild(nodeIdDiv);
 
     // Create the list container
@@ -44,7 +44,7 @@ export function displayNode(node: BTreeNode) {
 
     node.keys.forEach((key, index) => {
         const listItem = document.createElement("li");
-        listItem.style.marginTop = "15px";
+        listItem.style.marginTop = "5px";
         listItem.style.alignItems = "center";
 
         // Key text
@@ -54,40 +54,24 @@ export function displayNode(node: BTreeNode) {
         // Input for modifying value
         const valueInput = document.createElement("textarea");
         valueInput.value = node.value[index];
-        valueInput.style.width = '100%'
-        valueInput.style.padding = '7px'
-        valueInput.style.overflow = "hidden"; // Hide scrollbar
-        valueInput.style.resize = "none"; // Disable manual resize
-        valueInput.style.minHeight = "20px"; // Set a minimum height
         valueInput.oninput = () => {
             node.value[index] = valueInput.value;
-
             valueInput.style.height = "auto"; // Reset height
             valueInput.style.height = valueInput.scrollHeight + "px"; // Set new height
         };
 
         const updateButton = document.createElement("button");
         updateButton.textContent = " Update ";
-        updateButton.style.backgroundColor = "#be7eb1";
-        updateButton.style.color = "white";
-        updateButton.style.border = "none";
-        updateButton.style.cursor = "pointer";
+        updateButton.style.backgroundColor = "#c8ffc3";
         updateButton.onclick = () => {
-            // node.keys.splice(index, 1);
-            // node.value.splice(index, 1);
-            displayNode(node); // Re-render the updated node
+            displayNode(node);
         };
 
         const deleteButton = document.createElement("button");
         deleteButton.textContent = " Delete ";
-        deleteButton.style.backgroundColor = "#f15858";
-        deleteButton.style.color = "white";
-        deleteButton.style.border = "none";
-        deleteButton.style.cursor = "pointer";
+        deleteButton.style.backgroundColor = "#ffa1a1";
         deleteButton.onclick = () => {
-            // node.keys.splice(index, 1);
-            // node.value.splice(index, 1);
-            displayNode(node); // Re-render the updated node
+            displayNode(node);
         };
 
         listItem.appendChild(keySpan);
@@ -183,23 +167,22 @@ function deleteRecord(id: string | null) {
     )
 }
 
-function getRecord(getId: string | null) {
-    makeRequest(
+async function getRecord(getId: string | null) {
+    ui.NODEMAP.forEach((n) => {
+        n.selected = false
+    })
+    await makeRequest(
         "GetRecord",
         `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId ?? getInput.value}`,
         undefined, () => {
             let result = ui.getTree().searchLeafNode(getId ?? getInput.value)
-
-            ui.NODEMAP.forEach((n) => {
-                n.selected = false
-            })
             result.path.forEach((e) => {
                 ui.NODEMAP.get(e.nodeID)!.selected = true
             })
 
-            RedrawTree()
         }
     )
+    RedrawTree()
 }
 
 function newTreeRequest(event: SubmitEvent) {
@@ -232,13 +215,13 @@ async function makeRequest(name: string, url: RequestInfo | URL, parameters: Req
     try {
         const response = await fetch(url, parameters);
 
-        if (!response.ok) {
+        if (!response.ok || response.status != 200) {
             let error = new Error(`${name} : ${response.statusText} ${response.status}`)
-            resultDiv.innerHTML = `<div style="background-color:#ffdddd; border:1px solid; padding:5px;">${error}</div>` + resultDiv.innerHTML
+            resultDiv.innerHTML = `<div style="background-color:#ffdddd; color: black; border:1px solid; padding:5px;">${url}<br>${error}</div>` + resultDiv.innerHTML
             throw error
         } else {
             const result = await response.json();
-            resultDiv.innerHTML = `<div style="background-color:#bdffbd; border:1px solid; padding:5px;">${JSON.stringify(result)}</div>` + resultDiv.innerHTML
+            resultDiv.innerHTML = `<div style="background-color:#bdffbd; color: black; border:1px solid; padding:5px;">${url}<br><pre>${JSON.stringify(result, null, 2)}</pre></div>` + resultDiv.innerHTML
             after(result)
         }
 

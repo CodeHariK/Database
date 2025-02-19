@@ -1,8 +1,19 @@
 import { fetchAllBTree, setupCollectionRequest } from './collection';
 import { shapes, dia } from '@joint/core';
 import { BTree, BTreeNode, NodeDef, TreeDef } from './tree';
-import { canvasSection } from './dom';
+import { canvasSection, modalOverlay, openModalBtn, themeToggle } from './dom';
 import { setupDraw } from './draw';
+import Split from 'split.js'
+
+// document.addEventListener('DOMContentLoaded', () => {
+Split(['#json-section', "#canvas-section", '#form-section'],
+  {
+    sizes: [15, 70, 15],
+    // gutterSize: 4,
+  }
+);
+(document.querySelector('.container') as HTMLElement).style.visibility = 'visible';
+// });
 
 class Ui {
   graph: dia.Graph
@@ -12,6 +23,8 @@ class Ui {
 
   BOXWIDTH = 280
   BOXHEIGHT = 200
+
+  DARK: boolean
 
   router: "normal" | "orthogonal" = "orthogonal"
   connector: "straight" | "curve" = "straight"
@@ -25,12 +38,15 @@ class Ui {
   currentTreeSnapshotIndex = 0
   TreeSnapshots: Array<BTree> = []
 
-  constructor() {
+  constructor(dark: boolean) {
+
+    this.DARK = dark
+
     this.graph = new dia.Graph({}, { cellNamespace: shapes });
     this.paper = new dia.Paper({
       el: document.getElementById('paper'),
       model: this.graph,
-      background: { color: '#F5F5F5' },
+      background: { color: dark ? '#111111' : '#F5F5F5' },
       gridSize: 20,
       drawGrid: true,
       width: canvasSection().clientWidth,
@@ -47,8 +63,28 @@ class Ui {
   }
 }
 
-export const ui = new Ui()
+let dark = localStorage.getItem("theme") === "dark"
+export let ui = new Ui(dark)
 
 fetchAllBTree()
 setupCollectionRequest()
 setupDraw()
+
+openModalBtn.addEventListener('click', () => {
+  modalOverlay.classList.add('active');
+});
+
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) {
+    modalOverlay.classList.remove('active');
+  }
+});
+
+const handleToggleClick = () => {
+  document.documentElement.classList.toggle("dark");
+  const dark = document.documentElement.classList.contains("dark");
+  localStorage.setItem("theme", dark ? "dark" : "light");
+
+  ui = new Ui(dark)
+};
+themeToggle.addEventListener("click", handleToggleClick);

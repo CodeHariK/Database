@@ -13,19 +13,21 @@
       padding: 0;
       box-sizing: border-box;
       font-family: monospace;
-    }
-
-    body,
-    html {
-      height: 100%;
-      width: 100%;
-      display: flex;
+      overflow: hidden;
     }
 
     .container {
       display: flex;
+      flex-direction: row;
       width: 100vw;
       height: 100vh;
+      visibility: hidden;
+      background-color: #f8f8f8;
+      border-right: none;
+    }
+
+    .gutter.gutter-horizontal {
+      cursor: col-resize;
     }
 
     .section {
@@ -33,14 +35,7 @@
       overflow: auto;
     }
 
-    #json-section {
-      flex: 10%;
-      background: #f8f9fa;
-    }
-
     #canvas-section {
-      flex: 70%;
-      background: #e9ecef;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -51,17 +46,31 @@
       height: 100% !important;
     }
 
-    #form-section {
-      flex: 20%;
-      background: #f1f3f5;
-      border-right: none;
-    }
-
-    input {
+    input,
+    textarea,
+    button {
       width: 100%;
       flex: 1;
       min-width: 0;
       padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      outline: none;
+      transition: border-color 0.3s ease-in-out;
+    }
+
+    input:focus {
+      border-color: #007bff;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      background: #b5e6fc;
+    }
+
+    button:hover {
+      background: #eee;
     }
 
     #form-section>div {
@@ -70,19 +79,6 @@
 
     form>div {
       padding: 5px;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #fff;
-      color: rgb(0, 0, 0);
-      border: none;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #eee;
     }
 
     #collections {
@@ -105,14 +101,58 @@
       transform: scale(1.05);
     }
 
+    .dark .container {
+      background-color: #111111;
+      color: #fff;
+    }
+
+    .dark input,
+    .dark textarea,
+    .dark .card {
+      background-color: #363636;
+      color: #fff;
+    }
+
     .highlight {
-      background: #efdfff;
+      background-color: #efdfff;
+    }
+
+    .dark .highlight {
+      background-color: #592d84;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+
+    .modal {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      min-width: 300px;
+      text-align: center;
+    }
+
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
     }
   </style>
 </head>
 
 <body>
-
   <div class="container">
     <div id="json-section" class="section">
       <button type="button" id="SECRETARY">SECRETARY</button>
@@ -160,7 +200,28 @@
     </div>
   </div>
 
+  <div class="modal-overlay">
+    <div class="modal">
+      <p>This is a modal!</p>
+
+      <button id="themeToggle">🌟 Theme toggle</button>
+    </div>
+  </div>
+
 </body>
+
+<script>
+  function colorMode() {
+    let dark = localStorage.getItem("theme") === "dark"
+    if (dark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }
+  colorMode();
+</script>
+
 <script type="module" src="/src/main.ts"></script>
 
 </html>

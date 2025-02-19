@@ -8,51 +8,54 @@ import { canvasSection, getInput } from './dom';
 let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
     let nodeDef = ui.NODEMAP.get(node.nodeID);
-    ui.NODEMAP.set(node.nodeID, {
-        color: node.error ? "#f55" : (nodeDef ? nodeDef.color : randomColor()),
-        selected: false,
-        box: null,
-        node: node,
-    })
+    if (!nodeDef) {
+        ui.NODEMAP.set(node.nodeID, {
+            color: randomColor(ui.DARK),
+            selected: false,
+            box: null,
+            node: node,
+        })
+    }
     nodeDef = ui.NODEMAP.get(node.nodeID)!;
 
     const element = new shapes.standard.HeaderedRectangle();
     element.resize(ui.BOXWIDTH, ui.BOXHEIGHT);
     element.position(x, y);
-    element.attr('headerText/text', node.nodeID);
     element.attr({
         root: {
             tabindex: 12,
             title: 'shapes.standard.HeaderedRectangle',
         },
+        bodyText: {
+            fill: ui.DARK ? "#fff" : "#000",
+            fontSize: 16,
+            text: "\n" + node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
+                node.keys.map((a, i) => {
+                    return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
+                }).join("") +
+                "\n\n" + (node.error ? (node.error + "\n") : "")
+        },
         body: {
-            fill: nodeDef.color,
-            fillOpacity: node.error ? .7 : (getInput.value ? (nodeDef.selected ? 0.5 : 0) : 0.3),
+            fill: node.error ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fillOpacity: 1,
             // rx: 20,
             // ry: 20,
             strokeWidth: 1,
-            strokeDasharray: '4,2'
+            strokeDasharray: '4,2',
         },
-        label: {
-            text: 'Hello',
-            fill: '#ECF0F1',
-            fontSize: 11,
-            fontVariant: 'small-caps'
+        headerText: {
+            fill: ui.DARK ? "#fff" : "#000",
+            fontSize: 20,
+            fontVariant: 'small-caps',
+            text: "" + node.nodeID,
         },
         header: {
-            fill: "#000000",
-            fillOpacity: 0.1,
+            fill: node.error ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fillOpacity: 1,
             strokeWidth: 1
         },
     });
 
-    element.attr('bodyText/text',
-        "\n" + node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
-        node.keys.map((a, i) => {
-            return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
-        }).join("") +
-        "\n\n" + (node.error ? (node.error + "\n") : "")
-    );
 
     element.addTo(ui.graph);
 
@@ -63,11 +66,9 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
     const toolsView = new dia.ToolsView({
         tools: [boundaryTool, removeButton, btnButton]
     });
-
     const elementView = element.findView(ui.paper);
     elementView.addTools(toolsView);
     elementView.hideTools();
-
     ui.paper.on('element:mouseenter', function (ev) {
         ev.showTools();
 
@@ -75,7 +76,6 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
             ui.MouseCurrentNode = node
         }
     });
-
     ui.paper.on('element:mouseleave', function (ev) {
         ev.hideTools();
 
@@ -115,7 +115,7 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
     link.router(ui.router);
     link.connector(ui.connector, { cornerType: 'line' });
 
-    var stroke = (nodeDef.selected && childDef.selected) ? "#000" : "#aaa";
+    var stroke = (nodeDef.selected && childDef.selected) ? (ui.DARK ? "#fff" : "#000") : (ui.DARK ? "#555" : "#bbb");
 
     link.attr(
         {
@@ -123,7 +123,7 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
                 // connection: true,
                 stroke: stroke,
                 strokeWidth: 2,
-                strokeDasharray: 4,
+                strokeDasharray: (nodeDef.selected && childDef.selected) ? 0 : 4,
                 // refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? 30 : 0,
             },
         }
@@ -235,6 +235,7 @@ export function setupDraw() {
     });
 
     window.onresize = () => {
+        console.log(canvasSection().clientWidth)
         ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
     }
 }

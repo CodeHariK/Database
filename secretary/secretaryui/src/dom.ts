@@ -14,3 +14,8 @@ export const getBtn = document.getElementById("get-btn") as HTMLButtonElement;
 export const resultDiv = document.getElementById("result") as HTMLDivElement;
 
 export const treeForm = document.getElementById("treeForm") as HTMLFormElement;
+
+export const modalOverlay = document.querySelector('.modal-overlay') as HTMLElement;
+export const openModalBtn = document.querySelector('#SECRETARY') as HTMLElement;
+
+export const themeToggle = document.getElementById("themeToggle") as HTMLElement
