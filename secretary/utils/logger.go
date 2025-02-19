@@ -79,6 +79,19 @@ func Log(msgs ...any) {
 		return nameLoc
 	}
 
+	extractError := func(err error) {
+		fmt.Fprintf(os.Stderr, "%s", "\n"+RED+err.Error()+"\n")
+
+		lines := strings.Split(string(debug.Stack()), "\n")
+
+		for i := range lines {
+			l := extracTrace(lines, i)
+			if len(l) > 0 {
+				log += "\n" + l
+			}
+		}
+	}
+
 	{
 		lines := strings.Split(string(debug.Stack()), "\n")
 		loc := 0
@@ -103,16 +116,7 @@ func Log(msgs ...any) {
 
 	for i, msg := range msgs {
 		if err, ok := msg.(error); ok {
-			fmt.Fprintf(os.Stderr, "%s", "\n"+RED+err.Error()+"\n")
-
-			lines := strings.Split(string(debug.Stack()), "\n")
-
-			for i := range lines {
-				l := extracTrace(lines, i)
-				if len(l) > 0 {
-					log += "\n" + l
-				}
-			}
+			extractError(err)
 		} else {
 			if i%2 == 1 {
 				log += " "
@@ -128,6 +132,10 @@ func Log(msgs ...any) {
 				string, []string,
 				[]int, []float32:
 				log += fmt.Sprint(msg)
+			case []error:
+				for _, e := range v {
+					extractError(e)
+				}
 			default:
 				data, err := json.MarshalIndent(v, "", "  ")
 				if err != nil {

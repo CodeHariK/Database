@@ -118,22 +118,20 @@ func (tree *BTree) NodeVerify(node *Node) error {
 }
 
 func (tree *BTree) recursiveNodeVerify(node *Node) []error {
-	errs := []error{}
+	rErrs := []error{}
 	if node != nil {
 		err := tree.NodeVerify(node)
 		if err != nil {
-			errs = append(errs, err)
+			rErrs = append(rErrs, err)
 		}
-
 		for _, n := range node.children {
-			err := tree.recursiveNodeVerify(n)
-			if err != nil {
-				errs = append(errs, err...)
+			cErrs := tree.recursiveNodeVerify(n)
+			if cErrs != nil {
+				rErrs = append(rErrs, cErrs...)
 			}
 		}
-		return nil
 	}
-	return errs
+	return rErrs
 }
 
 func (tree *BTree) TreeVerify() []error {

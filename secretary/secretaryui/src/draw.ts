@@ -29,7 +29,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
         bodyText: {
             fill: ui.DARK ? "#fff" : "#000",
             fontSize: 16,
-            text: "\n" + node.prevID + "<Prev " + " Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
+            text: "\n" + node.prevID + "<Prev " + "Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
                 node.keys.map((a, i) => {
                     return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
                 }).join("") +
@@ -235,7 +235,6 @@ export function setupDraw() {
     });
 
     window.onresize = () => {
-        console.log(canvasSection().clientWidth)
         ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
     }
 }

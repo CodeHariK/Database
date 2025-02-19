@@ -16,6 +16,7 @@ function runTest() {
         runTestBtn.innerHTML = `Test ${TestCounter + 1}/${Tests.length}`
 
         let t = Tests[TestCounter]
+        console.log(TestCounter, t)
 
         deleteRecord(t)
     }
@@ -123,7 +124,7 @@ export function fetchAllBTree() {
             data.forEach((tree, _) => {
                 const card = document.createElement("div");
                 card.className = "card";
-                card.innerHTML = `<p>${JSON.stringify(tree, null, 2)}</p>`;
+                card.innerHTML = `<pre>${JSON.stringify(tree, null, 2)}</pre>`;
                 card.onclick = () => {
                     Array.from(document.getElementsByClassName("highlight")).
                         forEach((e) => {
@@ -141,7 +142,7 @@ export function fetchAllBTree() {
     )
 }
 
-function setData(value: string | null) {
+function setRecord(value: string | null) {
     value = value ?? setInput.value;
     const payload = { value };
     makeRequest("SetData",
@@ -217,17 +218,46 @@ async function makeRequest(name: string, url: RequestInfo | URL, parameters: Req
 
         if (!response.ok || response.status != 200) {
             let error = new Error(`${name} : ${response.statusText} ${response.status}`)
-            resultDiv.innerHTML = `<div style="background-color:#ffdddd; color: black; border:1px solid; padding:5px;">${url}<br>${error}</div>` + resultDiv.innerHTML
+            resultDiv.innerHTML = `<div style="background-color:#ffdddd; color: black; border:1px solid; padding:5px;">
+                ${url.toString().split(ui.url)[1]}<br>
+                ${error}</div>` + resultDiv.innerHTML
             throw error
         } else {
             const result = await response.json();
-            resultDiv.innerHTML = `<div style="background-color:#bdffbd; color: black; border:1px solid; padding:5px;">${url}<br><pre>${JSON.stringify(result, null, 2)}</pre></div>` + resultDiv.innerHTML
+            appendResult(url, result)
             after(result)
         }
 
     } catch (err) {
         console.log(err)
     }
+}
+
+declare global {
+    interface Window {
+        toggleVisibility: (id: string) => void;
+    }
+}
+window.toggleVisibility = function (id: string) {
+    const content = document.getElementById(id) as HTMLElement;
+    content.style.display = content.style.display === "none" ? "block" : "none";
+};
+
+function appendResult(url: RequestInfo | URL, result: any) {
+    const uniqueId = `json-content-${Date.now()}`;
+    const formattedJSON = JSON.stringify(result, null, 2);
+    const newResultHTML = `
+        <div style="background-color:#bdffbd; color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
+            <div onclick="window.toggleVisibility('${uniqueId}')" 
+                style="cursor: pointer; font-weight: bold; background: #86e186; padding: 5px;">
+                ${url.toString().split(ui.url)[1]}
+            </div>
+            <div id="${uniqueId}" style="display: none; padding: 5px;">
+                <pre>${formattedJSON}</pre>
+            </div>
+        </div>
+    `;
+    resultDiv.innerHTML = newResultHTML + resultDiv.innerHTML;
 }
 
 export function setupCollectionRequest() {
@@ -247,7 +277,7 @@ export function setupCollectionRequest() {
         });
 
         runTestBtn.addEventListener("click", runTest);
-        setBtn.addEventListener("click", () => setData(null));
+        setBtn.addEventListener("click", () => setRecord(null));
         deleteBtn.addEventListener("click", () => deleteRecord(null));
         getBtn.addEventListener("click", () => getRecord(null));
 
