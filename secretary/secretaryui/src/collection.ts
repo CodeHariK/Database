@@ -9,7 +9,7 @@ let Tests = [
     "0000000000000026", "0000000000000020", "0000000000000021",
     "0000000000000018", "0000000000000019", "0000000000000022",
     "0000000000000024", "0000000000000023",
-    "0000000000000025", //"0000000000000017",
+    "0000000000000025", "0000000000000017",
 ]
 function runTest() {
     if (!ui.getTree()) return
@@ -94,8 +94,6 @@ function fetchCurrentTree() {
         (data) => {
             const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
 
-            console.log(data)
-
             if (ui.getTree()?.name != bTree.name) {
                 ui.TreeSnapshots = []
                 ui.currentTreeSnapshotIndex = 0
@@ -175,19 +173,23 @@ function deleteRecord(id: string | null) {
 async function getRecord(getId: string | null) {
     if (!ui.getTree()) return
 
+    getId = getId ?? getInput.value
+
     ui.NODEMAP.forEach((n) => {
         n.selected = false
     })
-    await makeRequest(
-        `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId ?? getInput.value}`,
-        undefined, () => {
-            let result = ui.getTree().searchLeafNode(getId ?? getInput.value)
-            result.path.forEach((e) => {
-                ui.NODEMAP.get(e.nodeID)!.selected = true
-            })
+    if (getId) {
+        await makeRequest(
+            `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId}`,
+            undefined, () => {
+                let result = ui.getTree().searchLeafNode(getId)
+                result.path.forEach((e) => {
+                    ui.NODEMAP.get(e.nodeID)!.selected = true
+                })
 
-        }
-    )
+            }
+        )
+    }
     RedrawTree()
 }
 

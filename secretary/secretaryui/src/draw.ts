@@ -36,7 +36,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
                 "\n\n" + (node.errors?.length > 0 ? (node.errors + "\n") : "")
         },
         body: {
-            fill: (node.errors?.length) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fill: (node.errors?.length > 0) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
             fillOpacity: 1,
             // rx: 20,
             // ry: 20,
@@ -50,7 +50,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
             text: "" + node.nodeID,
         },
         header: {
-            fill: (node.errors?.length) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fill: (node.errors?.length > 0) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
             fillOpacity: 1,
             strokeWidth: 1
         },

@@ -38,18 +38,11 @@ func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := tree.MarshalGraphJSON()
-	if err != nil || m == nil {
-		writeJson(w, http.StatusInternalServerError, err.Error())
+	if errs := tree.TreeVerify(); errs != nil {
+		writeJson(w, http.StatusConflict, tree.ToJSON())
 		return
 	}
-
-	if errs := tree.TreeVerify(); errs != nil {
-		w.WriteHeader(http.StatusConflict)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(m)
+	writeJson(w, http.StatusOK, tree.ToJSON())
 }
 
 type NewTreeRequest struct {
@@ -88,8 +81,7 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.AddTree(tree)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("New tree created"))
+	writeJson(w, http.StatusOK, "New tree created")
 }
 
 type SetRequest struct {

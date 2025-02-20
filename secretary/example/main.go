@@ -43,7 +43,7 @@ func main() {
 	var sortedRecords []*secretary.Record
 	var sortedKeys [][]byte
 	var sortedValues []string
-	for r := 0; r < 26; r++ {
+	for r := 0; r < 64; r++ {
 
 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
 		sortedKeys = append(sortedKeys, key)

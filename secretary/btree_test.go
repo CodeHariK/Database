@@ -121,13 +121,6 @@ func TestBTreeHeight(t *testing.T) {
 	if tree.Height() != 3 {
 		t.Errorf("Expected height %d", tree.Height())
 	}
-
-	jsonOutput, err := tree.MarshalGraphJSON()
-	if err != nil {
-		t.Fatal("Error:", err)
-		return
-	}
-	t.Log(tree.Order, string(jsonOutput))
 }
 
 func TestBTreeClose(t *testing.T) {

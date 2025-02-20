@@ -20,7 +20,7 @@ const (
 var colorIndex = 0
 
 const (
-	MODE   = LIGHT
+	MODE   = NIGHT
 	NIGHT  = 0
 	LIGHT  = 1
 	SWITCH = -1
@@ -50,8 +50,7 @@ func Log(msgs ...any) {
 
 	log := color
 
-	extracTrace := func(lines []string, i int) string {
-		nameLoc := ""
+	extracTrace := func(lines []string, i int) (name string, loc string) {
 		line := lines[i]
 
 		if strings.Contains(line, PROJECTNAME) && strings.Contains(line, ".go") {
@@ -59,7 +58,7 @@ func Log(msgs ...any) {
 			if len(parts) > 0 {
 				projectPart := strings.Split(parts[0], PROJECTNAME)
 				if len(projectPart) > 1 {
-					nameLoc += fmt.Sprint(projectPart[1], " ")
+					loc = fmt.Sprint(projectPart[1], " ")
 				}
 			}
 
@@ -70,13 +69,13 @@ func Log(msgs ...any) {
 					if len(funcPart) > 1 {
 						funcName := strings.Split(funcPart[1], "(0x")
 						if len(funcName) > 0 {
-							nameLoc += fmt.Sprint(funcName[0], " ")
+							name = fmt.Sprint(funcName[0], " ")
 						}
 					}
 				}
 			}
 		}
-		return nameLoc
+		return name, loc
 	}
 
 	extractError := func(err error) {
@@ -85,25 +84,25 @@ func Log(msgs ...any) {
 		lines := strings.Split(string(debug.Stack()), "\n")
 
 		for i := range lines {
-			l := extracTrace(lines, i)
-			if len(l) > 0 {
-				log += "\n" + l
-			}
+			name, loc := extracTrace(lines, i)
+			log += "\n" + name + loc
 		}
 	}
 
 	{
 		lines := strings.Split(string(debug.Stack()), "\n")
-		loc := 0
-
+		lc := 0
 		nameLoc := ""
-
 		for i := range lines {
 			if strings.Contains(lines[i], PROJECTNAME) && strings.Contains(lines[i], ".go") {
-				if loc == 1 {
-					nameLoc += extracTrace(lines, i)
+				if lc > 0 && lc < 6 {
+					name, loc := extracTrace(lines, i)
+					if lc == 1 {
+						nameLoc += name
+					}
+					nameLoc += loc
 				}
-				loc++
+				lc++
 			}
 		}
 
