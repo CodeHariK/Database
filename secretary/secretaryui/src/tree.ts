@@ -26,7 +26,7 @@ export type BTreeNode = {
     keys: string[];
     value: string[];
     children: BTreeNode[];
-    error: string;
+    errors: string[];
 };
 
 export class BTree {
@@ -39,7 +39,6 @@ export class BTree {
     }
 
     convertNode = (node: any): BTreeNode => {
-
         return {
             nodeID: node.nodeID,
             nextID: node.nextID,
@@ -48,7 +47,7 @@ export class BTree {
             keys: node.key,
             value: node.value,
             children: node.children ? node.children.map((child: any) => this.convertNode(child)) : [],
-            error: node.error
+            errors: node.errors
         };
     };
 

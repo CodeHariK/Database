@@ -72,7 +72,7 @@ func TestGetBTreeHandler(t *testing.T) {
 }
 
 // Test /insert with POST data
-func TestInsertHandler(t *testing.T) {
+func TestSetHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestInsertHandler(t *testing.T) {
 	router := s.setupRouter()
 
 	body := `{"value": "123"}`
-	req := httptest.NewRequest(http.MethodPost, "/insert/users", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/set/users", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -150,7 +150,7 @@ func TestNewTreeHandler(t *testing.T) {
 	}
 }
 
-func TestSearchHandler(t *testing.T) {
+func TestGetHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ func TestSearchHandler(t *testing.T) {
 		t.Errorf("Insert failed: %s", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/search/users/123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/get/users/123", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	resp := rec.Result()
@@ -179,7 +179,7 @@ func TestSearchHandler(t *testing.T) {
 		t.Errorf("expected status StatusNoContent; got %v", resp.Status)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/search/users/"+string(key), nil)
+	req = httptest.NewRequest(http.MethodGet, "/get/users/"+string(key), nil)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	resp = rec.Result()

@@ -33,10 +33,10 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
                 node.keys.map((a, i) => {
                     return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
                 }).join("") +
-                "\n\n" + (node.error ? (node.error + "\n") : "")
+                "\n\n" + (node.errors?.length > 0 ? (node.errors + "\n") : "")
         },
         body: {
-            fill: node.error ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fill: (node.errors?.length) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
             fillOpacity: 1,
             // rx: 20,
             // ry: 20,
@@ -50,7 +50,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
             text: "" + node.nodeID,
         },
         header: {
-            fill: node.error ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
+            fill: (node.errors?.length) ? "#ff6565" : (!getInput.value || nodeDef.selected ? nodeDef.color : (ui.DARK ? "#333" : "#fff")),
             fillOpacity: 1,
             strokeWidth: 1
         },
@@ -113,9 +113,12 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
     });
 
     link.router(ui.router);
-    link.connector(ui.connector, { cornerType: 'line' });
+    link.connector(ui.connector, { cornerType: 'line', size: 20 });
 
     var stroke = (nodeDef.selected && childDef.selected) ? (ui.DARK ? "#fff" : "#000") : (ui.DARK ? "#555" : "#bbb");
+
+    var errorLink = (nodeDef.node?.errors?.length ?? 0) > 0 && (childDef.node?.errors?.length ?? 0) > 0
+    stroke = errorLink ? "#ff6565" : stroke
 
     link.attr(
         {
@@ -123,7 +126,7 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
                 // connection: true,
                 stroke: stroke,
                 strokeWidth: 2,
-                strokeDasharray: (nodeDef.selected && childDef.selected) ? 0 : 4,
+                strokeDasharray: ((nodeDef.selected && childDef.selected) || errorLink) ? 0 : 4,
                 // refY: nodeDef.node!.nodeID > childDef.node!.nodeID ? 30 : 0,
             },
         }

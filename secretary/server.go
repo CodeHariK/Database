@@ -11,20 +11,22 @@ import (
 	"github.com/rs/cors"
 )
 
+func writeJson(w http.ResponseWriter, code int, data any) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	w.WriteHeader(code)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
 func (s *Secretary) getAllTreeHandler(w http.ResponseWriter, r *http.Request) {
 	var hello []*BTree
-
 	for _, o := range s.trees {
 		hello = append(hello, o)
 	}
-
-	jsonData, err := json.MarshalIndent(hello, "", "  ")
-	if err != nil {
-		utils.Log("Error marshaling:", err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonData)
+	writeJson(w, http.StatusOK, hello)
 }
 
 func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
@@ -32,14 +34,18 @@ func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		writeJson(w, http.StatusNotFound, "Tree not found")
 		return
 	}
 
-	m, err := tree.SerializeTreeJSON()
+	m, err := tree.MarshalGraphJSON()
 	if err != nil || m == nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJson(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	if errs := tree.TreeVerify(); errs != nil {
+		w.WriteHeader(http.StatusConflict)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -58,7 +64,7 @@ type NewTreeRequest struct {
 func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 	var req NewTreeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		writeJson(w, http.StatusBadRequest, "Invalid Json")
 		return
 	}
 
@@ -71,12 +77,12 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 		req.BatchLength,
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJson(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	err = tree.SaveHeader()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJson(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -92,44 +98,47 @@ type SetRequest struct {
 
 var keySeq uint64 = 0
 
-func (s *Secretary) setHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
 	var req SetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(strings.Trim(req.Value, " ")) == 0 {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		writeJson(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		writeJson(w, http.StatusNotFound, "Tree not found")
 		return
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4, req.Value))
 	err := tree.Set(key, key)
 	if err != nil {
-		http.Error(w, "Tree not found", http.StatusInternalServerError)
+		writeJson(w, http.StatusNotFound, "Tree not found")
+		return
+	}
+	if errs := tree.TreeVerify(); errs != nil {
+		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
 		return
 	}
 
-	response := map[string]string{
+	response := map[string]any{
 		"message": "Data set successfully",
 		"table":   table,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJson(w, http.StatusOK, response)
 }
 
-func (s *Secretary) getHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) getRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 	id := r.PathValue("id")
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		writeJson(w, http.StatusNotFound, "Tree not found")
 		return
 	}
 
@@ -138,42 +147,46 @@ func (s *Secretary) getHandler(w http.ResponseWriter, r *http.Request) {
 	if found {
 		record = string(node.records[index].Value)
 	} else {
-		http.Error(w, "Key not found", http.StatusNoContent)
+		writeJson(w, http.StatusNoContent, "Key not found")
 		return
 	}
 
-	response := map[string]string{
+	response := map[string]any{
 		"table":  table,
-		"result": fmt.Sprintf("[NodeID:%d  Index:%d  Found:%v  Value:%s]", node.NodeID, index, found, record),
+		"nodeID": node.NodeID,
+		"found":  found,
+		"record": record,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJson(w, http.StatusOK, response)
 }
 
-func (s *Secretary) deleteHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 	id := r.PathValue("id")
 
 	tree, exists := s.trees[table]
 	if !exists {
-		http.Error(w, "Tree not found", http.StatusNotFound)
+		writeJson(w, http.StatusNotFound, "Tree not found")
 		return
 	}
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJson(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if errs := tree.TreeVerify(); errs != nil {
+		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
 		return
 	}
 
-	response := map[string]string{
+	response := map[string]any{
 		"table":  table,
-		"result": "Delete success " + table + id,
+		"result": "Delete success " + id,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJson(w, http.StatusOK, response)
 }
 
 func (s *Secretary) setupRouter() http.Handler {
@@ -182,9 +195,9 @@ func (s *Secretary) setupRouter() http.Handler {
 	mux.HandleFunc("GET /getalltree", s.getAllTreeHandler)
 	mux.HandleFunc("GET /gettree/{table}", s.getTreeHandler)
 	mux.HandleFunc("POST /newtree", s.newTreeHandler)
-	mux.HandleFunc("POST /set/{table}", s.setHandler)
-	mux.HandleFunc("GET /get/{table}/{id}", s.getHandler)
-	mux.HandleFunc("DELETE /delete/{table}/{id}", s.deleteHandler)
+	mux.HandleFunc("POST /set/{table}", s.setRecordHandler)
+	mux.HandleFunc("GET /get/{table}/{id}", s.getRecordHandler)
+	mux.HandleFunc("DELETE /delete/{table}/{id}", s.deleteRecordHandler)
 
 	// Enable CORS with custom settings
 	handler := cors.New(cors.Options{

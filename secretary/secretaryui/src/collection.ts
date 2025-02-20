@@ -8,21 +8,21 @@ let TestCounter = 0
 let Tests = [
     "0000000000000026", "0000000000000020", "0000000000000021",
     "0000000000000018", "0000000000000019", "0000000000000022",
-    "0000000000000024", "0000000000000023", "0000000000000025",
-    "0000000000000017",
+    "0000000000000024", "0000000000000023",
+    "0000000000000025", //"0000000000000017",
 ]
 function runTest() {
+    if (!ui.getTree()) return
+
     if (TestCounter < Tests.length) {
         runTestBtn.innerHTML = `Test ${TestCounter + 1}/${Tests.length}`
 
         let t = Tests[TestCounter]
-        console.log(TestCounter, t)
 
         deleteRecord(t)
     }
     TestCounter++
 }
-
 
 export function displayNode(node: BTreeNode) {
     const infoBox = document.getElementById("info-box");
@@ -89,11 +89,12 @@ export function displayNode(node: BTreeNode) {
 
 function fetchCurrentTree() {
     makeRequest(
-        "FetchCurrentTree",
         `${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`,
         undefined,
         (data) => {
             const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
+
+            console.log(data)
 
             if (ui.getTree()?.name != bTree.name) {
                 ui.TreeSnapshots = []
@@ -114,7 +115,6 @@ function fetchCurrentTree() {
 
 export function fetchAllBTree() {
     makeRequest(
-        "FetchAllBTree",
         `${ui.url}/getalltree`,
         undefined,
         (data: any[]) => {
@@ -143,9 +143,11 @@ export function fetchAllBTree() {
 }
 
 function setRecord(value: string | null) {
+    if (!ui.getTree()) return
+
     value = value ?? setInput.value;
     const payload = { value };
-    makeRequest("SetData",
+    makeRequest(
         `${ui.url}/set/${ui.currentTreeDef!.collectionName}`,
         {
             method: "POST",
@@ -159,7 +161,9 @@ function setRecord(value: string | null) {
 }
 
 function deleteRecord(id: string | null) {
-    makeRequest("DeleteRecord",
+    if (!ui.getTree()) return
+
+    makeRequest(
         `${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id ?? deleteInput.value}`,
         { method: "DELETE" },
         () => {
@@ -169,11 +173,12 @@ function deleteRecord(id: string | null) {
 }
 
 async function getRecord(getId: string | null) {
+    if (!ui.getTree()) return
+
     ui.NODEMAP.forEach((n) => {
         n.selected = false
     })
     await makeRequest(
-        "GetRecord",
         `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId ?? getInput.value}`,
         undefined, () => {
             let result = ui.getTree().searchLeafNode(getId ?? getInput.value)
@@ -199,7 +204,6 @@ function newTreeRequest(event: SubmitEvent) {
     };
 
     makeRequest(
-        "NewTreeRequest",
         `${ui.url}/newtree`,
         {
             method: "POST",
@@ -212,25 +216,12 @@ function newTreeRequest(event: SubmitEvent) {
     )
 }
 
-async function makeRequest(name: string, url: RequestInfo | URL, parameters: RequestInit | undefined, after: (result: any) => void) {
-    try {
-        const response = await fetch(url, parameters);
+async function makeRequest(url: RequestInfo | URL, parameters: RequestInit | undefined, after: (result: any, error: boolean) => void) {
+    const response = await fetch(url, parameters);
 
-        if (!response.ok || response.status != 200) {
-            let error = new Error(`${name} : ${response.statusText} ${response.status}`)
-            resultDiv.innerHTML = `<div style="background-color:#ffdddd; color: black; border:1px solid; padding:5px;">
-                ${url.toString().split(ui.url)[1]}<br>
-                ${error}</div>` + resultDiv.innerHTML
-            throw error
-        } else {
-            const result = await response.json();
-            appendResult(url, result)
-            after(result)
-        }
-
-    } catch (err) {
-        console.log(err)
-    }
+    let result = await response.json();
+    appendResult(url, result, !response.ok || response.status != 200)
+    after(result, !response.ok || response.status != 200)
 }
 
 declare global {
@@ -243,16 +234,16 @@ window.toggleVisibility = function (id: string) {
     content.style.display = content.style.display === "none" ? "block" : "none";
 };
 
-function appendResult(url: RequestInfo | URL, result: any) {
+function appendResult(url: RequestInfo | URL, result: any, error: boolean) {
     const uniqueId = `json-content-${Date.now()}`;
     const formattedJSON = JSON.stringify(result, null, 2);
     const newResultHTML = `
-        <div style="background-color:#bdffbd; color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
+        <div style="background-color:${error ? "#ffb9b9" : "#bdffbd"}; color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
             <div onclick="window.toggleVisibility('${uniqueId}')" 
-                style="cursor: pointer; font-weight: bold; background: #86e186; padding: 5px;">
+                style="cursor: pointer; font-weight: bold; padding: 4px;">
                 ${url.toString().split(ui.url)[1]}
             </div>
-            <div id="${uniqueId}" style="display: none; padding: 5px;">
+            <div id="${uniqueId}" style="display: none; padding: 4px;">
                 <pre>${formattedJSON}</pre>
             </div>
         </div>

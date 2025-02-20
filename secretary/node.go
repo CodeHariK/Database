@@ -3,7 +3,6 @@ package secretary
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"sort"
 
 	"github.com/codeharik/secretary/utils"
@@ -130,6 +129,9 @@ func (tree *BTree) recursiveNodeVerify(node *Node) []error {
 				rErrs = append(rErrs, cErrs...)
 			}
 		}
+	}
+	if len(rErrs) == 0 {
+		return nil
 	}
 	return rErrs
 }
@@ -272,8 +274,6 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 	right.parent = parent
 	// parent.NumKeys++
 
-	// fmt.Println("intl ", parent.NodeID, len(parent.Keys), "split:", len(parent.Keys) >= int(tree.Order))
-
 	// if parent.NumKeys >= tree.Order {
 	if len(parent.Keys) >= int(tree.Order) {
 		tree.splitInternal(parent)
@@ -328,8 +328,6 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 	}
 
 	leaf.setLeafKV(key, value)
-
-	// fmt.Println("leaf ", leaf.NodeID, len(leaf.Keys), "split:", len(leaf.Keys) >= int(tree.Order))
 
 	if len(leaf.Keys) >= int(tree.Order) {
 		tree.splitLeaf(leaf)
@@ -496,8 +494,6 @@ func (node *Node) getMinLeafKey() ([]byte, error) {
 func (tree *BTree) getLeafNode(key []byte) (node *Node, index int, found bool) {
 	node = tree.root
 
-	// fmt.Println(node.NodeID, utils.BytesToStrings(node.Keys))
-
 	// Traverse internal nodes
 	for len(node.children) > 0 {
 		index, found := node.getKey(key)
@@ -506,12 +502,10 @@ func (tree *BTree) getLeafNode(key []byte) (node *Node, index int, found bool) {
 		} else {
 			node = node.children[index]
 		}
-		// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
 	}
 
 	// Search within the leaf node
 	index, found = node.getKey(key)
-	// fmt.Println(index, found, node.NodeID, utils.BytesToStrings(node.Keys))
 
 	return node, index, found
 }
@@ -594,7 +588,7 @@ func (tree *BTree) Delete(key []byte) error {
 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
 	// leaf.NumKeys--
 
-	utils.Log("key", string(key), "index", index, "found", found)
+	utils.Log("key", string(key), "leaf", leaf.NodeID, "index", index, "found", found)
 
 	// Handle underflow
 	tree.handleUnderflow(leaf)
@@ -758,16 +752,6 @@ func (tree *BTree) handleUnderflow(node *Node) {
 		leftSibling := parent.children[pos-1]
 		// leftSibling := node.prev
 
-		utils.Log(
-			"**** Merge with left sibling -> Pos", pos,
-			"Parent", parent.NodeID,
-			"parent.keys", utils.ArrayToStrings(parent.Keys),
-			"NodeID ", node.NodeID,
-			"node.Keys", utils.ArrayToStrings(node.Keys),
-			"leftSiblingID", leftSibling.NodeID,
-			"leftSibling.Keys", utils.ArrayToStrings(leftSibling.Keys),
-		)
-
 		leftSibling.Keys = append(leftSibling.Keys, node.Keys...)
 
 		if leftSibling.children == nil {
@@ -803,14 +787,6 @@ func (tree *BTree) handleUnderflow(node *Node) {
 	{
 		rightSibling := parent.children[pos+1]
 		// rightSibling := node.next
-
-		utils.Log("**** Merge right sibling -> Pos", pos,
-			"Parent", parent.NodeID,
-			"parent.keys", utils.ArrayToStrings(parent.Keys),
-			"NodeID", node.NodeID,
-			"node.Keys", utils.ArrayToStrings(node.Keys),
-			"rightSiblingID", rightSibling.NodeID,
-			"rightSibling.Keys", utils.ArrayToStrings(rightSibling.Keys))
 
 		node.Keys = append(node.Keys, rightSibling.Keys...)
 
@@ -856,12 +832,7 @@ func fixInternalNodeChildLinks(node *Node) {
 			child.parent = node
 		}
 
-		utils.Log(
-			"nodeID", node.NodeID,
-			"node.keys", utils.ArrayToStrings(node.Keys),
-			"len(node.children)", len(node.children),
-			"node", *node,
-		)
+		utils.Log(node)
 	}
 }
 
@@ -889,11 +860,11 @@ type NodeJSON struct {
 	Value    []string   `json:"value"`
 	Children []NodeJSON `json:"children"`
 
-	Error string `json:"error"`
+	Errors []string `json:"errors"`
 }
 
 // ConvertNodeJSON recursively converts a Node into a JSON-friendly structure
-func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
+func (node *Node) ConvertNodeJSON(height int) NodeJSON {
 	if node == nil {
 		return NodeJSON{}
 	}
@@ -911,7 +882,7 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 	children := make([]NodeJSON, len(node.children))
 	if height != 0 {
 		for i, child := range node.children {
-			children[i] = tree.ConvertNodeJSON(child, height-1)
+			children[i] = child.ConvertNodeJSON(height - 1)
 		}
 	}
 
@@ -928,19 +899,6 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 		parentId = node.parent.NodeID
 	}
 
-	error := ""
-	err := tree.NodeVerify(node)
-	if err != nil {
-		error = err.Error()
-	}
-	rootError := ""
-	if tree.root == node {
-		rootErr := tree.TreeVerify()
-		if rootErr != nil {
-			rootError = fmt.Sprint(utils.ArrayToStrings(rootErr))
-		}
-	}
-
 	return NodeJSON{
 		NodeId:   node.NodeID,
 		NextId:   nextId,
@@ -950,32 +908,28 @@ func (tree *BTree) ConvertNodeJSON(node *Node, height int) NodeJSON {
 		Value:    values,
 		Children: children,
 		// NumKeys:  node.NumKeys,
-
-		Error: error + "" + rootError,
 	}
 }
 
-// SerializeNodeJSON converts the entire BTree into a JSON structure
-func (tree *BTree) SerializeNodeJSON(node *Node, height int) ([]byte, error) {
-	jsonData, err := json.MarshalIndent(tree.ConvertNodeJSON(node, height), "", "  ")
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonData, nil
+func (tree *BTree) ConvertVerifiedNodeJSON(node *Node, height int) NodeJSON {
+	json := node.ConvertNodeJSON(height)
+	json.Errors = utils.ArrayToStrings(tree.recursiveNodeVerify(node))
+	return json
 }
 
-func (tree *BTree) PrintNode(node *Node, height int) {
-	t, err := tree.SerializeNodeJSON(node, height)
-	utils.Log(string(t), err)
+func (node *Node) SerializeNodeJSON(height int) ([]byte, error) {
+	return json.MarshalIndent(
+		node.ConvertNodeJSON(height),
+		"", "  ")
 }
 
-// SerializeTreeJSON converts the entire BTree into a JSON structure
-func (tree *BTree) SerializeTreeJSON() ([]byte, error) {
-	return tree.SerializeNodeJSON(tree.root, tree.Height())
+func (node Node) MarshalJSON() ([]byte, error) {
+	return node.SerializeNodeJSON(1)
 }
 
-func (tree *BTree) PrintTree() {
-	t, err := tree.SerializeTreeJSON()
-	utils.Log(string(t), err)
+// MarshalJSON converts the entire BTree into a JSON structure
+func (tree BTree) MarshalGraphJSON() ([]byte, error) {
+	return json.MarshalIndent(
+		tree.ConvertVerifiedNodeJSON(tree.root, tree.Height()),
+		"", "  ")
 }

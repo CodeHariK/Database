@@ -122,7 +122,7 @@ func TestBTreeHeight(t *testing.T) {
 		t.Errorf("Expected height %d", tree.Height())
 	}
 
-	jsonOutput, err := tree.SerializeTreeJSON()
+	jsonOutput, err := tree.MarshalGraphJSON()
 	if err != nil {
 		t.Fatal("Error:", err)
 		return
