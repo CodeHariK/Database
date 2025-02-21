@@ -57,40 +57,9 @@ func main() {
 	}
 	images.SortedRecordSet(sortedRecords)
 
-	// users.SortedRecordSet(sortedRecords)
 	for _, r := range sortedRecords {
 		users.Set(r.Key, r.Value)
 	}
-
-	// for _, k := range utils.Shuffle(sortedKeys[:6]) {
-	// 	err := users.Delete(k)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
-
-	// for _, k := range utils.Shuffle(sortedKeys[len(sortedKeys)-1:]) {
-	// 	err := users.Delete(k)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
-
-	// for _, k := range utils.StringsToArray[[]byte](
-	// 	[]string{
-	// 		"0000000000000026", "0000000000000020", "0000000000000021", "0000000000000018", "0000000000000019",
-	// 		"0000000000000022", "0000000000000024", "0000000000000023", "0000000000000025", // "0000000000000017",
-	// 	},
-	// ) {
-	// 	err := users.Delete(k)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
-
-	// if errs := users.TreeVerify(); errs != nil {
-	// 	utils.Log(errs)
-	// }
 
 	s.Serve()
 }

@@ -429,7 +429,7 @@ func TestDelete(t *testing.T) {
 	var sortedRecords []*Record
 	var sortedKeys [][]byte
 	var sortedValues []string
-	for r := 0; r < 512; r++ {
+	for r := 0; r < 5120; r++ {
 		key := []byte(utils.GenerateSeqString(&keySeq, 16))
 		sortedKeys = append(sortedKeys, key)
 
@@ -450,7 +450,7 @@ func TestDelete(t *testing.T) {
 
 		t.Log(utils.ArrayToStrings(keys))
 
-		_, tree := dummyTree(t, "TestDelete", 4)
+		_, tree := dummyTree(t, "TestDelete", 8)
 
 		if i%2 == 1 {
 			for _, r := range sortedRecords {
