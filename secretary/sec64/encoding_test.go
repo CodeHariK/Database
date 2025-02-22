@@ -1,6 +1,7 @@
 package sec64
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,44 +12,75 @@ import (
 // Test basic character mappings
 func TestEncodingDecoding(t *testing.T) {
 	tests := []struct {
-		input  string
-		encExp string
-		ascExp string
+		input string
+		sec64 string
+		ascii string
 	}{
-		{"Kello WORLD!", "kelloSworldK", "kello world!"},
-		// {"123\n", "123N", "123\n"},
-		// {"[test] {code}", "RtestTSRcodeT", "(test) (code)"},
-		// {`=+-*/\%^<>!?@#$&(),;:'"_.`, `ABCDEFGHIJKLMOPQRTUVWXYZ.`, `=+-*/\%^<>!?@#$&(),;:'"_.`},
-		// {"_~", "Z_", "_\x00"},
-		// {"\x00", "_", "\x00"},
+		{"", "", ""},
+		{"| +\n_0", "_SBNZ0", "~ +\n_0"},
+		{
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+			"abcdefghijklmnopqrstuvwxyz",
+			"abcdefghijklmnopqrstuvwxyz",
+		},
+		{
+			"0123456789",
+			"0123456789",
+			"0123456789",
+		},
+		{
+			`=+-*/\%^<>!?@#$&(),;:'"_.`,
+			`ABCDEFGHIJKLMOPQRTUVWXYZ.`,
+			`=+-*/\%^<>!?@#$&(),;:'"_.`,
+		},
+		{
+			"abcdefghijklmnopqrstuvwxyz",
+			"abcdefghijklmnopqrstuvwxyz",
+			"abcdefghijklmnopqrstuvwxyz",
+		},
+		{
+			"~`|",
+			"___",
+			"~~~",
+		},
 	}
 
 	for _, tt := range tests {
-		enc := EncodeString(tt.input)
-		if enc != tt.encExp {
-			t.Errorf("encode(%q) = %q; want %q", tt.input, enc, tt.encExp)
-		}
-
-		dec := DecodeString(enc)
-		if dec != tt.ascExp {
-			t.Errorf("decode(%q) = %q; want %q", enc, dec, tt.ascExp)
-		}
-
-		encoded := Encode(tt.input)
-
-		decoded := Decode(encoded)
+		asciiToSec64 := AsciiToSec64(tt.input)
+		asciiToIndex := AsciiToIndex(tt.input)
+		sec64ToAscii := Sec64ToAscii(asciiToSec64)
+		sec64ToIndex := Sec64ToIndex(asciiToSec64)
+		// packedIndexes := Pack8to6(asciiToIndex)
+		// unpackedIndexes := Unpack6to8(packedIndexes)
+		// indexToAscii := IndexToAscii(unpackedIndexes)
+		// indexToSec64 := IndexToSec64(unpackedIndexes)
+		encoded := Pack8to6(AsciiToIndex(tt.input))
+		decodedAscii := IndexToAscii(Unpack6to8(encoded))
+		decodedSec64 := IndexToSec64(Unpack6to8(encoded))
 
 		utils.Log(
-			"enc", enc,
-			"[]byte(enc)", []byte(enc),
-			"Pack8to6(enc)", binStr(Pack8to6([]byte(enc)), true, true, false),
-			"encoded", encoded,
-			"decoded", decoded,
+			"tt.input      ", tt.input,
+			"asciiToSec64  ", asciiToSec64,
+			// "asciiToIndex", asciiToIndex,
+			"sec64ToAscii  ", sec64ToAscii,
+			// "sec64ToIndex", sec64ToIndex,
+			// "packedIndexes", packedIndexes,
+			// "unpackedIndexes", unpackedIndexes,
+			// "indexToAscii  ", indexToAscii,
+			// "indexToSec64  ", indexToSec64,
+			// "encoded", encoded,
+			"decodedAscii  ", decodedAscii,
+			"decodedSec64  ", decodedSec64,
 		)
 
-		if decoded != dec {
-			t.Errorf("decode(%q) \n %q \n %q want", encoded, decoded, dec)
+		if bytes.Compare(asciiToIndex, sec64ToIndex) != 0 || // bytes.Compare(asciiToIndex, unpackedIndexes) != 0 ||
+			asciiToSec64 != tt.sec64 ||
+			sec64ToAscii != tt.ascii ||
+			!strings.HasPrefix(decodedAscii, sec64ToAscii) ||
+			!strings.HasPrefix(decodedSec64, asciiToSec64) {
+			t.Fatal()
 		}
+
 	}
 }
 
@@ -88,15 +120,18 @@ func TestPackUnpack(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		packUnpackCheck(t, test.input)
+	}
+}
 
-		packed := Pack8to6(test.input)
+func packUnpackCheck(t *testing.T, input []byte) {
+	packed := Pack8to6(input)
 
-		unpacked := Unpack6to8(packed)
-		if binStr(unpacked, false, false, false) != binStr(packed, true, false, false) {
-			t.Fatalf("unpack\n%v\n%v",
-				binStr(packed, true, false, false),
-				binStr(unpacked, false, false, false),
-			)
-		}
+	unpacked := Unpack6to8(packed)
+	if binStr(unpacked, false, false, false) != binStr(packed, true, false, false) {
+		t.Fatalf("unpack\n%v\n%v",
+			binStr(packed, true, false, false),
+			binStr(unpacked, false, false, false),
+		)
 	}
 }

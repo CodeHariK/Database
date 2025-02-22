@@ -1,6 +1,8 @@
 package sec64
 
-const (
+import "fmt"
+
+var (
 	/**
 
 			Url safe Lossy encoding : 8bit -> 6bit
@@ -14,13 +16,13 @@ const (
 	*		Any other character						_
 	**/
 
-	//		    ABCDEFGHIJKLMNOPQRSTUVWXYZ                         [{}]
-	ASCII = `_SNabcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_.`
-	SEC64 = `_SNabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMOPQRTUVWXYZ.`
+	//		         ABCDEFGHIJKLMNOPQRSTUVWXYZ                         [{}]
+	ASCII = []byte(`~abcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_. N`)
+	SEC64 = []byte(`_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMOPQRTUVWXYZ.SN`)
 )
 
 type Sec64 struct {
-	index int8
+	index byte
 	char  byte
 }
 
@@ -30,63 +32,88 @@ var (
 )
 
 func init() {
+	ASCII[63] = '\n'
+
 	for i := range Ascii2Sec {
+		Sec2Ascii[i] = Sec64{index: 0, char: '~'}
 		Ascii2Sec[i] = Sec64{index: 0, char: '_'}
-		Sec2Ascii[i] = Sec64{index: 0, char: '\x00'}
 	}
-	for i := 0; i < 64; i++ {
-		Ascii2Sec[ASCII[i]] = Sec64{index: int8(i), char: SEC64[i]}
-		Sec2Ascii[SEC64[i]] = Sec64{index: int8(i), char: ASCII[i]}
+	for i := 1; i < 63; i++ {
+		Ascii2Sec[ASCII[i]] = Sec64{index: byte(i), char: SEC64[i]}
+		Sec2Ascii[SEC64[i]] = Sec64{index: byte(i), char: ASCII[i]}
 	}
 	for c := 'A'; c <= 'Z'; c++ {
-		Ascii2Sec[c] = Sec64{index: int8(c - 'A' + 3), char: SEC64[c-'A'+3]}
+		Ascii2Sec[c] = Sec64{index: byte(c - 'A' + 1), char: SEC64[c-'A'+1]}
 	}
 	brackets := map[rune]rune{'[': '(', ']': ')', '{': '(', '}': ')'}
 	for k, v := range brackets {
 		Ascii2Sec[k] = Ascii2Sec[v]
 	}
 
-	Ascii2Sec[' '] = Sec64{index: 1, char: 'S'}  // Space to 'S'
-	Ascii2Sec['\n'] = Sec64{index: 2, char: 'N'} // Newline to 'N'
+	Sec2Ascii['N'] = Sec64{index: 63, char: '\n'}
+	Ascii2Sec['\n'] = Sec64{index: 63, char: 'N'}
 
-	Sec2Ascii['S'] = Sec64{index: 1, char: ' '}    // Space to 'S'
-	Sec2Ascii['N'] = Sec64{index: 2, char: '\n'}   // Newline to 'N'
-	Sec2Ascii['_'] = Sec64{index: 0, char: '\x00'} // Null to '_'
-
-	// for i := 0; i < 128; i++ {
-	// 	c := rune(i)
-	// 	fmt.Printf(
-	// 		"%3d %-7q  A2S:%-7q  S2A:%-7q\n",
-	// 		i, c,
-	// 		Ascii2Sec[c], Sec2Ascii[c],
-	// 	)
-	// }
+	for i := 0; i < 128; i++ {
+		c := rune(i)
+		fmt.Printf(
+			"%3d %-7q  A2S: %-4d %-4q     S2A: %-4d  %-4q\n",
+			i, c,
+			Ascii2Sec[c].index, Ascii2Sec[c].char, Sec2Ascii[c].index, Sec2Ascii[c].char,
+		)
+	}
+	fmt.Println()
+	fmt.Println(string(SEC64))
+	fmt.Println(string(ASCII))
 }
 
-func EncodeString(ascii string) string {
-	enc := make([]byte, len(ascii))
-	for i := 0; i < len(ascii); i++ {
-		enc[i] = Ascii2Sec[ascii[i]].char
+func AsciiToSec64(str string) string {
+	enc := make([]byte, len(str))
+	for i := 0; i < len(str); i++ {
+		enc[i] = Ascii2Sec[str[i]].char
 	}
 	return string(enc)
 }
 
-func DecodeString(enc string) string {
-	ascii := make([]byte, len(enc))
-	for i := 0; i < len(enc); i++ {
-		ascii[i] += Sec2Ascii[enc[i]].char
+func AsciiToIndex(str string) []byte {
+	enc := make([]byte, len(str))
+	for i := 0; i < len(str); i++ {
+		enc[i] = Ascii2Sec[str[i]].index
 	}
-	return string(ascii)
+	return enc
 }
 
-func Encode(ascii string) []byte {
-	hello := []byte(EncodeString(ascii))
-	return Pack8to6(hello)
+func IndexToAscii(indexes []byte) string {
+	str := make([]byte, len(indexes))
+	for i := 0; i < len(indexes); i++ {
+		str[i] = ASCII[indexes[i]]
+		// fmt.Printf("%-3d %-3d %-3q %-3d\n", i, indexes[i], string(str[i]), str[i])
+	}
+	fmt.Println()
+	return string(str)
 }
 
-func Decode(enc []byte) string {
-	hello := Unpack6to8(enc)
-	return DecodeString(string(hello))
+func Sec64ToAscii(str string) string {
+	dec := make([]byte, len(str))
+	for i := 0; i < len(str); i++ {
+		dec[i] = Sec2Ascii[str[i]].char
+	}
+	return string(dec)
+}
+
+func Sec64ToIndex(str string) []byte {
+	dec := make([]byte, len(str))
+	for i := 0; i < len(str); i++ {
+		dec[i] = Sec2Ascii[str[i]].index
+	}
+	return dec
+}
+
+func IndexToSec64(indexes []byte) string {
+	str := make([]byte, len(indexes))
+	for i := 0; i < len(indexes); i++ {
+		str[i] = SEC64[indexes[i]]
+	}
+	return string(str)
 }
 
 // 87654321 | 87654321 | 87654321 | 87654321

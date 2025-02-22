@@ -128,11 +128,14 @@ func Log(msgs ...any) {
 			switch v := msg.(type) {
 			case int, int8, int16, int32, int64,
 				float32, float64,
-				uint, uint8, uint16, uint32, uint64,
-				string:
+				uint, uint8, uint16, uint32, uint64:
 				log += fmt.Sprint(msg)
-			case []string, []int, []float32, []byte:
-				log += fmt.Sprint(reflect.ValueOf(msg).Len(), msg)
+			case string:
+				log += fmt.Sprintf("%d %v ", reflect.ValueOf(msg).Len(), msg)
+			case []string, []int, []float32:
+				log += fmt.Sprintf("%d %v ", reflect.ValueOf(msg).Len(), msg)
+			case []byte:
+				log += fmt.Sprintf("%d\n%-5v\n%-5b", reflect.ValueOf(msg).Len(), msg, msg)
 			case []error:
 				for _, e := range v {
 					extractError(e)
