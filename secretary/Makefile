@@ -23,4 +23,6 @@ run:
 
 ui:
 	cd secretaryui && bun run dev
-	
+
+testutils:
+	go test -v utils/*.go

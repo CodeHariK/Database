@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"reflect"
 	"runtime/debug"
 	"strings"
 
@@ -128,9 +129,10 @@ func Log(msgs ...any) {
 			case int, int8, int16, int32, int64,
 				float32, float64,
 				uint, uint8, uint16, uint32, uint64,
-				string, []string,
-				[]int, []float32:
+				string:
 				log += fmt.Sprint(msg)
+			case []string, []int, []float32, []byte:
+				log += fmt.Sprint(reflect.ValueOf(msg).Len(), msg)
 			case []error:
 				for _, e := range v {
 					extractError(e)

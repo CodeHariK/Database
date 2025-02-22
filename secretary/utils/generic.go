@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"time"
 )
 
 func Ternary[T any](condition bool, value1, value2 T) T {
@@ -14,11 +15,20 @@ func Ternary[T any](condition bool, value1, value2 T) T {
 	return value2
 }
 
+// Shuffle returns a shuffled copy of arr without modifying the original.
 func Shuffle[T any](arr []T) []T {
-	rand.Shuffle(len(arr), func(i, j int) {
-		arr[i], arr[j] = arr[j], arr[i]
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) // Use a new PRNG instance
+
+	// Make a copy to avoid modifying the original array
+	shuffled := make([]T, len(arr))
+	copy(shuffled, arr)
+
+	// Shuffle the copy
+	r.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
-	return arr
+
+	return shuffled
 }
 
 func CompareArray[T any](a, b []T) bool {
