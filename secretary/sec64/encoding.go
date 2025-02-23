@@ -10,13 +10,13 @@ var (
 	*		Character Type							Mapping
 	*		A-Z,a-z									a-z
 	*		0-9										0-9
-	*		Symbols (=+-*\/\%^<>!?@#$&(),;:'"_.)	ABCDEFGHIJKLMOPRTUVWXYZ_.
+	*		Symbols (=+-*\/\%^<>!?@#$&(),;:'"_.)	ABCDEFGHIJKLMOPQRTUVWXYZ.
 	*		(space)									S
 	*		\n (newline)							N
 	*		Any other character						_
 	**/
 
-	//		         ABCDEFGHIJKLMNOPQRSTUVWXYZ                         [{}]
+	//		         ABCDEFGHIJKLMNOPQRSTUVWXYZ               |         [{}]
 	ASCII = []byte(`~abcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_. N`)
 	SEC64 = []byte(`_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMOPQRTUVWXYZ.SN`)
 )
@@ -45,7 +45,7 @@ func init() {
 	for c := 'A'; c <= 'Z'; c++ {
 		Ascii2Sec[c] = Sec64{index: byte(c - 'A' + 1), char: SEC64[c-'A'+1]}
 	}
-	brackets := map[rune]rune{'[': '(', ']': ')', '{': '(', '}': ')'}
+	brackets := map[rune]rune{'[': '(', ']': ')', '{': '(', '}': ')', '|': '\\'}
 	for k, v := range brackets {
 		Ascii2Sec[k] = Ascii2Sec[v]
 	}

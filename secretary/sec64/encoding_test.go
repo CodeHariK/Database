@@ -17,7 +17,7 @@ func TestEncodingDecoding(t *testing.T) {
 		ascii string
 	}{
 		{"", "", ""},
-		{"| +\n_0", "_SBNZ0", "~ +\n_0"},
+		{"| +\n_0", "FSBNZ0", "\\ +\n_0"},
 		{
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 			"abcdefghijklmnopqrstuvwxyz",
@@ -40,8 +40,8 @@ func TestEncodingDecoding(t *testing.T) {
 		},
 		{
 			"~`|",
-			"___",
-			"~~~",
+			"__F",
+			"~~\\",
 		},
 	}
 
