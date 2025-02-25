@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sort"
 )
 
 // Serialize struct to binary []byte (Little-Endian)
@@ -27,16 +28,16 @@ func Serialize(s interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	typ := reflect.TypeOf(s)
 
-	for i := 0; i < typ.NumField(); i++ {
+	sortedFields := getSortedFields(typ)
+	for _, field := range sortedFields {
 
-		field := typ.Field(i)
 		tag := field.Tag.Get("bin")
 
 		// Skip fields without bin tag
 		if tag == "" {
 			continue
 		}
-		fieldValue, numBytes, maxStorableSize, maxSize, array_elem_len := extractFieldParameters(val, i, field)
+		fieldValue, numBytes, maxStorableSize, maxSize, array_elem_len := extractFieldParameters(val, field)
 
 		// Handle fields based on their types
 		switch fieldValue.Kind() {
@@ -203,14 +204,14 @@ func Deserialize(data []byte, s interface{}) error {
 	val = val.Elem()
 	typ := val.Type()
 
-	for i := 0; i < typ.NumField(); i++ {
+	sortedFields := getSortedFields(typ)
+	for _, field := range sortedFields {
 
-		field := typ.Field(i)
 		tag := field.Tag.Get("bin")
 		if tag == "" {
 			continue
 		}
-		fieldValue, numBytes, _, _, array_elem_len := extractFieldParameters(val, i, field)
+		fieldValue, numBytes, _, _, array_elem_len := extractFieldParameters(val, field)
 
 		// Handle fields based on their types
 		switch fieldValue.Kind() {
@@ -400,9 +401,12 @@ func Compare(a, b interface{}) (bool, error) {
 	valB := reflect.ValueOf(b)
 	typ := reflect.TypeOf(a)
 
-	for i := 0; i < typ.NumField(); i++ {
+	sortedFields := getSortedFields(typ)
+	for i := range sortedFields {
+
 		fieldA := valA.Field(i)
 		fieldB := valB.Field(i)
+
 		tag := typ.Field(i).Tag.Get("bin")
 
 		// Skip fields without bin tag
@@ -493,8 +497,9 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 	typ := val.Type()
 	jsonMap := make(map[string]interface{})
 
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
+	sortedFields := getSortedFields(typ)
+	for i, field := range sortedFields {
+
 		tag := field.Tag.Get("bin")
 		if tag == "" || tag == "-" {
 			continue
@@ -563,8 +568,10 @@ func getByteFromField(field reflect.StructField) int {
 	return byte
 }
 
-func extractFieldParameters(val reflect.Value, i int, field reflect.StructField) (reflect.Value, int, int, int, int) {
-	fieldValue := val.Field(i)
+func extractFieldParameters(val reflect.Value, field reflect.StructField) (reflect.Value, int, int, int, int) {
+	// Get field value using FieldByIndex
+	fieldValue := val.FieldByIndex(field.Index)
+
 	numBytes := getByteFromField(field)
 	maxSize := 1<<(numBytes*8) - 1
 	size := getSizeFromField(field)
@@ -572,11 +579,9 @@ func extractFieldParameters(val reflect.Value, i int, field reflect.StructField)
 		size = maxSize
 	}
 
-	array_elem_len := getArrayElemLenFromField(field)
+	arrayElemLen := getArrayElemLenFromField(field)
 
-	// fmt.Printf("\nnumBytes:%d maxSize:%d size:%d\n", numBytes, maxSize, size)
-
-	return fieldValue, numBytes, maxSize, size, array_elem_len
+	return fieldValue, numBytes, maxSize, size, arrayElemLen
 }
 
 func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
@@ -627,6 +632,24 @@ func reflectKindByteLen(elemBaseKind reflect.Kind) int {
 	default:
 		return 1
 	}
+}
+
+func getSortedFields(typ reflect.Type) []reflect.StructField {
+	numFields := typ.NumField()
+	fields := make([]reflect.StructField, numFields)
+
+	for i := 0; i < numFields; i++ {
+		fields[i] = typ.Field(i)
+	}
+
+	// Sort fields by "bin" tag value (convert to int for correct order)
+	sort.Slice(fields, func(i, j int) bool {
+		tagI := fields[i].Tag.Get("bin")
+		tagJ := fields[j].Tag.Get("bin")
+		return tagI < tagJ
+	})
+
+	return fields
 }
 
 func hash(data interface{}) (string, error) {

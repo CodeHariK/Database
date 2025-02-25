@@ -122,11 +122,16 @@ func TestBinaryStructSerialize(t *testing.T) {
 
 	for _, test := range tests {
 
-		binaryData, _ := Serialize(test.s)
+		binaryData, err := Serialize(test.s)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		var d testStruct
-		Deserialize(binaryData, &d)
-		t.Logf("\n----------------------------------------\nOriginal: %+v\n\nSerializ: %+v\n\nDeserial: %+v\n", test.s, binaryData, d)
+		err = Deserialize(binaryData, &d)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		jsonH, err := MarshalJSON(test.s)
 		if err != nil {
@@ -137,8 +142,14 @@ func TestBinaryStructSerialize(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		// utils.Log("binaryData", (binaryData), "s", test.s, "d", d, "jsonH", string(jsonH), "jsonD", string(jsonD))
 		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
-			t.Fatalf("\n\nCompare Should be equal: %v \n%v:%s \n\n %v:%s\n", test.equal, len(jsonH), string(jsonH), len(jsonD), string(jsonD))
+			utils.Log("nCompare Should be equal", test.equal,
+				len(jsonH), string(jsonH),
+				len(jsonD), string(jsonD),
+			)
+			t.Fatal()
 		}
 
 		hashS, _ := hash(test.s)
