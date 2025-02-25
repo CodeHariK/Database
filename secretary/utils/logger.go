@@ -21,7 +21,7 @@ const (
 var colorIndex = 0
 
 const (
-	MODE   = NIGHT
+	MODE   = LIGHT
 	NIGHT  = 0
 	LIGHT  = 1
 	SWITCH = -1
@@ -125,24 +125,30 @@ func Log(msgs ...any) {
 				log += "\n"
 			}
 
+			if i%2 == 1 {
+				switch v := msg.(type) {
+				case string, []string, []int, []float32, []byte:
+					log += fmt.Sprintf("%d ", reflect.ValueOf(v).Len())
+				}
+			}
 			switch v := msg.(type) {
 			case int, int8, int16, int32, int64,
 				float32, float64,
 				uint, uint8, uint16, uint32, uint64:
 				log += fmt.Sprint(msg)
 			case string:
-				log += fmt.Sprintf("%d %v ", reflect.ValueOf(msg).Len(), msg)
+				log += fmt.Sprintf("%v ", msg)
 			case []string, []int, []float32:
-				log += fmt.Sprintf("%d %v ", reflect.ValueOf(msg).Len(), msg)
+				log += fmt.Sprintf("%v ", msg)
 			case []byte:
-				log += fmt.Sprintf("%d\n%-5v\n%-5b", reflect.ValueOf(msg).Len(), msg, msg)
+				log += fmt.Sprintf("\n%-5v\n%-5b", msg, msg)
 			case []error:
 				for _, e := range v {
 					extractError(e)
 				}
 			default:
 				data, err := json.MarshalIndent(v, "", "  ")
-				if err != nil {
+				if err != nil || string(data) == "{}" {
 					log += fmt.Sprint(msg)
 				} else {
 					log += string(data)
