@@ -46,7 +46,7 @@ From that day on, Luma became a storyteller, sharing her experiences and encoura
 
 	file.Write([]byte(fmt.Sprintf("\n--->Sec64Expand %d\n", n)))
 
-	n, err = file.Write([]byte(sec64.AsciiToSec64(text)))
+	n, err = file.Write([]byte(sec64.StringToSec64(text)))
 	if err != nil {
 		return "", err
 	}

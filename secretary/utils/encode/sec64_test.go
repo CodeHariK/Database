@@ -1,4 +1,4 @@
-package sec64
+package encode
 
 import (
 	"bytes"
@@ -45,15 +45,15 @@ func TestEncodingDecoding(t *testing.T) {
 
 	for _, tt := range tests {
 		asciiToSec64 := AsciiToSec64(tt.input)
-		asciiToIndex := AsciiToIndex(tt.input)
+		asciiToIndex := Ascii64ToIndex(tt.input)
 		sec64ToAscii := Sec64ToAscii(asciiToSec64)
 		sec64ToIndex := Sec64ToIndex(asciiToSec64)
 		// packedIndexes := Pack8to6(asciiToIndex)
 		// unpackedIndexes := Unpack6to8(packedIndexes)
 		// indexToAscii := IndexToAscii(unpackedIndexes)
 		// indexToSec64 := IndexToSec64(unpackedIndexes)
-		encoded := Pack8to6(AsciiToIndex(tt.input))
-		decodedAscii := IndexToAscii(Unpack6to8(encoded))
+		encoded := Pack8to6(Ascii64ToIndex(tt.input))
+		decodedAscii := IndexToAscii64(Unpack6to8(encoded))
 		decodedSec64 := IndexToSec64(Unpack6to8(encoded))
 
 		// utils.Log(
@@ -96,7 +96,7 @@ func binStr(data []byte, bytemode, spacemode, debugmode bool) string {
 
 	for _, b := range data {
 		if debugmode {
-			sb.WriteString(fmt.Sprintf(format+"(%q) ", b, Sec2Ascii[b&0b00111111]))
+			sb.WriteString(fmt.Sprintf(format+"(%q) ", b, ASCII64[SEC64Index[b&0b00111111]]))
 		} else {
 			sb.WriteString(fmt.Sprintf(format, b))
 		}

@@ -1,8 +1,9 @@
-package sec64
+package encode
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/codeharik/secretary/utils"
 )
 
 var (
@@ -20,104 +21,83 @@ var (
 	**/
 
 	//		         ABCDEFGHIJKLMNOPQRSTUVWXYZ               |         [{}]
-	ASCII = []byte(`~abcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_. N`)
-	SEC64 = []byte(`-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWX._+`)
+	ASCII64 = []byte(`~abcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_. N`)
+	SEC64   = []byte(`-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWX._+`)
 	//              0123456789012345678901234567890123456789012345678901234567890123
 )
 
-type Sec64 struct {
-	index byte
-	char  byte
-}
-
 var (
-	Ascii2Sec [256]Sec64
-	Sec2Ascii [256]Sec64
+	ASCII64Index = [256]byte{}
+	SEC64Index   = [256]byte{}
 )
 
 func init() {
-	ASCII[63] = '\n'
+	ASCII64[63] = '\n'
 
-	for i := range Ascii2Sec {
-		Sec2Ascii[i] = Sec64{index: 0, char: '~'}
-		Ascii2Sec[i] = Sec64{index: 0, char: '-'}
+	for i := range ASCII64Index {
+		ASCII64Index[i] = 0
+		SEC64Index[i] = 0
 	}
-	for i := 1; i < 63; i++ {
-		Ascii2Sec[ASCII[i]] = Sec64{index: byte(i), char: SEC64[i]}
-		Sec2Ascii[SEC64[i]] = Sec64{index: byte(i), char: ASCII[i]}
+
+	for i := 1; i < 64; i++ {
+		ASCII64Index[ASCII64[i]] = byte(i)
+		SEC64Index[SEC64[i]] = byte(i)
 	}
 	for c := 'A'; c <= 'Z'; c++ {
-		Ascii2Sec[c] = Sec64{index: byte(c - 'A' + 1), char: SEC64[c-'A'+1]}
+		ASCII64Index[c] = byte(c - 'A' + 1)
 	}
 	brackets := map[rune]rune{'[': '(', ']': ')', '{': '(', '}': ')', '|': '\\'}
 	for k, v := range brackets {
-		Ascii2Sec[k] = Ascii2Sec[v]
+		ASCII64Index[k] = ASCII64Index[v]
 	}
-
-	Sec2Ascii['+'] = Sec64{index: 63, char: '\n'}
-	Ascii2Sec['\n'] = Sec64{index: 63, char: '+'}
-
-	for i := 0; i < 128; i++ {
-		c := rune(i)
-		fmt.Printf(
-			"%3d %-7q  A2S: %-4d %-4q     S2A: %-4d  %-4q\n",
-			i, c,
-			Ascii2Sec[c].index, Ascii2Sec[c].char, Sec2Ascii[c].index, Sec2Ascii[c].char,
-		)
-	}
-	fmt.Println()
-	fmt.Println(string(SEC64))
-	fmt.Println(string(ASCII))
 }
 
 func AsciiToSec64(str string) string {
-	enc := make([]byte, len(str))
-	for i := 0; i < len(str); i++ {
-		enc[i] = Ascii2Sec[str[i]].char
-	}
-	return string(enc)
+	return string(utils.Map(
+		[]byte(str),
+		func(c byte) byte {
+			return SEC64[ASCII64Index[c]]
+		}))
 }
 
-func AsciiToIndex(str string) []byte {
-	enc := make([]byte, len(str))
-	for i := 0; i < len(str); i++ {
-		enc[i] = Ascii2Sec[str[i]].index
-	}
-	return enc
+func Ascii64ToIndex(str string) []byte {
+	return utils.Map(
+		[]byte(str),
+		func(c byte) byte {
+			return ASCII64Index[c]
+		})
 }
 
-func IndexToAscii(indexes []byte) string {
-	str := make([]byte, len(indexes))
-	for i := 0; i < len(indexes); i++ {
-		str[i] = ASCII[indexes[i]]
-		// fmt.Printf("%-3d %-3d %-3q %-3d\n", i, indexes[i], string(str[i]), str[i])
-	}
-	fmt.Println()
-	return string(str)
+func IndexToAscii64(indexes []byte) string {
+	return string(utils.Map(
+		indexes,
+		func(i byte) byte {
+			return ASCII64[i]
+		}))
 }
 
 func Sec64ToAscii(str string) string {
-	dec := make([]byte, len(str))
-	for i := 0; i < len(str); i++ {
-		dec[i] = Sec2Ascii[str[i]].char
-	}
-	return string(dec)
+	return string(utils.Map(
+		[]byte(str),
+		func(c byte) byte {
+			return ASCII64[SEC64Index[c]]
+		}))
 }
 
 func Sec64ToIndex(str string) []byte {
-	dec := make([]byte, len(str))
-	for i := 0; i < len(str); i++ {
-		dec[i] = Sec2Ascii[str[i]].index
-	}
-	return dec
+	return utils.Map(
+		[]byte(str),
+		func(c byte) byte {
+			return SEC64Index[c]
+		})
 }
 
 func IndexToSec64(indexes []byte) string {
-	str := make([]byte, len(indexes))
-	for i := 0; i < len(indexes); i++ {
-		str[i] = SEC64[indexes[i]]
-	}
-	return string(str)
+	return string(utils.Map(
+		indexes,
+		func(i byte) byte {
+			return SEC64[i]
+		}))
 }
 
 func AsciiToSec64Expand(str string) string {
