@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/codeharik/secretary/utils"
+	"github.com/codeharik/secretary/utils/file"
 )
 
 func New() (*Secretary, error) {
@@ -15,7 +16,7 @@ func New() (*Secretary, error) {
 
 	dirPath := "./SECRETARY"
 
-	err := utils.EnsureDir(dirPath)
+	err := file.EnsureDir(dirPath)
 	if err != nil {
 		return nil, err
 	}

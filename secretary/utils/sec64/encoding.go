@@ -1,12 +1,15 @@
 package sec64
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var (
 	/**
-
-			Url safe Lossy encoding : 8bit -> 6bit
-
+	*
+	*		Url safe Lossy encoding : 8bit -> 6bit
+	*
 	*		Character Type							Mapping
 	*		A-Z,a-z									a-z
 	*		0-9										0-9
@@ -18,7 +21,8 @@ var (
 
 	//		         ABCDEFGHIJKLMNOPQRSTUVWXYZ               |         [{}]
 	ASCII = []byte(`~abcdefghijklmnopqrstuvwxyz0123456789=+-*/\%^<>!?@#$&(),;:'"_. N`)
-	SEC64 = []byte(`_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMOPQRTUVWXYZ.SN`)
+	SEC64 = []byte(`-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWX._+`)
+	//              0123456789012345678901234567890123456789012345678901234567890123
 )
 
 type Sec64 struct {
@@ -36,7 +40,7 @@ func init() {
 
 	for i := range Ascii2Sec {
 		Sec2Ascii[i] = Sec64{index: 0, char: '~'}
-		Ascii2Sec[i] = Sec64{index: 0, char: '_'}
+		Ascii2Sec[i] = Sec64{index: 0, char: '-'}
 	}
 	for i := 1; i < 63; i++ {
 		Ascii2Sec[ASCII[i]] = Sec64{index: byte(i), char: SEC64[i]}
@@ -50,8 +54,8 @@ func init() {
 		Ascii2Sec[k] = Ascii2Sec[v]
 	}
 
-	Sec2Ascii['N'] = Sec64{index: 63, char: '\n'}
-	Ascii2Sec['\n'] = Sec64{index: 63, char: 'N'}
+	Sec2Ascii['+'] = Sec64{index: 63, char: '\n'}
+	Ascii2Sec['\n'] = Sec64{index: 63, char: '+'}
 
 	for i := 0; i < 128; i++ {
 		c := rune(i)
@@ -114,6 +118,20 @@ func IndexToSec64(indexes []byte) string {
 		str[i] = SEC64[indexes[i]]
 	}
 	return string(str)
+}
+
+func AsciiToSec64Expand(str string) string {
+	unpacked := Unpack6to8([]byte(str))
+	enc := make([]byte, len(unpacked))
+	for i := 0; i < len(unpacked); i++ {
+		enc[i] = SEC64[unpacked[i]]
+	}
+	return string(enc)
+}
+
+func Sec64ToAsciiExpand(str string) string {
+	packed := Pack8to6(Sec64ToIndex(str))
+	return strings.Trim(string(packed), "\x00")
 }
 
 // 87654321 | 87654321 | 87654321 | 87654321

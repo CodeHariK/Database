@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime/debug"
 	"strings"
 
@@ -80,14 +81,17 @@ func Log(msgs ...any) {
 	}
 
 	extractError := func(err error) {
-		fmt.Fprintf(os.Stderr, "%s", "\n"+RED+err.Error()+"\n")
+		log += RED + err.Error() + COLORRESET + " "
 
 		lines := strings.Split(string(debug.Stack()), "\n")
 
 		for i := range lines {
 			name, loc := extracTrace(lines, i)
-			log += "\n" + name + loc
+			if loc != "" {
+				log += name + loc + " "
+			}
 		}
+		log += color + " \n"
 	}
 
 	{
@@ -114,48 +118,54 @@ func Log(msgs ...any) {
 		log += p
 	}
 
-	for i, msg := range msgs {
-		if err, ok := msg.(error); ok {
-			extractError(err)
-		} else {
-			if i%2 == 1 {
-				log += " "
-			}
-			if i%2 == 0 && len(msgs) > 2 {
-				log += "\n"
+	log += "\n"
+
+	for i := 0; i < len(msgs); i++ {
+		switch msg := msgs[i].(type) {
+
+		case int, int8, int16, int32, int64,
+			float32, float64,
+			uint, uint8, uint16, uint32, uint64:
+			log += fmt.Sprint(msg)
+		case []string, []int, []float32:
+			log += fmt.Sprintf("%v %d\n", msg, reflect.ValueOf(msg).Len())
+		case []byte:
+			log += fmt.Sprintf("%v %d\n", msg, reflect.ValueOf(msg).Len())
+		case error:
+			extractError(msg)
+		case []error:
+			for _, e := range msg {
+				extractError(e)
 			}
 
-			if i%2 == 1 {
-				switch v := msg.(type) {
-				case string, []string, []int, []float32, []byte:
-					log += fmt.Sprintf("%d ", reflect.ValueOf(v).Len())
+		case string:
+			if strings.ContainsAny(msg, "%") { // Check if it contains format specifiers
+				count := countFormatSpecifiers(msg)
+				if i+count >= len(msgs) {
+					log += fmt.Sprint("Error: Not enough values for format string:", msg)
+					break
 				}
-			}
-			switch v := msg.(type) {
-			case int, int8, int16, int32, int64,
-				float32, float64,
-				uint, uint8, uint16, uint32, uint64:
-				log += fmt.Sprint(msg)
-			case string:
-				log += fmt.Sprintf("%v ", msg)
-			case []string, []int, []float32:
-				log += fmt.Sprintf("%v ", msg)
-			case []byte:
-				log += fmt.Sprintf("\n%-5v\n%-5b", msg, msg)
-			case []error:
-				for _, e := range v {
-					extractError(e)
-				}
-			default:
-				data, err := json.MarshalIndent(v, "", "  ")
-				if err != nil || string(data) == "{}" {
-					log += fmt.Sprint(msg)
+				log += fmt.Sprintf(msg+"\n", msgs[i+1:i+1+count]...)
+				i += count // Move index forward by number of consumed values
+			} else {
+				if msg == "\n" || msg == "" {
+					log += "\n"
 				} else {
-					log += string(data)
+					log += msg + " "
 				}
 			}
+		default:
+			data, err := json.MarshalIndent(msg, "", "  ")
+			if err != nil || string(data) == "{}" {
+				log += fmt.Sprint(msg, " ")
+			} else {
+				log += fmt.Sprintf("%v\n", string(data))
+			}
+
 		}
 	}
+
+	log = strings.TrimSuffix(log, "\n")
 
 	log = processParagraph(log, len(color), width) + COLORRESET
 
@@ -212,4 +222,12 @@ func nightColor() string {
 
 func randomColor(min, max int) (int, int, int) {
 	return rand.IntN(max-min) + min, rand.IntN(max-min) + min, rand.IntN(max-min) + min
+}
+
+// Regular expression to count format specifiers (excluding "%%" escape)
+var formatSpecifierRegex = regexp.MustCompile(`%([-+0# ]*\d*(?:\.\d*)?[vTtbcdoqxXUeEfFgGsp])`)
+
+// countFormatSpecifiers counts how many format specifiers exist in a string.
+func countFormatSpecifiers(format string) int {
+	return len(formatSpecifierRegex.FindAllString(format, -1))
 }

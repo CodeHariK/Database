@@ -16,7 +16,7 @@ import (
 
 // Serialize struct to binary []byte (Little-Endian)
 // bin : type name
-// byte : number of bytes used for length of string or []byte
+// lenbyte : number of bytes used for length of string or []byte
 // max : max length of string or []byte
 // array_elem_len : max length (array elements) in (array of (array elements)), [][]byte [][]int32 [][]float64
 func Serialize(s interface{}) ([]byte, error) {
@@ -558,12 +558,12 @@ func getSizeFromField(field reflect.StructField) int {
 
 // Get the bit from struct tag (default to 8 if not specified)
 func getByteFromField(field reflect.StructField) int {
-	tag := field.Tag.Get("byte")
+	tag := field.Tag.Get("lenbyte")
 
 	var byte int
 	_, err := fmt.Sscanf(tag, "%d", &byte)
-	if err != nil && byte != 2 && byte != 3 && byte != 4 {
-		return 1
+	if err != nil || byte < 1 || byte > 8 {
+		return 4
 	}
 	return byte
 }

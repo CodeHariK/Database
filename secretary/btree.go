@@ -6,6 +6,7 @@ import (
 
 	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/binstruct"
+	"github.com/codeharik/secretary/utils/file"
 )
 
 func (s *Secretary) NewBTree(
@@ -31,7 +32,7 @@ func (s *Secretary) NewBTree(
 		return nil, ErrorInvalidCollectionName
 	}
 
-	if err := utils.EnsureDir(fmt.Sprintf("%s/%s", SECRETARY, safeCollectionName)); err != nil {
+	if err := file.EnsureDir(fmt.Sprintf("%s/%s", SECRETARY, safeCollectionName)); err != nil {
 		return nil, err
 	}
 

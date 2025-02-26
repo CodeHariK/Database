@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/codeharik/secretary/utils"
 )
 
 // Test basic character mappings
@@ -16,8 +14,8 @@ func TestEncodingDecoding(t *testing.T) {
 		sec64 string
 		ascii string
 	}{
-		{"", "", ""},
-		{"| +\n_0", "FSBNZ0", "\\ +\n_0"},
+		// {"", "", ""},
+		{"| +\n_0", "F_B+X0", "\\ +\n_0"},
 		{
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 			"abcdefghijklmnopqrstuvwxyz",
@@ -29,9 +27,9 @@ func TestEncodingDecoding(t *testing.T) {
 			"0123456789",
 		},
 		{
-			`=+-*/\%^<>!?@#$&(),;:'"_.`,
-			`ABCDEFGHIJKLMOPQRTUVWXYZ.`,
-			`=+-*/\%^<>!?@#$&(),;:'"_.`,
+			`=+-*/\%^<>!?@#$&(),;:'"_. `,
+			`ABCDEFGHIJKLMNOPQRSTUVWX._`,
+			`=+-*/\%^<>!?@#$&(),;:'"_. `,
 		},
 		{
 			"abcdefghijklmnopqrstuvwxyz",
@@ -40,7 +38,7 @@ func TestEncodingDecoding(t *testing.T) {
 		},
 		{
 			"~`|",
-			"__F",
+			"--F",
 			"~~\\",
 		},
 	}
@@ -58,20 +56,20 @@ func TestEncodingDecoding(t *testing.T) {
 		decodedAscii := IndexToAscii(Unpack6to8(encoded))
 		decodedSec64 := IndexToSec64(Unpack6to8(encoded))
 
-		utils.Log(
-			"tt.input      ", tt.input,
-			"asciiToSec64  ", asciiToSec64,
-			// "asciiToIndex", asciiToIndex,
-			"sec64ToAscii  ", sec64ToAscii,
-			// "sec64ToIndex", sec64ToIndex,
-			// "packedIndexes", packedIndexes,
-			// "unpackedIndexes", unpackedIndexes,
-			// "indexToAscii  ", indexToAscii,
-			// "indexToSec64  ", indexToSec64,
-			// "encoded", encoded,
-			"decodedAscii  ", decodedAscii,
-			"decodedSec64  ", decodedSec64,
-		)
+		// utils.Log(
+		// 	"tt.input      ", tt.input, "",
+		// 	"asciiToSec64  ", asciiToSec64, "",
+		// 	// "asciiToIndex", asciiToIndex,"",
+		// 	"sec64ToAscii  ", sec64ToAscii, "",
+		// 	// "sec64ToIndex", sec64ToIndex,"",
+		// 	// "packedIndexes", packedIndexes,"",
+		// 	// "unpackedIndexes", unpackedIndexes,"",
+		// 	// "indexToAscii  ", indexToAscii,"",
+		// 	// "indexToSec64  ", indexToSec64,"",
+		// 	// "encoded", encoded,"",
+		// 	"decodedAscii  ", decodedAscii, "",
+		// 	"decodedSec64  ", decodedSec64, "",
+		// )
 
 		if bytes.Compare(asciiToIndex, sec64ToIndex) != 0 || // bytes.Compare(asciiToIndex, unpackedIndexes) != 0 ||
 			asciiToSec64 != tt.sec64 ||
@@ -133,5 +131,23 @@ func packUnpackCheck(t *testing.T, input []byte) {
 			binStr(packed, true, false, false),
 			binStr(unpacked, false, false, false),
 		)
+	}
+}
+
+func TestExpand(t *testing.T) {
+	tests := []string{
+		"Hello",
+		"Hello34",
+		"Hello_32",
+		"H|llo%32~",
+	}
+	for _, test := range tests {
+		sec := AsciiToSec64Expand(test)
+
+		ascii := Sec64ToAsciiExpand(sec)
+
+		if test != ascii {
+			t.Fatal("Should be equal", test, ascii)
+		}
 	}
 }

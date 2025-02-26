@@ -2,6 +2,8 @@ package binstruct
 
 import (
 	"bytes"
+	"encoding/gob"
+	"fmt"
 	"testing"
 
 	"github.com/codeharik/secretary/utils"
@@ -20,12 +22,12 @@ type testStruct struct {
 	Ffloat64 float64 `bin:"Ffloat64"`
 	Fstring  string  `bin:"Fstring"`
 
-	Fstring_4_30 string `bin:"Fstring_4_30" byte:"4" max:"30"`
+	Fstring_4_30 string `bin:"Fstring_4_30" lenbyte:"1" max:"30"`
 	Fstring_30   string `bin:"Fstring_30" max:"30"`
 	Fstring_10   string `bin:"Fstring_10" max:"10"`
 
 	Fbytes     []byte `bin:"Fbytes"`
-	Fbytes_300 []byte `bin:"Fbytes_300" max:"300"`
+	Fbytes_300 []byte `bin:"Fbytes_300" lenbyte:"1" max:"300"`
 
 	Fstring_Empty string `bin:"FstringEmpty"`
 	Fbytes_Empty  []byte `bin:"FbytesEmpty"`
@@ -80,7 +82,7 @@ func TestBinaryStructSerialize(t *testing.T) {
 		"Array": {
 			true,
 			testStruct{
-				Fint64_array:    []int64{125, 2000},
+				Fint64_array:    utils.GenerateRandomSlice[int64](2000),
 				Fint32_array_20: utils.GenerateRandomSlice[int32](20),
 			},
 		},
@@ -127,6 +129,16 @@ func TestBinaryStructSerialize(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		{
+			var buf bytes.Buffer
+			enc := gob.NewEncoder(&buf)
+			err := enc.Encode(test.s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("gob", len(buf.Bytes()), "bin", len(binaryData), " bin/gob", 100*len(binaryData)/len(buf.Bytes()))
+		}
+
 		var d testStruct
 		err = Deserialize(binaryData, &d)
 		if err != nil {
@@ -143,11 +155,10 @@ func TestBinaryStructSerialize(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// utils.Log("binaryData", (binaryData), "s", test.s, "d", d, "jsonH", string(jsonH), "jsonD", string(jsonD))
 		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
 			utils.Log("nCompare Should be equal", test.equal,
-				len(jsonH), string(jsonH),
-				len(jsonD), string(jsonD),
+				"jsonH", len(jsonH), string(jsonH), "",
+				"jsonD", len(jsonD), string(jsonD), "",
 			)
 			t.Fatal()
 		}
