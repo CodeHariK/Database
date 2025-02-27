@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strings"
+	"testing"
 
 	"golang.org/x/term"
 )
@@ -37,6 +38,14 @@ func Log(msgs ...any) {
 	if len(msgs) == 0 || (len(msgs) == 1 && msgs[0] == "\n") {
 		fmt.Println()
 		return
+	}
+
+	var t *testing.T
+	if len(msgs) > 0 {
+		if tt, ok := msgs[0].(*testing.T); ok {
+			t = tt
+			msgs = msgs[1:] // Remove the first argument if it's *testing.T
+		}
 	}
 
 	width, _, err := term.GetSize(int(os.Stdout.Fd()))
@@ -169,7 +178,11 @@ func Log(msgs ...any) {
 
 	log = processParagraph(log, len(color), width) + COLORRESET
 
-	fmt.Println(log)
+	if t != nil {
+		t.Fatal(log)
+	} else {
+		fmt.Println(log)
+	}
 }
 
 func padLine(line string, width int, repeat string, suffix bool) string {

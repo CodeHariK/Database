@@ -34,6 +34,16 @@ func GenerateRandomSlice[T int8 | int16 | int32 | int64 | uint | uint8 | uint16 
 	return slice
 }
 
+func GenerateRandomSliceMinMax[T int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64](size int, min int, variance int) []T {
+	slice := make([]T, size)
+
+	for i := range slice {
+		slice[i] = T(rand.Intn(variance) + min)
+	}
+
+	return slice
+}
+
 func MakeByteArray(size int, c rune) []byte {
 	b := make([]byte, size)
 
