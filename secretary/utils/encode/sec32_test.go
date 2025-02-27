@@ -19,8 +19,8 @@ func TestEncodingDecoding32(t *testing.T) {
 		{"| +\n_", "-_p__", "~_p__"},
 		{
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			"apcdefghigklmnopkrctuuxxxg",
-			"apcdefghigklmnopkrctuuxxxg",
+			"apcdefghigclmnopcrstuuysyg",
+			"apcdefghigclmnopcrstuuysyg",
 		},
 		{
 			"0123456789",
@@ -29,13 +29,13 @@ func TestEncodingDecoding32(t *testing.T) {
 		},
 		{
 			`=+-*/\%^<>!?@#$&(),;:'"_. `,
-			`epnmd-h-QR------QR________`,
-			`epnmd~h~()~~~~~~()________`,
+			`epnmd-hmQRiifffmQR________`,
+			`epnmd~hm()iifffm()________`,
 		},
 		{
 			"abcdefghijklmnopqrstuvwxyz",
-			"apcdefghigklmnopkrctuuxxxg",
-			"apcdefghigklmnopkrctuuxxxg",
+			"apcdefghigclmnopcrstuuysyg",
+			"apcdefghigclmnopcrstuuysyg",
 		},
 		{
 			"~`|",
