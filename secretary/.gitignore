@@ -1,2 +1,6 @@
 SECRETARY
 node_modules
+
+cover.txt
+cover.html
+callgraph.js

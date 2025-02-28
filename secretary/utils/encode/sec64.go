@@ -1,6 +1,7 @@
 package encode
 
 import (
+	"io"
 	"strings"
 
 	"github.com/codeharik/secretary/utils"
@@ -178,4 +179,47 @@ func Unpack6to8(packed []byte) []byte {
 	}
 
 	return unpacked
+}
+
+// Sec64BufferedEncoder is a buffered encoder similar to base64.NewEncoder.
+type Sec64BufferedEncoder struct {
+	w      io.Writer // Underlying writer
+	buffer []byte    // Internal buffer
+}
+
+// NewCustomBufferedEncoder creates a new buffered encoder.
+func NewSec64BufferedEncoder(w io.Writer) io.WriteCloser {
+	return &Sec64BufferedEncoder{
+		w:      w,
+		buffer: make([]byte, 0, 64), // Example buffer size of 64 bytes
+	}
+}
+
+// Write encodes data and writes it in chunks.
+func (e *Sec64BufferedEncoder) Write(p []byte) (n int, err error) {
+	e.buffer = append(e.buffer, p...) // Buffer the data
+
+	// Simulating encoding and writing in chunks
+	for len(e.buffer) >= 3 { // Example: Encoding works in chunks of 3
+		encoded := ExpandStringToSec64(string(e.buffer[:3])) // Encode a chunk
+		_, err := e.w.Write([]byte(encoded))                 // Write to underlying writer
+		if err != nil {
+			return 0, err
+		}
+		e.buffer = e.buffer[3:] // Remove written chunk
+	}
+	return len(p), nil
+}
+
+// Close flushes any remaining buffered data.
+func (e *Sec64BufferedEncoder) Close() error {
+	if len(e.buffer) > 0 {
+		encoded := ExpandStringToSec64(string(e.buffer)) // Encode remaining data
+		_, err := e.w.Write([]byte(encoded))
+		if err != nil {
+			return err
+		}
+		e.buffer = nil // Clear buffer
+	}
+	return nil
 }

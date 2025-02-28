@@ -20,8 +20,6 @@ func createTempFile(filePath string) (string, error) {
 	}
 	defer file.Close()
 
-	fmt.Println(file.Name())
-
 	text := `Once upon a time, in a distant galaxy far beyond the reach of human telescopes, there existed a vibrant planet named Zyloria. This planet was home to a unique species of aliens known as the Zylorians. They were small, luminescent beings with elongated limbs and large, expressive eyes that shimmered like stars. The Zylorians communicated through a series of melodic sounds and colors that changed with their emotions.
 One day, a young Zylorian named Luma was exploring the lush, bioluminescent forests of her home. Luma was curious and adventurous, often wandering farther than her friends dared to go. As she ventured deeper into the woods, she stumbled upon a hidden glade filled with strange, glowing crystals. Intrigued, she reached out to touch one, and as her fingers brushed against its surface, a brilliant light enveloped her.
 When the light faded, Luma found herself in an unfamiliar place. She was no longer on Zyloria but aboard a massive spaceship. The walls were sleek and metallic, and strange machines hummed softly around her. Confused but excited, Luma began to explore her new surroundings.
@@ -43,8 +41,13 @@ From that day on, Luma became a storyteller, sharing her experiences and encoura
 	if err != nil {
 		return "", err
 	}
-
 	file.Write([]byte(fmt.Sprintf("\n--->Sec64Expand %d\n", n)))
+
+	n, err = encode.NewSec64BufferedEncoder(file).Write([]byte(text))
+	if err != nil {
+		return "", err
+	}
+	file.Write([]byte(fmt.Sprintf("\n--->Sec64ExpandBuffer %d\n", n)))
 
 	n, err = file.Write([]byte(encode.StringToSec64(text)))
 	if err != nil {
@@ -57,6 +60,15 @@ From that day on, Luma became a storyteller, sharing her experiences and encoura
 		return "", err
 	}
 	file.Write([]byte(fmt.Sprintf("\n--->Sec32 %d\n", n)))
+
+	file.Write([]byte(fmt.Sprintf("\n--->StringToIndex64Packed %d\n", len(encode.StringToIndex64Packed(text)))))
+	file.Write([]byte(fmt.Sprintf("\n--->StringToIndex32Packed %d\n", len(encode.StringToIndex32Packed(text)))))
+
+	n, err = file.Write([]byte(encode.ExpandStringToSec32(text)))
+	if err != nil {
+		return "", err
+	}
+	file.Write([]byte(fmt.Sprintf("\n--->Sec32Expand %d\n", n)))
 
 	n, _ = base64.NewEncoder(base64.StdEncoding, file).Write([]byte(text))
 	file.Write([]byte(fmt.Sprintf("\n--->Base64 %d\n", n)))
@@ -103,8 +115,6 @@ func TestSplitAndMerge(t *testing.T) {
 	metaFile := filepath.Join(dir, "metadata")
 	// defer os.RemoveAll(metaFile) // Cleanup after test
 
-	fmt.Println(metaFile)
-
 	// Split file into chunks
 	if err := splitFile(originalFile, metaFile); err != nil {
 		t.Fatalf("File splitting failed: %v", err)
@@ -126,6 +136,4 @@ func TestSplitAndMerge(t *testing.T) {
 	if originalHash != reconstructedHash {
 		t.Fatalf("Hash mismatch! Expected %08x, got %08x", originalHash, reconstructedHash)
 	}
-
-	t.Logf("Test passed! Original and reconstructed files match. Hash: %08x", originalHash)
 }
