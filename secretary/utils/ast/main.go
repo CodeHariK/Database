@@ -24,7 +24,7 @@ const (
 	STRUCT            = "STRUCT"
 )
 
-// FunctionInfo holds information about a function and its calls.
+// Info holds information about a function and its calls.
 type Info struct {
 	Name      string
 	Type      InfoType
@@ -37,7 +37,7 @@ type Info struct {
 }
 
 // ParseGoFile parses a Go file and extracts functions, global variables, and structs.
-func ParseGoFile(filename string) ([]Info, error) {
+func ParseGoFile(filename string, withContent bool) ([]Info, error) {
 	src, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func ParseGoFile(filename string) ([]Info, error) {
 				Type:    FUNCTION,
 				Name:    fmt.Sprintf("%s %s:%d", funcName, filename, pos.Line),
 				Range:   [2]int{pos.Line, endPos.Line},
-				Content: string(src[start-1 : end]),
+				Content: utils.Ternary(withContent, string(src[start-1:end]), ""),
 			}
 
 			// Find function calls inside body
@@ -113,7 +113,7 @@ func ParseGoFile(filename string) ([]Info, error) {
 							Name:    fmt.Sprintf("%s %s:%d %s", ident.Name, filename, pos.Line, typeName),
 							Type:    GLOBAL,
 							Range:   [2]int{pos.Line, endPos.Line},
-							Content: string(src[start-1 : end]),
+							Content: utils.Ternary(withContent, string(src[start-1:end]), ""),
 						}
 
 					}
@@ -142,7 +142,7 @@ func ParseGoFile(filename string) ([]Info, error) {
 							Type:    STRUCT,
 							Fields:  fields,
 							Range:   [2]int{pos.Line, endPos.Line},
-							Content: string(src[start-1 : end]),
+							Content: utils.Ternary(withContent, string(src[start-1:end]), ""),
 						}
 					}
 				}
@@ -186,8 +186,10 @@ func NormalizeComment(comment string) string {
 
 // Main function to run the parser on a file
 func main() {
+	withContent := false
+
 	var infos []Info
-	err := filepath.WalkDir("../", func(path string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			fmt.Println("Error accessing path:", path, err)
 			return nil
@@ -202,7 +204,7 @@ func main() {
 		if strings.HasSuffix(path, ".go") {
 
 			// Call your function
-			fileInfo, err := ParseGoFile(path)
+			fileInfo, err := ParseGoFile(path, withContent)
 			if err != nil {
 				fmt.Println("Error parsing file:", err)
 				return nil
@@ -217,7 +219,7 @@ func main() {
 		fmt.Println("Error walking directory:", err)
 	}
 
-	file, err := os.OpenFile("callgraph.js", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile("callgraph.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		fmt.Println("Error opening coverage file:", err)
 		return

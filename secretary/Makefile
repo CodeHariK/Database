@@ -5,7 +5,7 @@ clean:
 	@go clean -testcache
 
 one: clean
-	go test ./... -run $(test)
+	go test ./... -v -run $(test)
 
 test: clean
 	go test -cover -coverprofile=cover.txt ./...
@@ -26,3 +26,10 @@ ui:
 
 testutils:
 	go test -v utils/*.go
+
+callgraph:
+	go run utils/ast/main.go
+
+serf:
+	go run serf/main.go
+	go run serf/main.go node2
