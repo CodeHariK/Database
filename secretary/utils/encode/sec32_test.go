@@ -16,11 +16,11 @@ func TestEncodingDecoding32(t *testing.T) {
 		asc32 string
 	}{
 		{"", "", ""},
-		{"| +\n_", "-_b__", "~_b__"},
+		{"| +\n_", "-_p__", "~_p__"},
 		{
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			"abcdefghigclmnobcrstovvsyg",
-			"abcdefghigclmnobcrstovvsyg",
+			"apcdefghigclmnopcrstovvsyg",
+			"apcdefghigclmnopcrstovvsyg",
 		},
 		{
 			"0123456789",
@@ -29,13 +29,13 @@ func TestEncodingDecoding32(t *testing.T) {
 		},
 		{
 			`=+-*/\%^<>!?@#$&(),;:'"_. `,
-			`ebnmd-ylQRiiahfyQR________`,
-			`ebnmd~yl()iiahfy()________`,
+			`epnmd-ylQRiiahfyQR________`,
+			`epnmd~yl()iiahfy()________`,
 		},
 		{
 			"abcdefghijklmnopqrstuvwxyz",
-			"abcdefghigclmnobcrstovvsyg",
-			"abcdefghigclmnobcrstovvsyg",
+			"apcdefghigclmnopcrstovvsyg",
+			"apcdefghigclmnopcrstovvsyg",
 		},
 		{
 			"~`|",

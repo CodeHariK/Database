@@ -19,8 +19,8 @@ func TestEncodingDecoding16(t *testing.T) {
 		{"| +\n_", "-_-__", "-_-__"},
 		{
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-			"abcdefgaegclnnobcrsdovvsvg",
-			"abcdefgaegclnnobcrsdovvsvg",
+			"apctefgaegclnnopcrstoyysyg",
+			"apctefgaegclnnopcrstoyysyg",
 		},
 		{
 			"0123456789",
@@ -34,8 +34,8 @@ func TestEncodingDecoding16(t *testing.T) {
 		},
 		{
 			"abcdefghijklmnopqrstuvwxyz",
-			"abcdefgaegclnnobcrsdovvsvg",
-			"abcdefgaegclnnobcrsdovvsvg",
+			"apctefgaegclnnopcrstoyysyg",
+			"apctefgaegclnnopcrstoyysyg",
 		},
 		{
 			"~`|",

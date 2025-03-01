@@ -28,7 +28,7 @@ const (
 )
 
 const (
-	freq   FreqType = S32
+	freq   FreqType = S16
 	SERVER          = false
 )
 
@@ -113,7 +113,7 @@ func sortedMap() map[string]int {
 
 	// Convert map to slice for sorting
 	type kv struct {
-		Char  string
+		Group string
 		Count int
 	}
 	var sortedFreq []kv
@@ -126,13 +126,13 @@ func sortedMap() map[string]int {
 
 	for groupkey, groupcount := range groupfreq {
 
-		mmm := utils.Map(SECKEYMAP[groupkey].keys, func(a byte) string {
+		keyfreq := utils.Map(SECKEYMAP[groupkey].keys, func(a byte) string {
 			return fmt.Sprintf("%q,%d,%d", a, 100*charfreq[a]/groupcount, 100*charfreq[a]/totalChar)
 		})
 
 		sortedFreq = append(sortedFreq,
 			kv{
-				Char:  fmt.Sprintf("%8d %4d %8v", groupcount, groupkey, mmm),
+				Group: fmt.Sprintf("%8d %4q %8v", groupcount, SECKEYMAP[groupkey].sec, keyfreq),
 				Count: groupcount,
 			})
 	}
@@ -147,11 +147,11 @@ func sortedMap() map[string]int {
 
 	charCount := 0
 	for i, kv := range sortedFreq {
-		sortedMap[kv.Char] = kv.Count
+		sortedMap[kv.Group] = kv.Count
 
 		charCount += kv.Count
 
-		fmt.Printf("%4d %4d %4d %10v \n", i, 100*charCount/totalChar, 100*kv.Count/totalChar, kv.Char)
+		fmt.Printf("%4d %4d %4d %10v \n", i, 100*charCount/totalChar, 100*kv.Count/totalChar, kv.Group)
 	}
 	return sortedMap
 }
