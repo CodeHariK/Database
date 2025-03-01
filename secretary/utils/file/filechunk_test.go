@@ -61,6 +61,12 @@ From that day on, Luma became a storyteller, sharing her experiences and encoura
 	}
 	file.Write([]byte(fmt.Sprintf("\n--->Sec32 %d\n", n)))
 
+	n, err = file.Write([]byte(encode.StringToSec16(text)))
+	if err != nil {
+		return "", err
+	}
+	file.Write([]byte(fmt.Sprintf("\n--->Sec16 %d\n", n)))
+
 	file.Write([]byte(fmt.Sprintf("\n--->StringToIndex64Packed %d\n", len(encode.StringToIndex64Packed(text)))))
 	file.Write([]byte(fmt.Sprintf("\n--->StringToIndex32Packed %d\n", len(encode.StringToIndex32Packed(text)))))
 
@@ -69,6 +75,12 @@ From that day on, Luma became a storyteller, sharing her experiences and encoura
 		return "", err
 	}
 	file.Write([]byte(fmt.Sprintf("\n--->Sec32Expand %d\n", n)))
+
+	n, err = file.Write([]byte(encode.ExpandStringToSec16(text)))
+	if err != nil {
+		return "", err
+	}
+	file.Write([]byte(fmt.Sprintf("\n--->Sec16Expand %d\n", n)))
 
 	n, _ = base64.NewEncoder(base64.StdEncoding, file).Write([]byte(text))
 	file.Write([]byte(fmt.Sprintf("\n--->Base64 %d\n", n)))

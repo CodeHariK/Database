@@ -119,12 +119,15 @@ func binStr(data []byte, spacemode bool, bitmode int) string {
 		var masked byte
 
 		switch bitmode {
-		case 6:
-			format = "%06b"
-			masked = b & 0x3F // Keep only the lower 6 bits
+		case 4:
+			format = "%04b"
+			masked = b & 0x0F // Keep only the lower 4 bits
 		case 5:
 			format = "%05b"
 			masked = b & 0x1F // Keep only the lower 5 bits
+		case 6:
+			format = "%06b"
+			masked = b & 0x3F // Keep only the lower 6 bits
 		default:
 			format = "%08b"
 			masked = b // Full byte
