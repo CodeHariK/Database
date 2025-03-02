@@ -1,3 +1,7 @@
+#
+
+* [Write a database from scratch](https://www.youtube.com/playlist?list=PLWRwj01AnyEtjaw-ZnnAQWnVYPZF5WayV)
+
 ##
 
 * Build Your Own Database From Scratch

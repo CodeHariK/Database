@@ -1,3 +1,12 @@
+# Kademilia
+
+* [Distributed Hash Tables with Kademlia](https://codethechange.stanford.edu/guides/guide_kademlia.html#supporting-dynamic-leaves-and-joins)
+
+* [Kademlia, Explained](https://www.youtube.com/watch?v=1QdKhNpsj8M)
+* [Playlist](https://www.youtube.com/playlist?list=PLiYqQVdgdw_sSDkdIZzDRQR9xZlsukIxD)
+
+###
+
 You’re looking for a Kademlia DHT implementation in Golang. I’ll explain the key components and then provide an implementation outline.
 
 🔹 Key Components of Kademlia in Golang
