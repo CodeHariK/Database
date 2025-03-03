@@ -1,9 +1,23 @@
 # Kademilia
 
+* [IPFS](https://research.protocol.ai/publications/ipfs-content-addressed-versioned-p2p-file-system/benet2014.pdf)
+* [Kademilia Paper](https://pdos.csail.mit.edu/~petar/papers/maymounkov-kademlia-lncs.pdf)
 * [Distributed Hash Tables with Kademlia](https://codethechange.stanford.edu/guides/guide_kademlia.html#supporting-dynamic-leaves-and-joins)
 
 * [Kademlia, Explained](https://www.youtube.com/watch?v=1QdKhNpsj8M)
+* [Kademlia - a Distributed Hash Table implementation | Paper Dissection and Deep-dive](https://www.youtube.com/watch?v=_kCHOpINA5g&list=PLsdq-3Z1EPT1rNeq2GXpnivaWINnOaCd0&index=7)
 * [Playlist](https://www.youtube.com/playlist?list=PLiYqQVdgdw_sSDkdIZzDRQR9xZlsukIxD)
+
+* [IPFS Kademilia](https://docs.ipfs.tech/concepts/dht/#kademlia)
+* [Bitswap : Google Docs](https://docs.google.com/presentation/d/1mbFFGIIKNvboHyLn-k26egOSWkt9nXjlNbxpmCEQfqQ/edit#slide=id.p)
+
+* [Implementing Kademlia in Go](https://medium.com/princeton-systems-course/implementing-kademlia-in-go-65ec9e3c1735)
+
+* https://github.com/libp2p/specs/blob/master/kad-dht/README.md
+* https://github.com/libp2p/go-libp2p/blob/master/examples/libp2p-host/host.go
+* https://github.com/libp2p/go-libp2p-kad-dht
+* https://github.com/pdelong/Kademlia
+* https://github.com/prettymuchbryce/kademlia
 
 ###
 
