@@ -4,6 +4,8 @@
 * [Kademilia Paper](https://pdos.csail.mit.edu/~petar/papers/maymounkov-kademlia-lncs.pdf)
 * [Distributed Hash Tables with Kademlia](https://codethechange.stanford.edu/guides/guide_kademlia.html#supporting-dynamic-leaves-and-joins)
 
+* [P2P Networks](https://www.youtube.com/playlist?list=PLL8woMHwr36F-1h7BE92ynHHOE3zebGpA)
+* [Kademlia: A Peer-to-Peer Information System Based on the XOR Metric](https://www.youtube.com/watch?v=NxhZ_c8YX8E&list=PLL8woMHwr36F-1h7BE92ynHHOE3zebGpA&index=9)
 * [Kademlia, Explained](https://www.youtube.com/watch?v=1QdKhNpsj8M)
 * [Kademlia - a Distributed Hash Table implementation | Paper Dissection and Deep-dive](https://www.youtube.com/watch?v=_kCHOpINA5g&list=PLsdq-3Z1EPT1rNeq2GXpnivaWINnOaCd0&index=7)
 * [Playlist](https://www.youtube.com/playlist?list=PLiYqQVdgdw_sSDkdIZzDRQR9xZlsukIxD)
@@ -18,6 +20,9 @@
 * https://github.com/libp2p/go-libp2p-kad-dht
 * https://github.com/pdelong/Kademlia
 * https://github.com/prettymuchbryce/kademlia
+
+* [Consistent Hashing with Bounded Loads](https://research.google/blog/consistent-hashing-with-bounded-loads/)
+* https://github.com/buraksezer/consistent
 
 ###
 
