@@ -170,3 +170,109 @@ Tradeoffs
 	•	Harder to debug than traditional locking mechanisms.
 
 Would you like me to refine specific parts, like concurrent range queries or node splits? 🚀
+
+
+
+
+
+Database Locks: Types and Usage
+
+Database locks are mechanisms used to ensure consistency, integrity, and concurrency control in multi-user environments. They prevent race conditions, dirty reads, and data corruption when multiple transactions access the same data.
+
+⸻
+
+Types of Database Locks
+
+1. Pessimistic Locking
+	•	Blocks access to a resource until a transaction is complete.
+	•	Ensures no other transaction modifies the data while a lock is held.
+	•	Typically used in high-contention scenarios (e.g., banking systems).
+
+Example (MySQL FOR UPDATE)
+
+START TRANSACTION;
+SELECT * FROM accounts WHERE id = 1 FOR UPDATE; -- Locks row until COMMIT/ROLLBACK
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+COMMIT;
+
+Use Cases:
+✅ Ensures strong consistency.
+❌ Can cause performance issues due to waiting/blocking.
+
+⸻
+
+2. Optimistic Locking
+	•	Allows concurrent access but detects conflicts before committing.
+	•	Uses version numbers or timestamps to check if data was modified.
+	•	If a conflict is detected, the transaction is retried.
+
+Example (Using Version Number)
+
+SELECT id, balance, version FROM accounts WHERE id = 1;
+UPDATE accounts SET balance = balance - 100, version = version + 1 
+WHERE id = 1 AND version = 1; -- Fails if version changed
+
+Use Cases:
+✅ Best for low-contention scenarios.
+❌ Requires extra logic for retrying transactions.
+
+⸻
+
+3. Table Locks
+	•	Locks the entire table, preventing other transactions from reading or writing.
+	•	Used when bulk updates need consistency.
+
+Example (MySQL Table Lock)
+
+LOCK TABLES accounts WRITE;
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UNLOCK TABLES;
+
+Use Cases:
+✅ Guarantees full consistency.
+❌ Not scalable for multi-user applications.
+
+⸻
+
+4. Row-Level Locks
+	•	Locks only specific rows affected by a transaction.
+	•	Allows higher concurrency than table locks.
+
+Example (PostgreSQL SELECT FOR UPDATE)
+
+BEGIN;
+SELECT * FROM orders WHERE id = 123 FOR UPDATE; -- Locks row
+UPDATE orders SET status = 'shipped' WHERE id = 123;
+COMMIT;
+
+Use Cases:
+✅ Efficient for concurrent updates on different rows.
+❌ Can cause deadlocks if transactions lock rows in different orders.
+
+⸻
+
+5. Deadlocks and Handling
+
+A deadlock occurs when two transactions hold locks and wait for each other to release them.
+
+Example Deadlock (Two Transactions)
+
+Transaction A: LOCK row 1 → WAIT for row 2  
+Transaction B: LOCK row 2 → WAIT for row 1
+
+Preventing Deadlocks
+	•	Access resources in a consistent order.
+	•	Use shorter transactions to minimize lock time.
+	•	Set timeouts on locks (e.g., SELECT FOR UPDATE NOWAIT).
+
+⸻
+
+Which Locking Strategy to Use?
+
+Scenario	Best Locking Strategy
+High contention on updates	Pessimistic Locking (FOR UPDATE)
+Low contention, high concurrency	Optimistic Locking (versioning)
+Bulk operations	Table Locks (LOCK TABLES)
+Multiple transactions updating different rows	Row-Level Locks
+
+Would you like a deep dive into deadlocks, isolation levels, or specific databases (PostgreSQL, MySQL, etc.)? 🚀

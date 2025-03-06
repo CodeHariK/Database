@@ -1,3 +1,13 @@
+[#04 - Database Storage: Log-Structured Merge Trees & Tuples (CMU Intro to Database Systems)](https://www.youtube.com/watch?v=IHtVWGhG0Xg&t=1372s)
+
+https://github.com/facebook/rocksdb/wiki
+
+https://github.com/krasun/lsmtree
+https://github.com/skyzh/mini-lsm
+
+
+
+
 Object stores typically do not use B-trees like databases. Instead, they use hash-based indexing or LSM-trees (Log-Structured Merge Trees) depending on the use case. Here’s why:
 
 1. Hash-Based Indexing (Common for Object Stores)

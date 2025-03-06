@@ -20,6 +20,7 @@
 * https://github.com/libp2p/specs/blob/master/kad-dht/README.md
 * https://github.com/libp2p/go-libp2p/blob/master/examples/libp2p-host/host.go
 * https://github.com/libp2p/go-libp2p-kad-dht
+* https://github.com/nictuku/dht
 * https://github.com/pdelong/Kademlia
 * https://github.com/prettymuchbryce/kademlia
 

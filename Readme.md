@@ -1,10 +1,15 @@
 #
 
+* [#08 - Tree Indexes: B+Trees (CMU Intro to Database Systems)](https://www.youtube.com/watch?v=scUtG_6M_lU)
+* [SQLite: How it works](https://www.youtube.com/watch?v=ZSKLA81tBis)
 * [Write a database from scratch](https://www.youtube.com/playlist?list=PLWRwj01AnyEtjaw-ZnnAQWnVYPZF5WayV)
 
-##
+* [Understanding B-Trees: The Data Structure Behind Modern Databases](https://www.youtube.com/watch?v=K1a2Bk8NrYQ)
 
-* Build Your Own Database From Scratch
+* [Build a NoSQL Database From Scratch in 1000 Lines of Code](https://medium.com/better-programming/build-a-nosql-database-from-the-scratch-in-1000-lines-of-code-8ed1c15ed924)
+* [Writing a SQL database from scratch in Go: 1. SELECT, INSERT, CREATE and a REPL](https://notes.eatonphil.com/database-basics.html)
+
+##
 
 ```
 1. Persistence. How not to lose or corrupt your data. Recovering from a crash.
