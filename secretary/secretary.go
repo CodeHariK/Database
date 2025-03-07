@@ -5,6 +5,8 @@ import (
 
 	"github.com/codeharik/secretary/utils"
 	"github.com/codeharik/secretary/utils/file"
+
+	_ "go.uber.org/automaxprocs"
 )
 
 func New() (*Secretary, error) {

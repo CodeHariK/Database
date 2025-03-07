@@ -17,6 +17,7 @@ require (
 	github.com/hashicorp/serf v0.10.2 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 )
 
