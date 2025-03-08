@@ -102,8 +102,6 @@
         function displayLatencyPercentiles() {
             const sortedLatencies = [...latencyValues].sort((a, b) => a - b);
 
-            console.log(sortedLatencies)
-
             const p50 = getPercentile(sortedLatencies, 0.50);
             const p90 = getPercentile(sortedLatencies, 0.90);
             const p99 = getPercentile(sortedLatencies, 0.99);

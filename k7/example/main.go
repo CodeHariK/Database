@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/codeharik/k7"
@@ -13,15 +14,15 @@ var (
 	restyClientId = 0
 )
 
-func init() {
-	for i := 0; i < 3; i++ {
+func restyAttack() {
+	threads := 8
+
+	for i := 0; i < 3*threads; i++ {
 		restyClients = append(restyClients, *resty.New())
 	}
-}
 
-func restyAttack() {
 	config := k7.BenchmarkConfig{
-		Threads:  3,
+		Threads:  threads,
 		Duration: 10 * time.Second,
 		AttackFunc: func() bool {
 			res, err := restyClients[restyClientId].R().Get("http://localhost:8080")
@@ -29,6 +30,8 @@ func restyAttack() {
 				fmt.Println(err)
 				return false
 			}
+
+			// fmt.Println(string(res.Body()), res.StatusCode() == 200)
 
 			restyClientId = (restyClientId + 1) % len(restyClients)
 
@@ -44,18 +47,18 @@ const (
 	Connect Mode = iota
 	Fiber
 	NetHTTP
+	NetHTTPWorker
 )
 
-func (m Mode) String() string {
-	return [...]string{"Connect", "Fiber", "NetHTTP"}[m]
-}
-
 func main() {
-	mode := Fiber
+	fmt.Println("Number of CPU", runtime.NumCPU(), runtime.NumCgoCall(), runtime.NumGoroutine())
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	mode := NetHTTPWorker
+	resty := true
 
 	switch mode {
 	case Connect:
-		resty := false
 		fmt.Println("Starting Connect Server, Resty:", resty)
 		connectServer(resty)
 	case Fiber:
@@ -64,7 +67,12 @@ func main() {
 	case NetHTTP:
 		fmt.Println("Starting NetHTTP Server")
 		nethttpServer()
+	case NetHTTPWorker:
+		fmt.Println("Starting NetHTTPWorker Server")
+		nethttpWorkerServer()
 	default:
 		fmt.Println("Invalid mode")
 	}
+
+	// restyAttack()
 }

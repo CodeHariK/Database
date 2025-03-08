@@ -1,6 +1,7 @@
 package k7
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -107,11 +108,11 @@ func (config BenchmarkConfig) RunBenchmark() []Bucket {
 
 	wg.Wait()
 
-	// data, err := json.MarshalIndent(buckets[:numbuckets], "", " ")
-	// if err != nil {
-	// 	fmt.Println("Error encoding JSON:", err)
-	// }
-	// fmt.Println(string(data))
+	data, err := json.MarshalIndent(buckets[:numbuckets], "", " ")
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+	}
+	fmt.Println(string(data))
 
 	return buckets[:numbuckets]
 }
