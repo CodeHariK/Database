@@ -6,28 +6,39 @@ import "buf/validate/validate.proto";
 option go_package = "github.com/codeharik/gossip/api";
 
 service GossipService {
-  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc BroadcastMessage(BroadcastRequest) returns (BroadcastResponse);
   rpc Connect(ConnectRequest) returns (ConnectResponse);
 }
 
-message SendMessageRequest {
-  string sender_id = 1 [(buf.validate.field).string.uuid = true];
-  uint32 hop_count = 2;
-  string message = 3;
-  int64 timestamp = 4;
-}
-message SendMessageResponse {
-  bool received = 1;
+enum MessageType {
+  JOIN = 0;
+  MSG = 1;
 }
 
 message Peer {
-  string addr = 1;
-  int64 startTime = 2;
+  uint64 peer_id = 1;
+  string addr = 2;
+  int64 start_time = 3;
+}
+
+message BroadcastRequest {
+  uint64 origin_id = 1;
+  int64 timestamp = 2;
+  MessageType messageType = 3;
+  string message = 4;
+  uint32 hop_count = 5;
+}
+message BroadcastResponse {
+  bool received = 1;
 }
 
 message ConnectRequest {
   Peer peer = 1;
 }
 message ConnectResponse {
-  repeated Peer known_peers = 1;
+  Peer peer = 1;
+
+  uint64 approx_num_node = 2;
+
+  repeated Peer known_peers = 4;
 }

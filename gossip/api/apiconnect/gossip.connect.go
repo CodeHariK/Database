@@ -33,16 +33,16 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// GossipServiceSendMessageProcedure is the fully-qualified name of the GossipService's SendMessage
-	// RPC.
-	GossipServiceSendMessageProcedure = "/gossip.GossipService/SendMessage"
+	// GossipServiceBroadcastMessageProcedure is the fully-qualified name of the GossipService's
+	// BroadcastMessage RPC.
+	GossipServiceBroadcastMessageProcedure = "/gossip.GossipService/BroadcastMessage"
 	// GossipServiceConnectProcedure is the fully-qualified name of the GossipService's Connect RPC.
 	GossipServiceConnectProcedure = "/gossip.GossipService/Connect"
 )
 
 // GossipServiceClient is a client for the gossip.GossipService service.
 type GossipServiceClient interface {
-	SendMessage(context.Context, *connect.Request[api.SendMessageRequest]) (*connect.Response[api.SendMessageResponse], error)
+	BroadcastMessage(context.Context, *connect.Request[api.BroadcastRequest]) (*connect.Response[api.BroadcastResponse], error)
 	Connect(context.Context, *connect.Request[api.ConnectRequest]) (*connect.Response[api.ConnectResponse], error)
 }
 
@@ -57,10 +57,10 @@ func NewGossipServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 	baseURL = strings.TrimRight(baseURL, "/")
 	gossipServiceMethods := api.File_gossip_proto.Services().ByName("GossipService").Methods()
 	return &gossipServiceClient{
-		sendMessage: connect.NewClient[api.SendMessageRequest, api.SendMessageResponse](
+		broadcastMessage: connect.NewClient[api.BroadcastRequest, api.BroadcastResponse](
 			httpClient,
-			baseURL+GossipServiceSendMessageProcedure,
-			connect.WithSchema(gossipServiceMethods.ByName("SendMessage")),
+			baseURL+GossipServiceBroadcastMessageProcedure,
+			connect.WithSchema(gossipServiceMethods.ByName("BroadcastMessage")),
 			connect.WithClientOptions(opts...),
 		),
 		connect: connect.NewClient[api.ConnectRequest, api.ConnectResponse](
@@ -74,13 +74,13 @@ func NewGossipServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // gossipServiceClient implements GossipServiceClient.
 type gossipServiceClient struct {
-	sendMessage *connect.Client[api.SendMessageRequest, api.SendMessageResponse]
-	connect     *connect.Client[api.ConnectRequest, api.ConnectResponse]
+	broadcastMessage *connect.Client[api.BroadcastRequest, api.BroadcastResponse]
+	connect          *connect.Client[api.ConnectRequest, api.ConnectResponse]
 }
 
-// SendMessage calls gossip.GossipService.SendMessage.
-func (c *gossipServiceClient) SendMessage(ctx context.Context, req *connect.Request[api.SendMessageRequest]) (*connect.Response[api.SendMessageResponse], error) {
-	return c.sendMessage.CallUnary(ctx, req)
+// BroadcastMessage calls gossip.GossipService.BroadcastMessage.
+func (c *gossipServiceClient) BroadcastMessage(ctx context.Context, req *connect.Request[api.BroadcastRequest]) (*connect.Response[api.BroadcastResponse], error) {
+	return c.broadcastMessage.CallUnary(ctx, req)
 }
 
 // Connect calls gossip.GossipService.Connect.
@@ -90,7 +90,7 @@ func (c *gossipServiceClient) Connect(ctx context.Context, req *connect.Request[
 
 // GossipServiceHandler is an implementation of the gossip.GossipService service.
 type GossipServiceHandler interface {
-	SendMessage(context.Context, *connect.Request[api.SendMessageRequest]) (*connect.Response[api.SendMessageResponse], error)
+	BroadcastMessage(context.Context, *connect.Request[api.BroadcastRequest]) (*connect.Response[api.BroadcastResponse], error)
 	Connect(context.Context, *connect.Request[api.ConnectRequest]) (*connect.Response[api.ConnectResponse], error)
 }
 
@@ -101,10 +101,10 @@ type GossipServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewGossipServiceHandler(svc GossipServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	gossipServiceMethods := api.File_gossip_proto.Services().ByName("GossipService").Methods()
-	gossipServiceSendMessageHandler := connect.NewUnaryHandler(
-		GossipServiceSendMessageProcedure,
-		svc.SendMessage,
-		connect.WithSchema(gossipServiceMethods.ByName("SendMessage")),
+	gossipServiceBroadcastMessageHandler := connect.NewUnaryHandler(
+		GossipServiceBroadcastMessageProcedure,
+		svc.BroadcastMessage,
+		connect.WithSchema(gossipServiceMethods.ByName("BroadcastMessage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	gossipServiceConnectHandler := connect.NewUnaryHandler(
@@ -115,8 +115,8 @@ func NewGossipServiceHandler(svc GossipServiceHandler, opts ...connect.HandlerOp
 	)
 	return "/gossip.GossipService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case GossipServiceSendMessageProcedure:
-			gossipServiceSendMessageHandler.ServeHTTP(w, r)
+		case GossipServiceBroadcastMessageProcedure:
+			gossipServiceBroadcastMessageHandler.ServeHTTP(w, r)
 		case GossipServiceConnectProcedure:
 			gossipServiceConnectHandler.ServeHTTP(w, r)
 		default:
@@ -128,8 +128,8 @@ func NewGossipServiceHandler(svc GossipServiceHandler, opts ...connect.HandlerOp
 // UnimplementedGossipServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedGossipServiceHandler struct{}
 
-func (UnimplementedGossipServiceHandler) SendMessage(context.Context, *connect.Request[api.SendMessageRequest]) (*connect.Response[api.SendMessageResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("gossip.GossipService.SendMessage is not implemented"))
+func (UnimplementedGossipServiceHandler) BroadcastMessage(context.Context, *connect.Request[api.BroadcastRequest]) (*connect.Response[api.BroadcastResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("gossip.GossipService.BroadcastMessage is not implemented"))
 }
 
 func (UnimplementedGossipServiceHandler) Connect(context.Context, *connect.Request[api.ConnectRequest]) (*connect.Response[api.ConnectResponse], error) {
