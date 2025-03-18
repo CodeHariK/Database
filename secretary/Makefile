@@ -33,3 +33,8 @@ callgraph:
 serf:
 	go run serf/main.go
 	go run serf/main.go node2
+
+gen:
+	buf dep update
+	buf format -w
+	buf generate

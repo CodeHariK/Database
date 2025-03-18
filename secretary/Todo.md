@@ -14,3 +14,4 @@ for i := range nodes {
 * hyperloglog, bloomfilter
 * Wal
 * Transaction concurrency
+* zstd compress

@@ -1,11 +1,17 @@
 package secretary
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/codeharik/secretary/utils"
 	"github.com/rs/cors"
@@ -181,9 +187,7 @@ func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) 
 	writeJson(w, http.StatusOK, response)
 }
 
-func (s *Secretary) setupRouter() http.Handler {
-	mux := http.NewServeMux()
-
+func (s *Secretary) setupRouter(mux *http.ServeMux) http.Handler {
 	mux.HandleFunc("GET /getalltree", s.getAllTreeHandler)
 	mux.HandleFunc("GET /gettree/{table}", s.getTreeHandler)
 	mux.HandleFunc("POST /newtree", s.newTreeHandler)
@@ -203,7 +207,63 @@ func (s *Secretary) setupRouter() http.Handler {
 }
 
 func (s *Secretary) Serve() {
-	port := 8080
-	utils.Log("Server running on port", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), s.setupRouter()))
+	s.wg.Add(1)
+	defer s.wg.Done()
+
+	// Handle OS signals for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Track if the server stops
+	serverExited := make(chan struct{})
+
+	go func() {
+		log.Printf("Server listening at %s", s.server.Addr)
+		if err := s.server.Serve(s.listener); err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+		close(serverExited) // Signal that the server has stopped
+	}()
+
+	// Wait for signal
+	select {
+	case sig := <-sigChan:
+		log.Printf("Received signal: %v. Shutting down...", sig)
+	case <-s.quit:
+		log.Printf("Received quit signal. Shutting down...")
+	case <-serverExited:
+		log.Printf("Server exited unexpectedly.")
+	}
+}
+
+func (s *Secretary) Shutdown() {
+	s.once.Do(func() { // Ensures this runs only once
+
+		// Close quit channel only if this call initiated shutdown
+		select {
+		case <-s.quit:
+			// Already closed, do nothing
+		default:
+			close(s.quit)
+		}
+
+		// Gracefully shut down the HTTP server
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := s.server.Shutdown(ctx); err != nil {
+			log.Printf("Shutdown error: %v", err)
+			if err := s.server.Close(); err != nil {
+				log.Fatalf("Server force close error: %v", err)
+			}
+		}
+
+		if err := s.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			log.Printf("Listener close error: %v", err)
+		}
+
+		s.wg.Wait() // the program waits for all goroutines to exit
+
+		log.Printf("Server terminated!")
+	})
 }

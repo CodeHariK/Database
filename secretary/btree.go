@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/codeharik/secretary/utils"
@@ -74,17 +75,18 @@ func (s *Secretary) NewBTree(
 }
 
 func (tree *BTree) close() error {
+	errs := []error{}
 	if err := tree.nodeBatchStore.file.Close(); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	for _, batchStore := range tree.recordBatchStores {
 		if err := batchStore.file.Close(); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (tree *BTree) createHeader() ([]byte, error) {
