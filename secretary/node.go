@@ -179,7 +179,7 @@ func (tree *BTree) saveRoot() error {
 		return err
 	}
 
-	return tree.nodeBatchStore.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
+	return tree.indexPager.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
 }
 
 //------------------------------------------------------------------

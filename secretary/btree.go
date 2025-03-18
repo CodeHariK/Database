@@ -53,35 +53,35 @@ func (s *Secretary) NewBTree(
 		minNumKeys: uint32(int(order)-1) / 2,
 	}
 
-	nodeBatchStore, err := tree.NewBatchStore("index", 0)
+	indexPager, err := tree.NewPager("index", 0)
 	if err != nil {
 		return nil, err
 	}
 
-	tree.nodeBatchStore = nodeBatchStore
+	tree.indexPager = indexPager
 
-	recordBatchStores := make([]*BatchStore, batchNumLevel)
-	for i := range recordBatchStores {
-		store, err := tree.NewBatchStore("record", uint8(i))
+	recordPagers := make([]*Pager, batchNumLevel)
+	for i := range recordPagers {
+		pager, err := tree.NewPager("record", uint8(i))
 		if err != nil {
 			return nil, err
 		}
 
-		recordBatchStores[i] = store
+		recordPagers[i] = pager
 	}
-	tree.recordBatchStores = recordBatchStores
+	tree.recordPagers = recordPagers
 
 	return tree, nil
 }
 
 func (tree *BTree) close() error {
 	errs := []error{}
-	if err := tree.nodeBatchStore.file.Close(); err != nil {
+	if err := tree.indexPager.file.Close(); err != nil {
 		errs = append(errs, err)
 	}
 
-	for _, batchStore := range tree.recordBatchStores {
-		if err := batchStore.file.Close(); err != nil {
+	for _, pager := range tree.recordPagers {
+		if err := pager.file.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -111,7 +111,7 @@ func (tree *BTree) SaveHeader() error {
 		return err
 	}
 
-	return tree.nodeBatchStore.WriteAt(0, header)
+	return tree.indexPager.WriteAt(0, header)
 }
 
 func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
@@ -126,7 +126,7 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 		return nil, err
 	}
 
-	diskData, err := temp.nodeBatchStore.ReadAt(0, SECRETARY_HEADER_LENGTH)
+	diskData, err := temp.indexPager.ReadAt(0, SECRETARY_HEADER_LENGTH)
 	if err != nil {
 		return nil, err
 	}

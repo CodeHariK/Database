@@ -1,105 +1,110 @@
 package secretary
 
-// func TestAllocateBatch(t *testing.T) {
-// 	_, tree := dummyTree(t, "TestAllocateBatch", 10)
+import (
+	"bytes"
+	"testing"
+)
 
-// 	fileInfo, err := tree.nodeBatchStore.file.Stat()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	originalFileSize := fileInfo.Size()
+func TestAllocateBatch(t *testing.T) {
+	_, tree := dummyTree(t, "TestAllocateBatch", 10)
 
-// 	{ // Allocate the first batch
-// 		err := tree.nodeBatchStore.AllocateBatch(1)
-// 		if err != nil {
-// 			t.Fatalf("AllocateBatch failed: %v", err)
-// 		}
+	fileInfo, err := tree.indexPager.file.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalFileSize := fileInfo.Size()
 
-// 		fileInfo, err := tree.nodeBatchStore.file.Stat()
-// 		allocatedSize := fileInfo.Size() - originalFileSize
-// 		if err != nil || allocatedSize != int64(tree.nodeBatchStore.batchSize) {
-// 			t.Errorf("Expected file size %d, got %d", tree.nodeBatchStore.batchSize, fileInfo.Size())
-// 		}
-// 	}
+	{ // Allocate the first batch
+		err := tree.indexPager.AllocatePage(1)
+		if err != nil {
+			t.Fatalf("AllocateBatch failed: %v", err)
+		}
 
-// 	{ // Allocate another batch
-// 		err := tree.nodeBatchStore.AllocateBatch(1)
-// 		if err != nil {
-// 			t.Fatalf("AllocateBatch failed on second batch: %v", err)
-// 		}
+		fileInfo, err := tree.indexPager.file.Stat()
+		allocatedSize := fileInfo.Size() - originalFileSize
+		if err != nil || allocatedSize != int64(tree.indexPager.pageSize) {
+			t.Errorf("Expected file size %d, got %d", tree.indexPager.pageSize, fileInfo.Size())
+		}
+	}
 
-// 		// Ensure the file size has increased correctly
-// 		fileInfo, err = tree.nodeBatchStore.file.Stat()
-// 		allocatedSize := fileInfo.Size() - originalFileSize
-// 		expectedSize := int64(2 * tree.nodeBatchStore.batchSize)
-// 		if err != nil || allocatedSize != expectedSize {
-// 			t.Errorf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
-// 		}
-// 	}
-// }
+	{ // Allocate another batch
+		err := tree.indexPager.AllocatePage(1)
+		if err != nil {
+			t.Fatalf("AllocateBatch failed on second batch: %v", err)
+		}
 
-// func TestWriteAndReadAtOffset(t *testing.T) {
-// 	_, tree := dummyTree(t, "TestWriteAndReadAtOffset", 10)
+		// Ensure the file size has increased correctly
+		fileInfo, err = tree.indexPager.file.Stat()
+		allocatedSize := fileInfo.Size() - originalFileSize
+		expectedSize := int64(2 * tree.indexPager.pageSize)
+		if err != nil || allocatedSize != expectedSize {
+			t.Errorf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
+		}
+	}
+}
 
-// 	{ // Test: Write small data within the first batch
-// 		data := []byte("Hello, B+ Tree!")
-// 		offset := int64(0)
+func TestWriteAndReadAtOffset(t *testing.T) {
+	_, tree := dummyTree(t, "TestWriteAndReadAtOffset", 10)
 
-// 		err := tree.nodeBatchStore.WriteAt(offset, data)
-// 		if err != nil {
-// 			t.Fatalf("WriteAt failed: %v", err)
-// 		}
+	{ // Test: Write small data within the first batch
+		data := []byte("Hello, B+ Tree!")
+		offset := int64(0)
 
-// 		fileInfo, err := tree.nodeBatchStore.file.Stat()
-// 		if err != nil || fileInfo.Size() != int64(tree.nodeBatchStore.batchSize) {
-// 			t.Errorf("Expected file size %d, got %d", tree.nodeBatchStore.batchSize, fileInfo.Size())
-// 		}
+		err := tree.indexPager.WriteAt(offset, data)
+		if err != nil {
+			t.Fatalf("WriteAt failed: %v", err)
+		}
 
-// 		// Read the data back
-// 		readData, err := tree.nodeBatchStore.ReadAt(offset, int32(len(data)))
-// 		if err != nil {
-// 			t.Fatalf("ReadAtOffset failed: %v", err)
-// 		}
+		fileInfo, err := tree.indexPager.file.Stat()
+		if err != nil || fileInfo.Size() != int64(tree.indexPager.headerSize) {
+			t.Errorf("Expected file size %d, got %d", tree.indexPager.headerSize, fileInfo.Size())
+		}
 
-// 		// Compare written and read data
-// 		if string(readData[:len(data)]) != string(data) {
-// 			t.Errorf("Expected '%s', got '%s'", data, readData[:len(data)])
-// 		}
-// 	}
+		// Read the data back
+		readData, err := tree.indexPager.ReadAt(offset, int32(len(data)))
+		if err != nil {
+			t.Fatalf("ReadAtOffset failed: %v", err)
+		}
 
-// 	{ // Test: Writing beyond the current file size should allocate more batch
-// 		offset := int64(float64(tree.nodeBatchStore.batchSize) * 3.5) // Beyond the first batch (1024)
-// 		data := []byte("Second Batch Data")
+		// Compare written and read data
+		if !bytes.Equal(data, readData) {
+			t.Errorf("Expected '%s', got '%s'", data, readData[:len(data)])
+		}
+	}
 
-// 		err := tree.nodeBatchStore.WriteAt(offset, data)
-// 		if err != nil {
-// 			t.Fatalf("WriteAt failed on batch allocation: %v", err)
-// 		}
+	{ // Test: Writing beyond the current file size should allocate more batch
+		offset := int64(float64(tree.indexPager.pageSize) * 3.5) // Beyond the first batch (1024)
+		data := []byte("Second Batch Data")
 
-// 		// Read the new data back
-// 		readData2, err := tree.nodeBatchStore.ReadAt(offset, int32(len(data)))
-// 		if err != nil {
-// 			t.Fatalf("ReadAtOffset failed: %v", err)
-// 		}
+		err := tree.indexPager.WriteAt(offset, data)
+		if err != nil {
+			t.Fatalf("WriteAt failed on batch allocation: %v", err)
+		}
 
-// 		// Compare written and read data for the second batch
-// 		if string(readData2[:len(data)]) != string(data) {
-// 			t.Errorf("Expected '%s' at offset %d, got '%s'", data, offset, readData2[:len(data)])
-// 		}
+		// Read the new data back
+		readData, err := tree.indexPager.ReadAt(offset, int32(len(data)))
+		if err != nil {
+			t.Fatalf("ReadAtOffset failed: %v", err)
+		}
 
-// 		fileInfo, err := tree.nodeBatchStore.file.Stat()
-// 		if err != nil || fileInfo.Size() != 4*int64(tree.nodeBatchStore.batchSize) {
-// 			t.Errorf("Expected file size %d, got %d", 4*int64(tree.nodeBatchStore.batchSize), fileInfo.Size())
-// 		}
-// 	}
+		// Compare written and read data for the second batch
+		if !bytes.Equal(data, readData) {
+			t.Errorf("Expected '%s' at offset %d, got '%s'", data, offset, readData[:len(data)])
+		}
 
-// 	{ // Test: Write data that exceed batch size, Should Fail
-// 		offset := int64(float64(tree.nodeBatchStore.batchSize) * 5.8)
-// 		data := make([]byte, int64(float64(tree.nodeBatchStore.batchSize)*0.4))
+		fileInfo, err := tree.indexPager.file.Stat()
+		if err != nil || fileInfo.Size() != int64(tree.indexPager.headerSize)+4*int64(tree.indexPager.pageSize) {
+			t.Errorf("Expected file size %d, got %d", 4*int64(tree.indexPager.pageSize), fileInfo.Size())
+		}
+	}
 
-// 		err := tree.nodeBatchStore.WriteAt(offset, data)
-// 		if err == nil {
-// 			t.Fatalf("WriteAt should be failing, data should not exceed batch : %v", err)
-// 		}
-// 	}
-// }
+	{ // Test: Write data that exceed batch size, Should Fail
+		offset := int64(float64(tree.indexPager.pageSize) * 5.8)
+		data := make([]byte, int64(float64(tree.indexPager.pageSize)*0.4))
+
+		err := tree.indexPager.WriteAt(offset, data)
+		if err == nil {
+			t.Fatalf("WriteAt should be failing, data should not exceed batch : %v", err)
+		}
+	}
+}

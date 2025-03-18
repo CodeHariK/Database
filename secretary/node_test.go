@@ -44,7 +44,7 @@ func TestSaveRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rootBytes, err := tree.nodeBatchStore.ReadAt(SECRETARY_HEADER_LENGTH, int32(tree.nodeSize))
+	rootBytes, err := tree.indexPager.ReadAt(SECRETARY_HEADER_LENGTH, int32(tree.nodeSize))
 	if err != nil {
 		t.Fatal(err)
 	}

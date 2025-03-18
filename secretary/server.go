@@ -13,8 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/codeharik/secretary/api/apiconnect"
 	"github.com/codeharik/secretary/utils"
 	"github.com/rs/cors"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func writeJson(w http.ResponseWriter, code int, data any) {
@@ -207,6 +210,28 @@ func (s *Secretary) setupRouter(mux *http.ServeMux) http.Handler {
 }
 
 func (s *Secretary) Serve() {
+	// Create a TCP listener on a random available port, OS assigns a free port
+	listener, err := net.Listen("tcp", "127.0.0.1:8080")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle(apiconnect.NewSecretaryHandler(&s))
+
+	handler := s.setupRouter(mux)
+
+	server := &http.Server{
+		Addr: listener.Addr().String(), // Eg:"127.0.0.1:54321"
+		Handler: h2c.NewHandler(
+			handler,
+			&http2.Server{},
+		),
+	}
+
+	s.listener = listener
+	s.server = server
+
 	s.wg.Add(1)
 	defer s.wg.Done()
 

@@ -69,8 +69,8 @@ order ^ n	Leaf
 type BTree struct {
 	CollectionName string `json:"collectionName" bin:"collectionName" max:"30"` // Max 30Char
 
-	nodeBatchStore    *BatchStore
-	recordBatchStores []*BatchStore
+	indexPager   *Pager
+	recordPagers []*Pager
 
 	root *Node // Root node of the tree
 
@@ -118,13 +118,23 @@ type Node struct {
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
-type BatchStore struct {
+// Page represents a single fixed-size page in memory.
+type Page struct {
+	Index int64
+	Data  []byte
+	Dirty bool // If true, needs to be written back to disk
+}
+
+// Pager manages reading and writing pages.
+type Pager struct {
 	file *os.File
 
 	headerSize int
 	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
 
-	batchSize uint32 // Maximum batch size = 4GB
+	pageSize int64 // Maximum batch size = 4GB
+
+	pageCache map[int64]*Page // In-memory cache
 
 	mu sync.Mutex
 }

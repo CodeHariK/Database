@@ -50,8 +50,8 @@ var (
 	ErrorFileStat = func(err error) error {
 		return fmt.Errorf("Error file stat: %v", err)
 	}
-	ErrorDataExceedBatchSize = func(len int, batchSize uint32, offset int64) error {
-		return fmt.Errorf("Error: Data size %d exceeds batch size %d at offset %d", len, batchSize, offset)
+	ErrorDataExceedPageSize = func(len int, pageSize int64, offset int64) error {
+		return fmt.Errorf("Error: Data size %d exceeds batch size %d at offset %d", len, pageSize, offset)
 	}
 
 	// Pointer links

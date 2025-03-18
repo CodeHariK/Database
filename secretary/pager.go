@@ -2,11 +2,8 @@ package secretary
 
 import (
 	"fmt"
-	"io"
-	"io/fs"
 	"math"
 	"os"
-	"sync"
 )
 
 /*
@@ -27,17 +24,17 @@ Responsibilities of a Pager:
 
 */
 
-// Opens or creates a file and sets up the BatchStore
-func (tree *BTree) NewBatchStore(fileType string, level uint8) (*BatchStore, error) {
-	batchSize := uint32(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
+// Opens or creates a file and sets up the Pager
+func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
+	pageSize := int64(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
 
 	headerSize := 0
 
-	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, batchSize)
+	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, pageSize)
 	if fileType == "index" {
 
 		headerSize = SECRETARY_HEADER_LENGTH + int(tree.nodeSize) // Header = SECRETARY_HEADER_LENGTH + ROOT_NODE
-		batchSize = 1024 * 1024
+		pageSize = 1024 * 1024
 
 		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.CollectionName, fileType)
 	}
@@ -56,18 +53,31 @@ func (tree *BTree) NewBatchStore(fileType string, level uint8) (*BatchStore, err
 		return nil, err
 	}
 
-	// fmt.Printf("Open File : %s\n", path)
+	{ // Allocate Header
+		stat, err := file.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if stat.Size() < int64(headerSize) {
+			zeroBuf := make([]byte, headerSize)
+			_, err = file.WriteAt(zeroBuf, stat.Size())
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 
-	return &BatchStore{
+	return &Pager{
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
-		batchSize:  batchSize,
+		pageSize:   pageSize,
+		pageCache:  make(map[int64]*Page),
 	}, nil
 }
 
-// AllocateBatch writes zeroed data in chunks of pageSize for alignment
-func (store *BatchStore) AllocateBatch(numBatch int32) error {
+// AllocatePage writes zeroed data in chunks of pageSize for alignment
+func (store *Pager) AllocatePage(numBatch int32) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -79,20 +89,12 @@ func (store *BatchStore) AllocateBatch(numBatch int32) error {
 	fileSize := fileInfo.Size()
 
 	// Align to the next page boundary
-	if (fileSize % int64(store.batchSize)) != 0 {
-		//
-		//**************
-		//
-		// -- CHECK : Didnt include headersize
-		//
-		//**************
-		//
-
+	if ((fileSize - int64(store.headerSize)) % int64(store.pageSize)) > 0 {
 		return ErrorFileNotAligned(fileInfo)
 	}
 
 	// Expand file by writing zeros
-	zeroBuf := make([]byte, store.batchSize*uint32(numBatch))
+	zeroBuf := make([]byte, store.pageSize*int64(numBatch))
 	_, err = store.file.WriteAt(zeroBuf, fileSize)
 	if err != nil {
 		return err
@@ -103,10 +105,6 @@ func (store *BatchStore) AllocateBatch(numBatch int32) error {
 
 /**
 * Header
-* |
-* |
-* |
-* |
 * |
 * |
 *-----
@@ -126,159 +124,99 @@ func (store *BatchStore) AllocateBatch(numBatch int32) error {
 **/
 // WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
-func (store *BatchStore) WriteAt(offset int64, data []byte) error {
-	// Ensure data size does not exceed batchSize
-	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.batchSize)) != ((offset - int64(store.headerSize)) / int64(store.batchSize)) {
-		return ErrorDataExceedBatchSize(len(data), store.batchSize, offset)
+func (store *Pager) WriteAt(offset int64, data []byte) error {
+	// Ensure data size does not exceed pageSize
+	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.pageSize)) !=
+		((offset - int64(store.headerSize)) / int64(store.pageSize)) {
+		return ErrorDataExceedPageSize(len(data), store.pageSize, offset)
 	}
 
-	// Get current file size
-	fileInfo, err := store.file.Stat()
-	if err != nil {
-		return ErrorFileStat(err)
-	}
-	fileSize := fileInfo.Size()
-
-	n := 1 + (offset+int64(len(data))-fileSize)/int64(store.batchSize)
-
-	// If the requested offset is beyond the current file size, allocate a new batch
-	if offset+int64(len(data)) > fileSize {
-		err := store.AllocateBatch(int32(n))
+	{ // Get current file size
+		fileInfo, err := store.file.Stat()
 		if err != nil {
-			return ErrorAllocatingBatch(err)
+			return ErrorFileStat(err)
+		}
+		fileSize := fileInfo.Size()
+
+		n := 1 + (offset+int64(len(data))-fileSize)/int64(store.pageSize)
+
+		// If the requested offset is beyond the current file size, allocate a new batch
+		if offset+int64(len(data)) > fileSize {
+			err := store.AllocatePage(int32(n))
+			if err != nil {
+				return ErrorAllocatingBatch(err)
+			}
 		}
 	}
 
-	store.mu.Lock()
-	defer store.mu.Unlock()
+	{
+		store.mu.Lock()
+		defer store.mu.Unlock()
 
-	// Write data at the given offset
-	_, err = store.file.WriteAt(data, offset)
-	if err != nil {
-		return ErrorWritingDataAtOffset(offset, err)
+		// Write data at the given offset
+		n, err := store.file.WriteAt(data, offset)
+		if err != nil || (len(data)) != int(n) {
+			return ErrorWritingDataAtOffset(offset, err)
+		}
 	}
 
 	return nil
 }
 
 // ReadAt reads data from the specified offset in the file
-func (store *BatchStore) ReadAt(offset int64, size int32) ([]byte, error) {
+func (store *Pager) ReadAt(offset int64, size int32) ([]byte, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
 	// Allocate a buffer to hold the data
 	data := make([]byte, size)
-	// data := make([]byte, store.batchSize)
 
 	// Read data from the given offset
-	_, err := store.file.ReadAt(data, offset)
-	if err != nil {
+	n, err := store.file.ReadAt(data, offset)
+	if err != nil || n != int(size) {
 		return nil, ErrorReadingDataAtOffset(offset, err)
 	}
 
 	return data, nil
 }
 
-//-------------
+func (store *Pager) ReadPage(index int64) (*Page, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
-type randomAccessFile interface {
-	io.ReaderAt
-	io.WriterAt
-	io.Closer
+	// Check if page is in cache
+	if page, exists := store.pageCache[index]; exists {
+		return page, nil
+	}
 
-	Sync() error
-	Stat() (fs.FileInfo, error)
-	Truncate(size int64) error
-
-	Lock() error
-	Unlock() error
-}
-
-func readPage(file io.ReaderAt, pageNum uint32, pageSize int) ([]byte, error) {
-	offset := int64(pageNum) * int64(pageSize)
-	data := make([]byte, pageSize)
-
-	_, err := file.ReadAt(data, offset)
+	data, err := store.ReadAt(index*store.pageSize, int32(store.pageSize))
 	if err != nil {
 		return nil, err
 	}
-	return data, nil
-}
 
-func writePage(file io.WriterAt, pageNum uint32, data []byte, pageSize int) error {
-	offset := int64(pageNum) * int64(pageSize)
-	_, err := file.WriteAt(data, offset)
-	return err
-}
-
-//-------------
-
-const (
-	PageSize = 4096 // 4KB page size (default in SQLite)
-)
-
-// Page represents a single fixed-size page in memory.
-type Page struct {
-	Number uint32
-	Data   []byte
-	Dirty  bool // If true, needs to be written back to disk
-}
-
-// Pager manages reading and writing pages.
-type Pager struct {
-	file      *os.File
-	pageCache map[uint32]*Page // In-memory cache
-	mu        sync.Mutex       // Ensure thread safety
-}
-
-// OpenPager opens a database file and initializes the pager.
-func OpenPager(filename string) (*Pager, error) {
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o666)
-	if err != nil {
-		return nil, err
+	page := &Page{
+		Index: index,
+		Data:  data,
+		Dirty: false,
 	}
-	return &Pager{
-		file:      file,
-		pageCache: make(map[uint32]*Page),
-	}, nil
+	store.pageCache[index] = page
+
+	return page, nil
 }
-
-// // ReadPage loads a page from disk into memory.
-// func (p *Pager) ReadPage(pageNum uint32) (*Page, error) {
-// 	p.mu.Lock()
-// 	defer p.mu.Unlock()
-
-// 	// Check if page is in cache
-// 	if page, exists := p.pageCache[pageNum]; exists {
-// 		return page, nil
-// 	}
-
-// 	// Allocate a new page buffer
-// 	data := make([]byte, PageSize)
-// 	offset := int64(pageNum) * PageSize
-
-// 	_, err := p.file.ReadAt(data, offset)
-// 	if err != nil && err != os.Eof {
-// 		return nil, err
-// 	}
-
-// 	// Create a new page object
-// 	page := &Page{Number: pageNum, Data: data}
-// 	p.pageCache[pageNum] = page
-// 	return page, nil
-// }
 
 // WritePage writes a page to disk if it's dirty.
-func (p *Pager) WritePage(page *Page) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (store *Pager) WritePage(index int64) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	page := store.pageCache[index]
 
 	if !page.Dirty {
 		return nil // No need to write unchanged pages
 	}
 
-	offset := int64(page.Number) * PageSize
-	_, err := p.file.WriteAt(page.Data, offset)
+	offset := index * store.pageSize
+	_, err := store.file.WriteAt(page.Data, offset)
 	if err != nil {
 		return err
 	}
@@ -287,34 +225,13 @@ func (p *Pager) WritePage(page *Page) error {
 	return nil
 }
 
-// AllocatePage creates a new blank page.
-func (p *Pager) AllocatePage() (*Page, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	// Get the next available page number
-	stat, err := p.file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	pageNum := uint32(stat.Size() / PageSize)
-
-	// Initialize blank page
-	data := make([]byte, PageSize)
-	page := &Page{Number: pageNum, Data: data, Dirty: true}
-
-	// Add to cache
-	p.pageCache[pageNum] = page
-	return page, nil
-}
-
 // Flush writes all dirty pages to disk.
-func (p *Pager) Flush() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (store *Pager) Flush() error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
-	for _, page := range p.pageCache {
-		if err := p.WritePage(page); err != nil {
+	for _, page := range store.pageCache {
+		if err := store.WritePage(page.Index); err != nil {
 			return err
 		}
 	}
@@ -322,9 +239,9 @@ func (p *Pager) Flush() error {
 }
 
 // Close flushes pages and closes the file.
-func (p *Pager) Close() error {
-	if err := p.Flush(); err != nil {
+func (store *Pager) Close() error {
+	if err := store.Flush(); err != nil {
 		return err
 	}
-	return p.file.Close()
+	return store.file.Close()
 }

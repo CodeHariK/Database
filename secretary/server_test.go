@@ -16,7 +16,8 @@ func TestGetAllBTreeHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := s.setupRouter()
+	mux := http.NewServeMux()
+	router := s.setupRouter(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/getalltree", nil)
 	rec := httptest.NewRecorder()
@@ -37,8 +38,8 @@ func TestGetBTreeHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	router := s.setupRouter()
+	mux := http.NewServeMux()
+	router := s.setupRouter(mux)
 
 	users, err := s.Tree("users")
 	if err != nil {
@@ -77,7 +78,8 @@ func TestSetHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := s.setupRouter()
+	mux := http.NewServeMux()
+	router := s.setupRouter(mux)
 
 	body := `{"value": "123"}`
 	req := httptest.NewRequest(http.MethodPost, "/set/users", strings.NewReader(body))
@@ -100,7 +102,8 @@ func TestNewTreeHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := s.setupRouter()
+	mux := http.NewServeMux()
+	router := s.setupRouter(mux)
 
 	tests := []struct {
 		tree NewTreeRequest
@@ -155,8 +158,8 @@ func TestGetHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	router := s.setupRouter()
+	mux := http.NewServeMux()
+	router := s.setupRouter(mux)
 
 	u, err := s.Tree("users")
 	if err != nil {
