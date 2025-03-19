@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	"github.com/codeharik/secretary/utils"
-	"github.com/codeharik/secretary/utils/binstruct"
 )
 
 //------------------------------------------------------------------
@@ -171,15 +170,6 @@ func (tree *BTree) createLeafNode() *Node {
 
 		NodeID: tree.NodeSeq,
 	}
-}
-
-func (tree *BTree) saveRoot() error {
-	rootHeader, err := binstruct.Serialize(*tree.root)
-	if err != nil {
-		return err
-	}
-
-	return tree.indexPager.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
 }
 
 //------------------------------------------------------------------

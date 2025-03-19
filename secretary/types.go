@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 const (
@@ -122,7 +124,8 @@ type Node struct {
 type Page struct {
 	Index int64
 	Data  []byte
-	Dirty bool // If true, needs to be written back to disk
+
+	mu sync.Mutex // Per-page lock
 }
 
 // Pager manages reading and writing pages.
@@ -134,7 +137,8 @@ type Pager struct {
 
 	pageSize int64 // Maximum batch size = 4GB
 
-	pageCache map[int64]*Page // In-memory cache
+	cache      *ristretto.Cache[int64, *Page] // In-memory cache
+	dirtyPages map[int64]bool
 
 	mu sync.Mutex
 }

@@ -114,6 +114,31 @@ func (tree *BTree) SaveHeader() error {
 	return tree.indexPager.WriteAt(0, header)
 }
 
+func (tree *BTree) readRoot() error {
+	rootBytes, err := tree.indexPager.ReadAt(SECRETARY_HEADER_LENGTH, int32(tree.nodeSize))
+	if err != nil {
+		return err
+	}
+
+	var root Node
+	err = binstruct.Deserialize(rootBytes, &root)
+	if err != nil {
+		return err
+	}
+
+	tree.root = &root
+	return nil
+}
+
+func (tree *BTree) saveRoot() error {
+	rootHeader, err := binstruct.Serialize(*tree.root)
+	if err != nil {
+		return err
+	}
+
+	return tree.indexPager.WriteAt(SECRETARY_HEADER_LENGTH, rootHeader)
+}
+
 func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 	temp, err := s.NewBTree(collectionName,
 		10,
@@ -126,12 +151,12 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 		return nil, err
 	}
 
-	diskData, err := temp.indexPager.ReadAt(0, SECRETARY_HEADER_LENGTH)
+	headerData, err := temp.indexPager.ReadAt(0, SECRETARY_HEADER_LENGTH)
 	if err != nil {
 		return nil, err
 	}
 
-	data := bytes.Trim(diskData, "-")[len(SECRETARY):]
+	data := bytes.Trim(headerData, "-")[len(SECRETARY):]
 	var deserializedTree BTree
 	err = binstruct.Deserialize(data, &deserializedTree)
 	if err != nil {

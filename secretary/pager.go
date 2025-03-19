@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 /*
@@ -67,17 +69,35 @@ func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
 		}
 	}
 
-	return &Pager{
+	pager := &Pager{
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
 		pageSize:   pageSize,
-		pageCache:  make(map[int64]*Page),
-	}, nil
+		dirtyPages: map[int64]bool{},
+	}
+
+	// Initialize Ristretto Cache
+	cache, err := ristretto.NewCache(
+		&ristretto.Config[int64, *Page]{
+			NumCounters: 10000,   // Track frequency of ~10,000 items
+			MaxCost:     1 << 20, // 1MB total cache size
+			BufferItems: 64,      // Batch writes for performance
+			OnEvict: func(item *ristretto.Item[*Page]) {
+				delete(pager.dirtyPages, item.Value.Index) // Mark page as clean
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	pager.cache = cache
+
+	return pager, nil
 }
 
 // AllocatePage writes zeroed data in chunks of pageSize for alignment
-func (store *Pager) AllocatePage(numBatch int32) error {
+func (store *Pager) AllocatePage(index int32) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -89,18 +109,32 @@ func (store *Pager) AllocatePage(numBatch int32) error {
 	fileSize := fileInfo.Size()
 
 	// Align to the next page boundary
-	if ((fileSize - int64(store.headerSize)) % int64(store.pageSize)) > 0 {
+	if ((fileSize - int64(store.headerSize)) % store.pageSize) > 0 {
 		return ErrorFileNotAligned(fileInfo)
 	}
 
 	// Expand file by writing zeros
-	zeroBuf := make([]byte, store.pageSize*int64(numBatch))
+	zeroBuf := make([]byte, store.pageSize*int64(index))
 	_, err = store.file.WriteAt(zeroBuf, fileSize)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (store *Pager) NumPages(index int32) (int64, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	// Get current file size
+	fileInfo, err := store.file.Stat()
+	if err != nil {
+		return -1, err
+	}
+	fileSize := fileInfo.Size()
+
+	return (fileSize - int64(store.headerSize)) / store.pageSize, nil
 }
 
 /**
@@ -126,8 +160,8 @@ func (store *Pager) AllocatePage(numBatch int32) error {
 // If there is not enough free space, it allocates a new batch.
 func (store *Pager) WriteAt(offset int64, data []byte) error {
 	// Ensure data size does not exceed pageSize
-	if ((int64(len(data)) + offset - int64(store.headerSize)) / int64(store.pageSize)) !=
-		((offset - int64(store.headerSize)) / int64(store.pageSize)) {
+	if ((int64(len(data)) + offset - int64(store.headerSize)) / store.pageSize) !=
+		((offset - int64(store.headerSize)) / store.pageSize) {
 		return ErrorDataExceedPageSize(len(data), store.pageSize, offset)
 	}
 
@@ -138,7 +172,7 @@ func (store *Pager) WriteAt(offset int64, data []byte) error {
 		}
 		fileSize := fileInfo.Size()
 
-		n := 1 + (offset+int64(len(data))-fileSize)/int64(store.pageSize)
+		n := 1 + (offset+int64(len(data))-fileSize)/store.pageSize
 
 		// If the requested offset is beyond the current file size, allocate a new batch
 		if offset+int64(len(data)) > fileSize {
@@ -150,9 +184,6 @@ func (store *Pager) WriteAt(offset int64, data []byte) error {
 	}
 
 	{
-		store.mu.Lock()
-		defer store.mu.Unlock()
-
 		// Write data at the given offset
 		n, err := store.file.WriteAt(data, offset)
 		if err != nil || (len(data)) != int(n) {
@@ -165,9 +196,6 @@ func (store *Pager) WriteAt(offset int64, data []byte) error {
 
 // ReadAt reads data from the specified offset in the file
 func (store *Pager) ReadAt(offset int64, size int32) ([]byte, error) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-
 	// Allocate a buffer to hold the data
 	data := make([]byte, size)
 
@@ -182,46 +210,57 @@ func (store *Pager) ReadAt(offset int64, size int32) ([]byte, error) {
 
 func (store *Pager) ReadPage(index int64) (*Page, error) {
 	store.mu.Lock()
-	defer store.mu.Unlock()
 
-	// Check if page is in cache
-	if page, exists := store.pageCache[index]; exists {
-		return page, nil
+	// Check if page exists in Ristretto cache
+	if cachedPage, found := store.cache.Get(index); found {
+		return cachedPage, nil
 	}
+
+	page := &Page{
+		Index: index,
+	}
+	// Store in Ristretto cache
+	store.cache.Set(index, page, store.pageSize) // Cost = size of page
+	store.cache.Wait()                           // Ensure writes are processed
+
+	store.mu.Unlock()
+
+	page.mu.Lock()
+	defer page.mu.Unlock()
 
 	data, err := store.ReadAt(index*store.pageSize, int32(store.pageSize))
 	if err != nil {
 		return nil, err
 	}
 
-	page := &Page{
-		Index: index,
-		Data:  data,
-		Dirty: false,
-	}
-	store.pageCache[index] = page
+	page.Data = data
 
 	return page, nil
 }
 
-// WritePage writes a page to disk if it's dirty.
-func (store *Pager) WritePage(index int64) error {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-
-	page := store.pageCache[index]
-
-	if !page.Dirty {
-		return nil // No need to write unchanged pages
-	}
-
-	offset := index * store.pageSize
-	_, err := store.file.WriteAt(page.Data, offset)
+// FlushPage writes a page to disk if it's dirty.
+func (store *Pager) FlushPage(index int64) error {
+	// Get page from cache
+	page, err := store.ReadPage(index)
 	if err != nil {
 		return err
 	}
 
-	page.Dirty = false // Mark as clean after writing
+	page.mu.Lock()
+	defer page.mu.Unlock()
+
+	if _, exist := store.dirtyPages[page.Index]; !exist {
+		return nil // No need to write unchanged pages
+	}
+
+	offset := index * store.pageSize
+	_, err = store.file.WriteAt(page.Data, offset)
+	if err != nil {
+		return err
+	}
+
+	delete(store.dirtyPages, index) // Mark page as clean
+
 	return nil
 }
 
@@ -230,11 +269,13 @@ func (store *Pager) Flush() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	for _, page := range store.pageCache {
-		if err := store.WritePage(page.Index); err != nil {
+	for index := range store.dirtyPages {
+		if err := store.FlushPage(index); err != nil {
 			return err
 		}
 	}
+	store.dirtyPages = make(map[int64]bool) // Reset dirty pages
+
 	return nil
 }
 
@@ -243,5 +284,8 @@ func (store *Pager) Close() error {
 	if err := store.Flush(); err != nil {
 		return err
 	}
+
+	store.cache.Close()
+
 	return store.file.Close()
 }

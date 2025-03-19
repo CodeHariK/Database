@@ -30,7 +30,7 @@ func dummyTree(t *testing.T, collectionName string, order uint8) (*Secretary, *B
 func TestSaveRoot(t *testing.T) {
 	_, tree := dummyTree(t, "TestSaveRoot", 10)
 
-	tree.root = &Node{
+	root := Node{
 		ParentOffset: 101,
 		NextOffset:   102,
 		PrevOffset:   103,
@@ -38,19 +38,14 @@ func TestSaveRoot(t *testing.T) {
 		Keys:       [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
 	}
+	tree.root = &root
 
 	err := tree.saveRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rootBytes, err := tree.indexPager.ReadAt(SECRETARY_HEADER_LENGTH, int32(tree.nodeSize))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var root Node
-	err = binstruct.Deserialize(rootBytes, &root)
+	err = tree.readRoot()
 	if err != nil {
 		t.Fatal(err)
 	}

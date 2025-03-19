@@ -45,11 +45,28 @@
 * [Loro Is Local-First State With CRDT](https://www.youtube.com/watch?v=NB7HRfyufLk)
 * [How Yjs works from the inside out](https://www.youtube.com/watch?v=0l5XgnQ6rB4)
 
-## HyperLogLog
+## Probablistic Data structures
 
 * [PapersWeLove : HyperLogLog](https://www.youtube.com/watch?v=y3fTaxA8PkU)
 * [A problem so hard even Google relies on Random Chance](https://www.youtube.com/watch?v=lJYufx0bfpw)
 * [The Algorithm with the Best Name - HyperLogLog Explained](https://www.youtube.com/watch?v=2PlrMCiUN_s)
+
+* [Count-min Sketch](https://www.youtube.com/watch?v=Okdjn7o4q8E)
+
+## Cache
+
+* [TinyLFU: A Highly Efficient Cache Admission Policy](https://dgraph.io/blog/refs/TinyLFU%20-%20A%20Highly%20Efficient%20Cache%20Admission%20Policy.pdf)
+
+* [Caffeine Design of a Modern Cache](https://docs.google.com/presentation/d/1NlDxyXsUG1qlVHMl4vsUUBQfAJ2c2NsFPNPr2qymIBs/edit#slide=id.p)
+* [Design of a Modern Cache](https://highscalability.com/design-of-a-modern-cache/)
+* [The State of Caching in Go](https://dgraph.io/blog/post/caching-in-go/)
+* [Introducing Ristretto: A High-Performance Go Cache](https://dgraph.io/blog/post/introducing-ristretto-high-perf-go-cache/)
+* [On Window TinyLFU](https://9vx.org/post/on-window-tinylfu/)
+
+* https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
+
+* https://github.com/hypermodeinc/ristretto
+* https://github.com/dgryski/go-tinylfu
 
 ## LSM-Tree
 
