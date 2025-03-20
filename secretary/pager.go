@@ -24,10 +24,41 @@ Responsibilities of a Pager:
 4.	Crash Recovery: Works with journaling or WAL (Write-Ahead Logging) to ensure data consistency.
 5.	Interacting with the Buffer Pool: The pager fetches pages into the buffer pool and evicts them when necessary.
 
+A buffer pool is a memory management component in a database system that caches frequently accessed data pages in RAM. It helps reduce disk I/O by keeping recently used or frequently needed data in memory, improving query performance.
+
+How It Works:
+	1.	When a query needs a page from the database, the database engine first checks the buffer pool.
+	2.	If the page is in memory (cache hit), it is retrieved quickly.
+	3.	If the page is not in memory (cache miss), it is read from disk and placed in the buffer pool.
+	4.	If the buffer pool is full, an existing page is evicted using a replacement policy (e.g., LRU - Least Recently Used).
+	5.	Modified pages (dirty pages) are periodically written back to disk (checkpointing or background syncing).
+
+Buffer Pool Advantages:
+	•	Minimizes disk I/O by keeping frequently accessed pages in RAM.
+	•	Speeds up query execution by reducing the need for slow disk reads.
+	•	Manages concurrency efficiently by allowing multiple transactions to work on cached pages.
 */
 
+func (tree *BTree) NewNodePager(fileType string, level uint8) (*NodePager, error) {
+	pager, err := NewPager[Node](tree, fileType, level)
+	if err != nil {
+		return nil, err
+	}
+
+	return &NodePager{pager}, nil
+}
+
+func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, error) {
+	pager, err := NewPager[Record](tree, fileType, level)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecordPager{pager}, nil
+}
+
 // Opens or creates a file and sets up the Pager
-func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
+func NewPager[T Pageable](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
 	pageSize := int64(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
 
 	headerSize := 0
@@ -69,7 +100,7 @@ func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
 		}
 	}
 
-	pager := &Pager{
+	pager := &Pager[T]{
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
@@ -79,11 +110,11 @@ func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
 
 	// Initialize Ristretto Cache
 	cache, err := ristretto.NewCache(
-		&ristretto.Config[int64, *Page]{
+		&ristretto.Config[int64, *Page[T]]{
 			NumCounters: 10000,   // Track frequency of ~10,000 items
 			MaxCost:     1 << 20, // 1MB total cache size
 			BufferItems: 64,      // Batch writes for performance
-			OnEvict: func(item *ristretto.Item[*Page]) {
+			OnEvict: func(item *ristretto.Item[*Page[T]]) {
 				delete(pager.dirtyPages, item.Value.Index) // Mark page as clean
 			},
 		})
@@ -97,7 +128,7 @@ func (tree *BTree) NewPager(fileType string, level uint8) (*Pager, error) {
 }
 
 // AllocatePage writes zeroed data in chunks of pageSize for alignment
-func (store *Pager) AllocatePage(index int32) error {
+func (store *Pager[T]) AllocatePage(index int32) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -123,7 +154,7 @@ func (store *Pager) AllocatePage(index int32) error {
 	return nil
 }
 
-func (store *Pager) NumPages(index int32) (int64, error) {
+func (store *Pager[T]) NumPages(index int32) (int64, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -158,7 +189,7 @@ func (store *Pager) NumPages(index int32) (int64, error) {
 **/
 // WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
-func (store *Pager) WriteAt(offset int64, data []byte) error {
+func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 	// Ensure data size does not exceed pageSize
 	if ((int64(len(data)) + offset - int64(store.headerSize)) / store.pageSize) !=
 		((offset - int64(store.headerSize)) / store.pageSize) {
@@ -195,7 +226,7 @@ func (store *Pager) WriteAt(offset int64, data []byte) error {
 }
 
 // ReadAt reads data from the specified offset in the file
-func (store *Pager) ReadAt(offset int64, size int32) ([]byte, error) {
+func (store *Pager[T]) ReadAt(offset int64, size int32) ([]byte, error) {
 	// Allocate a buffer to hold the data
 	data := make([]byte, size)
 
@@ -208,84 +239,84 @@ func (store *Pager) ReadAt(offset int64, size int32) ([]byte, error) {
 	return data, nil
 }
 
-func (store *Pager) ReadPage(index int64) (*Page, error) {
-	store.mu.Lock()
+// func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
+// 	store.mu.Lock()
 
-	// Check if page exists in Ristretto cache
-	if cachedPage, found := store.cache.Get(index); found {
-		return cachedPage, nil
-	}
+// 	// Check if page exists in Ristretto cache
+// 	if cachedPage, found := store.cache.Get(index); found {
+// 		return cachedPage, nil
+// 	}
 
-	page := &Page{
-		Index: index,
-	}
-	// Store in Ristretto cache
-	store.cache.Set(index, page, store.pageSize) // Cost = size of page
-	store.cache.Wait()                           // Ensure writes are processed
+// 	page := &Page[T]{
+// 		Index: index,
+// 	}
+// 	// Store in Ristretto cache
+// 	store.cache.Set(index, page, store.pageSize) // Cost = size of page
+// 	store.cache.Wait()                           // Ensure writes are processed
 
-	store.mu.Unlock()
+// 	store.mu.Unlock()
 
-	page.mu.Lock()
-	defer page.mu.Unlock()
+// 	page.mu.Lock()
+// 	defer page.mu.Unlock()
 
-	data, err := store.ReadAt(index*store.pageSize, int32(store.pageSize))
-	if err != nil {
-		return nil, err
-	}
+// 	data, err := store.ReadAt(index*store.pageSize, int32(store.pageSize))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	page.Data = data
+// 	page.Data = data
 
-	return page, nil
-}
+// 	return page, nil
+// }
 
-// FlushPage writes a page to disk if it's dirty.
-func (store *Pager) FlushPage(index int64) error {
-	// Get page from cache
-	page, err := store.ReadPage(index)
-	if err != nil {
-		return err
-	}
+// // SyncPage writes a page to disk if it's dirty.
+// func (store *Pager[T]) SyncPage(index int64) error {
+// 	// Get page from cache
+// 	page, err := store.ReadPage(index)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	page.mu.Lock()
-	defer page.mu.Unlock()
+// 	page.mu.Lock()
+// 	defer page.mu.Unlock()
 
-	if _, exist := store.dirtyPages[page.Index]; !exist {
-		return nil // No need to write unchanged pages
-	}
+// 	if _, exist := store.dirtyPages[page.Index]; !exist {
+// 		return nil // No need to write unchanged pages
+// 	}
 
-	offset := index * store.pageSize
-	_, err = store.file.WriteAt(page.Data, offset)
-	if err != nil {
-		return err
-	}
+// 	offset := index * store.pageSize
+// 	err = store.WriteAt(page.Data, offset)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	delete(store.dirtyPages, index) // Mark page as clean
+// 	delete(store.dirtyPages, index) // Mark page as clean
 
-	return nil
-}
+// 	return nil
+// }
 
-// Flush writes all dirty pages to disk.
-func (store *Pager) Flush() error {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+// // Sync writes all dirty pages to disk.
+// func (store *Pager[T]) Sync() error {
+// 	store.mu.Lock()
+// 	defer store.mu.Unlock()
 
-	for index := range store.dirtyPages {
-		if err := store.FlushPage(index); err != nil {
-			return err
-		}
-	}
-	store.dirtyPages = make(map[int64]bool) // Reset dirty pages
+// 	for index := range store.dirtyPages {
+// 		if err := store.SyncPage(index); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	store.dirtyPages = make(map[int64]bool) // Reset dirty pages
 
-	return nil
-}
+// 	return nil
+// }
 
-// Close flushes pages and closes the file.
-func (store *Pager) Close() error {
-	if err := store.Flush(); err != nil {
-		return err
-	}
+// // Close syncs pages and closes the file.
+// func (store *Pager[T]) Close() error {
+// 	if err := store.Sync(); err != nil {
+// 		return err
+// 	}
 
-	store.cache.Close()
+// 	store.cache.Close()
 
-	return store.file.Close()
-}
+// 	return store.file.Close()
+// }

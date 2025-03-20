@@ -1,32 +1,35 @@
 package secretary
 
-type RecordLocation struct {
-	offset     uint64
-	batchLevel uint8
-}
+import "github.com/codeharik/secretary/utils/binstruct"
+
+/*
+convert byte[] to records and node
+traverse entire tree and store it in disk
+Store entire node in same page
+Put nodeId,nodeoffset in pagemetadata for records
+Store continous node together
+Split page when node is added more than nodecapacity of page
+Put Page on different batchlevel when exceeding pagesize
+*/
 
 func (datalocation DataLocation) toRecordLocation() RecordLocation {
 	return RecordLocation{
-		offset:     uint64(datalocation) & RECORD_BATCH_OFFSET_AND,
 		batchLevel: uint8((uint64(datalocation) & RECORD_BATCH_LEVEL_AND) >> 56),
+		offset:     uint64(datalocation) & RECORD_BATCH_OFFSET_AND,
 	}
-}
-
-type NodeLocation struct {
-	batchOffset uint64
-	index       uint16
 }
 
 func (datalocation DataLocation) toNodeLocation() NodeLocation {
 	return NodeLocation{
-		batchOffset: uint64(datalocation) & NODE_BATCH_OFFSET_AND,
 		index:       uint16((uint64(datalocation) & NODE_INDEX_AND) >> 48),
+		batchOffset: uint64(datalocation) & NODE_BATCH_OFFSET_AND,
 	}
 }
 
-func (tree *BTree) dataLocationCheck(location DataLocation) error {
-	if location == -1 {
-		return ErrorInvalidDataLocation
-	}
-	return nil
+func (node Node) ToBytes() ([]byte, error) {
+	return binstruct.Serialize(node)
+}
+
+func (record Record) ToBytes() ([]byte, error) {
+	return binstruct.Serialize(record)
 }

@@ -71,8 +71,8 @@ order ^ n	Leaf
 type BTree struct {
 	CollectionName string `json:"collectionName" bin:"collectionName" max:"30"` // Max 30Char
 
-	indexPager   *Pager
-	recordPagers []*Pager
+	nodePager    *NodePager
+	recordPagers []*RecordPager
 
 	root *Node // Root node of the tree
 
@@ -120,16 +120,21 @@ type Node struct {
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
+// Pageable represents a page that must have GetIndex and SetIndex functions.
+type Pageable interface {
+	ToBytes() ([]byte, error)
+}
+
 // Page represents a single fixed-size page in memory.
-type Page struct {
+type Page[T Pageable] struct {
 	Index int64
-	Data  []byte
+	Data  []T
 
 	mu sync.Mutex // Per-page lock
 }
 
 // Pager manages reading and writing pages.
-type Pager struct {
+type Pager[T Pageable] struct {
 	file *os.File
 
 	headerSize int
@@ -137,26 +142,44 @@ type Pager struct {
 
 	pageSize int64 // Maximum batch size = 4GB
 
-	cache      *ristretto.Cache[int64, *Page] // In-memory cache
+	cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
 	dirtyPages map[int64]bool
 
 	mu sync.Mutex
 }
 
+type NodePager struct {
+	*Pager[Node]
+}
+
+type RecordPager struct {
+	*Pager[Record]
+}
+
 // Record
-// 56 bit Offset
 // 8  bit BatchLevel
+// 56 bit Offset
 //
 // Node
-// 48 bit BatchOffset (Max batch in file = 2^48)
 // 16 bit NodeIndex	   (Max nodes in batch = 2^16)
-type DataLocation int64
+// 48 bit BatchOffset  (Max batch in file  = 2^48)
+type DataLocation uint64
 
 type Record struct {
 	Offset DataLocation // (8 bytes)
 	Size   uint32       // (4 bytes) Max size = 4GB
 	Key    []byte       // (8 bytes or 16 bytes)
 	Value  []byte
+}
+
+type NodeLocation struct {
+	index       uint16
+	batchOffset uint64
+}
+
+type RecordLocation struct {
+	batchLevel uint8
+	offset     uint64
 }
 
 /**

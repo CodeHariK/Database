@@ -123,7 +123,6 @@ func TestBinaryStructSerialize(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		binaryData, err := Serialize(test.s)
 		if err != nil {
 			t.Fatal(err)
@@ -142,8 +141,84 @@ func TestBinaryStructSerialize(t *testing.T) {
 		var d testStruct
 		err = Deserialize(binaryData, &d)
 		if err != nil {
+			t.Fatal(t, err)
+		}
+
+		jsonH, err := MarshalJSON(test.s)
+		if err != nil {
 			t.Fatal(err)
 		}
+
+		jsonD, err := MarshalJSON(d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
+			utils.Log("nCompare Should be equal", test.equal,
+				"jsonH", len(jsonH), string(jsonH), "",
+				"jsonD", len(jsonD), string(jsonD), "",
+			)
+			t.Fatal()
+		}
+
+		hashS, _ := hash(test.s)
+		hashD, _ := hash(d)
+		eq, err := Compare(test.s, d)
+		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
+			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		}
+	}
+}
+
+type testStructArr struct {
+	Fint8  int8   `bin:"Fint8"`
+	Fbytes []byte `bin:"Fbytes"`
+}
+
+func TestBinaryStructArrSerialize(t *testing.T) {
+	tests := map[string]struct {
+		equal bool
+		s     []testStructArr
+	}{
+		"Struct Array": {
+			true,
+			[]testStructArr{
+				{
+					13,
+					[]byte{14, 15, 16, 17},
+				},
+				{
+					34,
+					[]byte{35, 36},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		binaryData, err := Serialize(test.s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		utils.Log("bytes", binaryData, "data", test.s)
+
+		{
+			var buf bytes.Buffer
+			enc := gob.NewEncoder(&buf)
+			err := enc.Encode(test.s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("gob", len(buf.Bytes()), "bin", len(binaryData), " bin/gob", 100*len(binaryData)/len(buf.Bytes()))
+		}
+
+		var d []testStructArr
+		err = Deserialize(binaryData, &d)
+		if err != nil {
+			t.Fatal(t, err)
+		}
+		utils.Log(d)
 
 		jsonH, err := MarshalJSON(test.s)
 		if err != nil {
