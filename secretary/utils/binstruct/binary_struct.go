@@ -62,7 +62,7 @@ func Serialize(s interface{}) ([]byte, error) {
 
 		return buf.Bytes(), nil
 	}
-	sortedFields, err := getSortedFields(typ)
+	sortedFields, err := getSortedFields(typ, true)
 	if err != nil {
 		return nil, err
 	}
@@ -70,11 +70,10 @@ func Serialize(s interface{}) ([]byte, error) {
 	for _, field := range sortedFields {
 
 		tag := field.Tag.Get("bin")
-
-		// Skip fields without bin tag
-		if tag == "" {
+		if tag == "" || tag == "-" {
 			continue
 		}
+
 		fieldValue, numBytes, maxStorableSize, maxSize, array_elem_len, err := extractFieldParameters(val, field)
 		if err != nil {
 			continue
@@ -317,7 +316,7 @@ func Deserialize(data []byte, s interface{}) error {
 		return nil
 	}
 
-	sortedFields, err := getSortedFields(typ)
+	sortedFields, err := getSortedFields(typ, true)
 	if err != nil {
 		return err
 	}
@@ -325,9 +324,10 @@ func Deserialize(data []byte, s interface{}) error {
 	for _, field := range sortedFields {
 
 		tag := field.Tag.Get("bin")
-		if tag == "" {
+		if tag == "" || tag == "-" {
 			continue
 		}
+
 		fieldValue, numBytes, _, _, array_elem_len, err := extractFieldParameters(val, field)
 		if err != nil {
 			continue
@@ -538,131 +538,6 @@ func Deserialize(data []byte, s interface{}) error {
 	return nil
 }
 
-// Compare compares two values field by field (Little-Endian style)
-func Compare(a, b interface{}) (bool, error) {
-	hashA, errA := hash(a)
-	hashB, errB := hash(b)
-	if errA != nil || errB != nil {
-		return false, errors.Join(errA, errB)
-	}
-	return hashA == hashB, nil
-
-	// valA := reflect.ValueOf(a)
-	// valB := reflect.ValueOf(b)
-
-	// // Ensure we're working with non-pointer values
-	// if valA.Kind() == reflect.Ptr {
-	// 	valA = valA.Elem()
-	// }
-	// if valB.Kind() == reflect.Ptr {
-	// 	valB = valB.Elem()
-	// }
-
-	// // Check if both are slices
-	// if valA.Kind() == reflect.Slice && valB.Kind() == reflect.Slice {
-	// 	// Ensure both slices have the same length
-	// 	if valA.Len() != valB.Len() {
-	// 		return false, nil
-	// 	}
-
-	// 	// Compare each element in the slices
-	// 	for i := 0; i < valA.Len(); i++ {
-	// 		elemA := valA.Index(i).Interface()
-	// 		elemB := valB.Index(i).Interface()
-
-	// 		// Recursively compare struct elements
-	// 		equal, err := Compare(elemA, elemB)
-	// 		if err != nil || !equal {
-	// 			return false, err
-	// 		}
-	// 	}
-	// 	return true, nil
-	// }
-
-	// // Ensure both values are structs
-	// if valA.Kind() != reflect.Struct || valB.Kind() != reflect.Struct {
-	// 	return false, fmt.Errorf("CompareStruct: expected struct or slice of structs, got %s", valA.Kind())
-	// }
-
-	// // Ensure both structs are of the same type
-	// if valA.Type() != valB.Type() {
-	// 	return false, fmt.Errorf("CompareStruct: mismatched types")
-	// }
-
-	// // Get sorted fields
-	// typ := valA.Type()
-	// sortedFields, err := getSortedFields(typ)
-	// if err != nil {
-	// 	return false, err
-	// }
-
-	// // Compare each field
-	// for i := range sortedFields {
-
-	// 	fieldA := valA.Field(i)
-	// 	fieldB := valB.Field(i)
-
-	// 	tag := typ.Field(i).Tag.Get("bin")
-
-	// 	// Skip fields without bin tag
-	// 	if tag == "" {
-	// 		continue
-	// 	}
-
-	// 	// Check if the field types match
-	// 	if fieldA.Kind() != fieldB.Kind() {
-	// 		return false, nil
-	// 	}
-
-	// 	// Compare values based on field type
-	// 	switch fieldA.Kind() {
-	// 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-	// 		if fieldA.Int() != fieldB.Int() {
-	// 			return false, nil
-	// 		}
-	// 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-	// 		if fieldA.Uint() != fieldB.Uint() {
-	// 			return false, nil
-	// 		}
-	// 	case reflect.Float32, reflect.Float64:
-	// 		if fieldA.Float() != fieldB.Float() {
-	// 			return false, nil
-	// 		}
-	// 	case reflect.String:
-	// 		if fieldA.String() != fieldB.String() {
-	// 			return false, nil
-	// 		}
-	// 	case reflect.Struct:
-	// 		// Recursively compare nested structs
-	// 		equal, err := Compare(fieldA.Interface(), fieldB.Interface())
-	// 		if err != nil || !equal {
-	// 			return false, err
-	// 		}
-	// 	case reflect.Slice:
-	// 		// Ensure both slices have the same length
-	// 		if fieldA.Len() != fieldB.Len() {
-	// 			return false, nil
-	// 		}
-
-	// 		// Compare slices element by element
-	// 		for j := 0; j < fieldA.Len(); j++ {
-	// 			elemA := fieldA.Index(j).Interface()
-	// 			elemB := fieldB.Index(j).Interface()
-
-	// 			// Compare struct slices recursively
-	// 			if !reflect.DeepEqual(elemA, elemB) {
-	// 				return false, nil
-	// 			}
-	// 		}
-	// 	default:
-	// 		// If a field type is unsupported, return an error
-	// 		return false, fmt.Errorf("unsupported type: %s", fieldA.Kind())
-	// 	}
-	// }
-
-	// return true, nil
-}
-
 func MarshalJSON(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Ptr {
@@ -703,18 +578,25 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 	typ := val.Type()
 	jsonMap := make(map[string]interface{})
 
-	sortedFields, err := getSortedFields(typ)
+	sortedFields, err := getSortedFields(typ, false)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, field := range sortedFields {
+	for _, field := range sortedFields {
+
 		tag := field.Tag.Get("bin")
 		if tag == "" || tag == "-" {
 			continue
 		}
 
-		fieldValue := val.Field(i)
+		fmt.Println(tag)
+
+		fieldValue, _, _, _, _, err := extractFieldParameters(val, field)
+		if err != nil {
+			continue
+		}
+
 		switch fieldValue.Kind() {
 		case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			jsonMap[tag] = fieldValue.Int()
@@ -765,6 +647,15 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 	}
 
 	return json.Marshal(jsonMap)
+}
+
+func Compare(a, b interface{}) (bool, error) {
+	hashA, errA := hash(a)
+	hashB, errB := hash(b)
+	if errA != nil || errB != nil {
+		return false, errors.Join(errA, errB)
+	}
+	return hashA == hashB, nil
 }
 
 func getArrayElemLenFromField(field reflect.StructField) int {
@@ -881,7 +772,7 @@ func reflectKindByteLen(elemBaseKind reflect.Kind) int {
 	}
 }
 
-func getSortedFields(typ reflect.Type) ([]reflect.StructField, error) {
+func getSortedFields(typ reflect.Type, doSort bool) ([]reflect.StructField, error) {
 	// If it's a slice, get the element type
 	if typ.Kind() == reflect.Slice {
 		typ = typ.Elem() // Extract struct type from slice
@@ -899,12 +790,14 @@ func getSortedFields(typ reflect.Type) ([]reflect.StructField, error) {
 		fields[i] = typ.Field(i)
 	}
 
-	// Sort fields by "bin" tag value (convert to int for correct order)
-	sort.Slice(fields, func(i, j int) bool {
-		tagI := fields[i].Tag.Get("bin")
-		tagJ := fields[j].Tag.Get("bin")
-		return tagI < tagJ
-	})
+	if doSort {
+		// Sort fields by "bin" tag value (convert to int for correct order)
+		sort.Slice(fields, func(i, j int) bool {
+			tagI := fields[i].Tag.Get("bin")
+			tagJ := fields[j].Tag.Get("bin")
+			return tagI < tagJ
+		})
+	}
 
 	return fields, nil
 }
