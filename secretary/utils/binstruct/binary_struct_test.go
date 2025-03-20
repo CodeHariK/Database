@@ -155,7 +155,7 @@ func TestBinaryStructSerialize(t *testing.T) {
 		}
 
 		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
-			utils.Log("nCompare Should be equal", test.equal,
+			utils.Log("Compare Should be equal", test.equal,
 				"jsonH", len(jsonH), string(jsonH), "",
 				"jsonD", len(jsonD), string(jsonD), "",
 			)
@@ -201,7 +201,6 @@ func TestBinaryStructArrSerialize(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		utils.Log("bytes", binaryData, "data", test.s)
 
 		{
 			var buf bytes.Buffer
@@ -218,7 +217,6 @@ func TestBinaryStructArrSerialize(t *testing.T) {
 		if err != nil {
 			t.Fatal(t, err)
 		}
-		utils.Log(d)
 
 		jsonH, err := MarshalJSON(test.s)
 		if err != nil {
@@ -231,7 +229,80 @@ func TestBinaryStructArrSerialize(t *testing.T) {
 		}
 
 		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
-			utils.Log("nCompare Should be equal", test.equal,
+			utils.Log("Compare Should be equal", test.equal,
+				"jsonH", len(jsonH), string(jsonH), "",
+				"jsonD", len(jsonD), string(jsonD), "",
+			)
+			t.Fatal()
+		}
+
+		hashS, _ := hash(test.s)
+		hashD, _ := hash(d)
+		eq, err := Compare(test.s, d)
+		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
+			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		}
+	}
+}
+
+type testStructStruct struct {
+	Fint8  int8          `bin:"Fint8"`
+	FInt32 []int32       `bin:"FInt32"`
+	Stc    testStructArr `bin:"Stc"`
+}
+
+func TestBinaryStructStructSerialize(t *testing.T) {
+	tests := map[string]struct {
+		equal bool
+		s     testStructStruct
+	}{
+		"Struct Struct": {
+			true,
+			testStructStruct{
+				3,
+				[]int32{1, 2},
+				testStructArr{
+					14,
+					[]byte{25, 27},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		binaryData, err := Serialize(test.s)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		{
+			var buf bytes.Buffer
+			enc := gob.NewEncoder(&buf)
+			err := enc.Encode(test.s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fmt.Println("gob", len(buf.Bytes()), "bin", len(binaryData), " bin/gob", 100*len(binaryData)/len(buf.Bytes()))
+		}
+
+		var d testStructStruct
+		err = Deserialize(binaryData, &d)
+		if err != nil {
+			t.Fatal(t, err)
+		}
+
+		jsonH, err := MarshalJSON(test.s)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		jsonD, err := MarshalJSON(d)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if test.equal != (bytes.Compare(jsonH, jsonD) == 0) {
+			utils.Log("Compare Should be equal", test.equal,
 				"jsonH", len(jsonH), string(jsonH), "",
 				"jsonD", len(jsonD), string(jsonD), "",
 			)

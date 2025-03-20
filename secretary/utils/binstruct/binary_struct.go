@@ -13,8 +13,6 @@ import (
 	"math"
 	"reflect"
 	"sort"
-
-	"github.com/codeharik/secretary/utils"
 )
 
 // Serialize struct to binary []byte (Little-Endian)
@@ -112,6 +110,26 @@ func Serialize(s interface{}) ([]byte, error) {
 			}
 			writeByteLen(buf, numBytes, len(str))
 			buf.WriteString(str) // Write string directly
+
+		case reflect.Struct:
+			// Recursively serialize the nested struct
+			structBytes, err := Serialize(fieldValue.Interface())
+			if err != nil {
+				continue
+			}
+
+			// Write struct size before the actual struct data
+			structSize := int32(len(structBytes))
+			if err := binary.Write(buf, binary.LittleEndian, structSize); err != nil {
+				continue
+			}
+
+			// Write serialized struct to buffer
+			_, err = buf.Write(structBytes)
+			if err != nil {
+				continue
+			}
+
 		case reflect.Slice:
 			elemKind := fieldValue.Type().Elem().Kind()
 			elemType := fieldValue.Type().Elem()
@@ -229,6 +247,7 @@ func Serialize(s interface{}) ([]byte, error) {
 				// Write entire slice in one go
 				binary.Write(buf, binary.LittleEndian, truncatedSlice)
 			}
+
 		default:
 			return nil, fmt.Errorf("unsupported type: %s", field.Type.Kind())
 		}
@@ -282,11 +301,6 @@ func Deserialize(data []byte, s interface{}) error {
 
 			// Extract correct struct data using offset
 			structData := data[offset : offset+int(structSize)]
-
-			utils.Log("index", i, " size", structSize,
-				" offset", offset,
-				" offsetEnd", offset+int(structSize),
-				" data", structData)
 
 			offset += int(structSize) // Advance offset for next struct
 
@@ -358,15 +372,45 @@ func Deserialize(data []byte, s interface{}) error {
 			binary.Read(buf, binary.LittleEndian, &num)
 			fieldValue.SetFloat(num)
 		case reflect.String:
-			length := readByteLen(buf, numBytes)
+			length, err := readByteLen(buf, numBytes)
+			if err != nil {
+				continue
+			}
 			strBytes := make([]byte, length)
 			buf.Read(strBytes)
 			fieldValue.SetString(string(strBytes))
+
+		case reflect.Struct:
+			// Read struct size first
+			var structSize int32
+			if err := binary.Read(buf, binary.LittleEndian, &structSize); err != nil {
+				continue
+			}
+
+			// Ensure structSize is valid
+			if structSize <= 0 || structSize > int32(buf.Len()) {
+				continue
+			}
+
+			// Read the struct bytes
+			structBytes := make([]byte, structSize)
+			if _, err := buf.Read(structBytes); err != nil {
+				continue
+			}
+
+			// Recursively deserialize the nested struct
+			if err := Deserialize(structBytes, fieldValue.Addr().Interface()); err != nil {
+				continue
+			}
+
 		case reflect.Slice:
 			elemKind := fieldValue.Type().Elem().Kind()
 			elemType := fieldValue.Type().Elem()
 
-			length := readByteLen(buf, numBytes)
+			length, err := readByteLen(buf, numBytes)
+			if err != nil {
+				continue
+			}
 
 			// if length == 0 { // Ensure nil is restored instead of empty slice
 			// 	fieldValue.Set(reflect.Zero(fieldValue.Type()))
@@ -390,7 +434,11 @@ func Deserialize(data []byte, s interface{}) error {
 					if array_elem_len > 0 {
 						itemBytes = make([]byte, array_elem_len*elemLen)
 					} else {
-						itemLength := readByteLen(buf, numBytes) * elemLen
+						itemLength, err := readByteLen(buf, numBytes)
+						if err != nil {
+							continue
+						}
+						itemLength *= elemLen
 						itemBytes = make([]byte, itemLength)
 					}
 
@@ -782,41 +830,42 @@ func extractFieldParameters(val reflect.Value, field reflect.StructField) (refle
 	return fieldValue, numBytes, maxSize, size, arrayElemLen, nil
 }
 
-func writeByteLen(buf *bytes.Buffer, numByte int, length int) {
+func writeByteLen(buf *bytes.Buffer, numByte int, length int) error {
 	switch numByte {
 	case 2:
-		binary.Write(buf, binary.LittleEndian, uint16(length))
+		return binary.Write(buf, binary.LittleEndian, uint16(length))
 	case 3:
-		binary.Write(buf, binary.LittleEndian, uint32(length))
+		return binary.Write(buf, binary.LittleEndian, uint32(length))
 	case 4:
-		binary.Write(buf, binary.LittleEndian, uint64(length))
+		return binary.Write(buf, binary.LittleEndian, uint64(length))
 	default:
-		binary.Write(buf, binary.LittleEndian, uint8(length))
+		return binary.Write(buf, binary.LittleEndian, uint8(length))
 	}
 }
 
-func readByteLen(buf *bytes.Reader, numByte int) int {
+func readByteLen(buf *bytes.Reader, numByte int) (int, error) {
 	var length int
+	var err error
 	switch numByte {
 	case 2:
 		var temp uint16
-		binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, binary.LittleEndian, &temp)
 		length = int(temp)
 	case 3:
 		var temp uint32
-		binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, binary.LittleEndian, &temp)
 		length = int(temp)
 	case 4:
 		var temp uint64
-		binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, binary.LittleEndian, &temp)
 		length = int(temp)
 	default:
 		var temp uint8
-		binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, binary.LittleEndian, &temp)
 		length = int(temp) // Default to 8-bit length
 	}
 
-	return length
+	return length, err
 }
 
 func reflectKindByteLen(elemBaseKind reflect.Kind) int {
