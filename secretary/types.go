@@ -120,21 +120,21 @@ type Node struct {
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
-// Pageable represents a page that must have GetIndex and SetIndex functions.
-type Pageable interface {
+type PageBox[T any] interface {
 	ToBytes() ([]byte, error)
+	FromBytes([]byte) error
 }
 
 // Page represents a single fixed-size page in memory.
-type Page[T Pageable] struct {
+type Page[T any] struct {
 	Index int64
-	Data  []T
+	Data  T
 
 	mu sync.Mutex // Per-page lock
 }
 
 // Pager manages reading and writing pages.
-type Pager[T Pageable] struct {
+type Pager[T PageBox[E], E any] struct {
 	file *os.File
 
 	headerSize int
@@ -148,12 +148,17 @@ type Pager[T Pageable] struct {
 	mu sync.Mutex
 }
 
+type (
+	NodeBox   []Node
+	RecordBox []Record
+)
+
 type NodePager struct {
-	*Pager[Node]
+	*Pager[*NodeBox, Node]
 }
 
 type RecordPager struct {
-	*Pager[Record]
+	*Pager[*RecordBox, Record]
 }
 
 // Record

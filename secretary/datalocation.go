@@ -1,6 +1,6 @@
 package secretary
 
-import "github.com/codeharik/secretary/utils/binstruct"
+import "encoding/json"
 
 /*
 convert byte[] to records and node
@@ -26,10 +26,52 @@ func (datalocation DataLocation) toNodeLocation() NodeLocation {
 	}
 }
 
-func (node Node) ToBytes() ([]byte, error) {
-	return binstruct.Serialize(node)
+// func (nodes NodeBox) ToBytes() ([]byte, error) {
+// 	return binstruct.Serialize(nodes)
+// }
+
+// func (records RecordBox) ToBytes() ([]byte, error) {
+// 	return binstruct.Serialize(records)
+// }
+
+// func (nodes NodeBox) FromBytes(data []byte) error {
+// 	err := binstruct.Deserialize(data, nodes)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+// func (records RecordBox) FromBytes(data []byte) error {
+// 	err := binstruct.Deserialize(data, records)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (n *NodeBox) ToBytes() ([]byte, error) {
+	// Implement serialization logic
+	return json.Marshal(n)
 }
 
-func (record Record) ToBytes() ([]byte, error) {
-	return binstruct.Serialize(record)
+func (n *NodeBox) FromBytes(data []byte) error {
+	// Implement deserialization logic
+	var nodes []Node
+	err := json.Unmarshal(data, &nodes)
+	*n = nodes
+	return err
+}
+
+func (r *RecordBox) ToBytes() ([]byte, error) {
+	// Implement serialization logic
+	return json.Marshal(r)
+}
+
+func (r *RecordBox) FromBytes(data []byte) error {
+	// Implement deserialization logic
+	var records []Record
+	err := json.Unmarshal(data, &records)
+	*r = records
+	return err
 }

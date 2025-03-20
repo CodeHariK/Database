@@ -3,7 +3,6 @@ package fbptree
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -355,7 +354,7 @@ func TestReadAndWrite(t *testing.T) {
 }
 
 func TestReadNonExistentPageError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -375,7 +374,7 @@ func TestReadNonExistentPageError(t *testing.T) {
 }
 
 func TestReadFreePageError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -404,7 +403,7 @@ func TestReadFreePageError(t *testing.T) {
 }
 
 func TestCreatedWithDifferentPageSize(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -424,7 +423,7 @@ func TestCreatedWithDifferentPageSize(t *testing.T) {
 }
 
 func TestReadPageInTruncatedFileError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -478,7 +477,7 @@ func TestReadPageInTruncatedFileError(t *testing.T) {
 }
 
 func TestFreeAlreadyFreePageError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -508,7 +507,7 @@ func TestFreeAlreadyFreePageError(t *testing.T) {
 }
 
 func TestWriteToFreePageError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -544,7 +543,7 @@ func TestWriteToFreePageError(t *testing.T) {
 }
 
 func TestOpenPagerReturnsAnError(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -581,7 +580,7 @@ func TestErrorOnStat(t *testing.T) {
 }
 
 func TestCompactFreesAllPagesAndFreePageListItself(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
@@ -654,7 +653,7 @@ func TestCompactFreesAllPagesAndFreePageListItself(t *testing.T) {
 }
 
 func TestCompactReadWriteAfterCompact(t *testing.T) {
-	dbDir, _ := ioutil.TempDir(os.TempDir(), "example")
+	dbDir, _ := os.MkdirTemp(os.TempDir(), "example")
 	defer func() {
 		if err := os.RemoveAll(dbDir); err != nil {
 			panic(fmt.Errorf("failed to remove %s: %w", dbDir, err))
