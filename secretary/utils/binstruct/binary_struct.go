@@ -590,8 +590,6 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 			continue
 		}
 
-		fmt.Println(tag)
-
 		fieldValue, _, _, _, _, err := extractFieldParameters(val, field)
 		if err != nil {
 			continue

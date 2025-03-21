@@ -69,6 +69,8 @@ order ^ n	Leaf
 ---------------------
 */
 type BTree struct {
+	mu sync.Mutex // Global Lock for root changes
+
 	CollectionName string `json:"collectionName" bin:"collectionName" max:"30"` // Max 30Char
 
 	nodePager    *NodePager
@@ -104,6 +106,9 @@ type BTree struct {
 type Node struct {
 	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
 
+	Version uint64       `bin:"Version"` // ✅ OCC Version Number
+	mu      sync.RWMutex // 🚦 Latch for Synchronization
+
 	parent   *Node
 	next     *Node
 	prev     *Node
@@ -120,7 +125,7 @@ type Node struct {
 	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
-type PageBox[T any] interface {
+type PageBox interface {
 	ToBytes() ([]byte, error)
 	FromBytes([]byte) error
 }
@@ -134,7 +139,7 @@ type Page[T any] struct {
 }
 
 // Pager manages reading and writing pages.
-type Pager[T PageBox[E], E any] struct {
+type Pager[T PageBox] struct {
 	file *os.File
 
 	headerSize int
@@ -148,17 +153,12 @@ type Pager[T PageBox[E], E any] struct {
 	mu sync.Mutex
 }
 
-type (
-	NodeBox   []Node
-	RecordBox []Record
-)
-
 type NodePager struct {
-	*Pager[*NodeBox, Node]
+	*Pager[*Node]
 }
 
 type RecordPager struct {
-	*Pager[*RecordBox, Record]
+	*Pager[*Record]
 }
 
 // Record

@@ -813,8 +813,6 @@ func (tree *BTree) fixInternalNodeChildLinks(node *Node) {
 			}
 			child.parent = node
 		}
-
-		utils.Log(tree.NodeToJSON(node, 2))
 	}
 }
 

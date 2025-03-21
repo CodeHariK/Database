@@ -80,3 +80,21 @@ https://github.com/skyzh/mini-lsm
 ## OLAP
 
 * https://github.com/risinglightdb/risinglight
+
+## Concurrency
+
+* [Golang concurrency - Locks, Lock Free and everything in between](https://www.youtube.com/watch?v=gNQ6j2Y2HFs)
+* [Optimistic Locking clearly explained](https://www.youtube.com/watch?v=d41JuPT_Wls)
+* [Understanding the Disruptor](https://www.youtube.com/watch?v=DCdGlxBbKU4)
+
+* https://en.wikipedia.org/wiki/Actor_model
+
+* [Code : Ring Buffer](https://www.youtube.com/watch?v=KyreJSKEagg)
+
+* [Producer/Consumer, The RingBuffer and The Log](https://www.youtube.com/watch?v=uqSeuGQhnf0)
+
+* [Disruptor](https://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)
+
+## Compress
+
+* [Data Encodings used by Columnar and Time series databases](https://www.youtube.com/watch?v=wUO2snhiosk)
