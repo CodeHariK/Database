@@ -90,10 +90,13 @@ https://github.com/skyzh/mini-lsm
 * https://en.wikipedia.org/wiki/Actor_model
 
 * [Code : Ring Buffer](https://www.youtube.com/watch?v=KyreJSKEagg)
+* https://kmdreko.github.io/posts/20191003/a-simple-lock-free-ring-buffer/
 
 * [Producer/Consumer, The RingBuffer and The Log](https://www.youtube.com/watch?v=uqSeuGQhnf0)
 
 * [Disruptor](https://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)
+* https://github.com/LMAX-Exchange/disruptor/wiki/Blogs-And-Articles
+
 
 ## Compress
 

@@ -7,7 +7,7 @@
 * Store continous node together
 * Split page when node is added more than nodecapacity of page
 * Put Page on different batchlevel when exceeding pagesize
-
+* SequentializeFile : After every few days, read entire file and sequentialize node properly
 
 func (node *BTreeNode) Search(key int) (bool, uint64) {
 	node.mu.RLock()
