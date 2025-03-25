@@ -2,7 +2,8 @@ export const canvasSection = () => document.getElementById("canvas-section") as 
 
 export const getInput = document.getElementById("get-id") as HTMLInputElement
 export const deleteInput = document.getElementById("delete-id") as HTMLInputElement
-export const setInput = document.getElementById("set-value") as HTMLInputElement
+export const setKey = document.getElementById("set-key") as HTMLInputElement
+export const setValue = document.getElementById("set-value") as HTMLInputElement
 
 export const runTestBtn = document.getElementById("run-test") as HTMLButtonElement;
 export const prevTreeBtn = document.getElementById("prev-tree") as HTMLButtonElement;

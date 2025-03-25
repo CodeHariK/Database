@@ -13,7 +13,7 @@ func TestBTreeSerialization(t *testing.T) {
 	_, originalTree := dummyTree(t, "TestBTreeSerialization", 10)
 
 	// Serialize the tree
-	serializedData, err := binstruct.Serialize(*originalTree)
+	serializedData, err := binstruct.Serialize(originalTree)
 	// serializedData, err := originalTree.Serialize()
 	if err != nil {
 		t.Fatalf("Serialization failed: %v", err)
@@ -29,7 +29,7 @@ func TestBTreeSerialization(t *testing.T) {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
 
-	eq, err := binstruct.Compare(*originalTree, deserializedTree)
+	eq, err := binstruct.Compare(originalTree, &deserializedTree)
 	if !eq || err != nil {
 		t.Fatalf("\nShould be Equal\n")
 	}
@@ -47,6 +47,7 @@ func TestBtreeInvalid(t *testing.T) {
 		1024,
 		125,
 		10,
+		1000,
 	)
 	_, invalidIncrementErr := s.NewBTree(
 		"Tes",
@@ -55,6 +56,7 @@ func TestBtreeInvalid(t *testing.T) {
 		1024,
 		225,
 		10,
+		1000,
 	)
 	_, invalidOrderErr := s.NewBTree(
 		"Tes",
@@ -63,6 +65,7 @@ func TestBtreeInvalid(t *testing.T) {
 		1024,
 		225,
 		10,
+		1000,
 	)
 	if invalidNameErr == nil || invalidIncrementErr == nil || invalidOrderErr == nil {
 		t.Fatal(invalidNameErr, invalidIncrementErr, invalidOrderErr)
@@ -82,12 +85,12 @@ func TestSaveReadHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	eq, err := binstruct.Compare(*tree, *deserializedTree)
+	eq, err := binstruct.Compare(tree, deserializedTree)
 	if !eq || err != nil {
 		t.Fatalf("\nShould be Equal\n")
 	}
 
-	tJson, tErr := binstruct.MarshalJSON(*tree)
+	tJson, tErr := binstruct.MarshalJSON(tree)
 	dJson, dErr := binstruct.MarshalJSON(deserializedTree)
 	if dErr != nil || tErr != nil || bytes.Compare(tJson, dJson) != 0 {
 		t.Log("\n", string(tJson), "\n", string(dJson))
@@ -101,7 +104,7 @@ func TestBTreeHeight(t *testing.T) {
 
 	// Set more keys to increase height
 	for i := 0; i < 9; i++ {
-		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 		err := tree.Set(key, key)
 		if err != nil {
 			t.Errorf("Set failed: %s", err)
@@ -112,7 +115,7 @@ func TestBTreeHeight(t *testing.T) {
 		t.Errorf("Expected height %d", tree.Height())
 	}
 
-	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err := tree.Set(key, key)
 	if err != nil {
 		t.Errorf("Set failed: %s", err)

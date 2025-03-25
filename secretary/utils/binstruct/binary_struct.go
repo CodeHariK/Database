@@ -23,11 +23,11 @@ import (
 func Serialize(s interface{}) ([]byte, error) {
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Ptr {
-		return nil, errors.New("SerializeBinary: expected a value not pointer")
+		val = val.Elem() // Dereference pointer
 	}
 
+	typ := val.Type()
 	buf := new(bytes.Buffer)
-	typ := reflect.TypeOf(s)
 
 	// If `s` is a slice of structs, serialize the slice length first
 	if typ.Kind() == reflect.Slice {
@@ -62,6 +62,7 @@ func Serialize(s interface{}) ([]byte, error) {
 
 		return buf.Bytes(), nil
 	}
+
 	sortedFields, err := getSortedFields(typ, true)
 	if err != nil {
 		return nil, err
@@ -257,13 +258,12 @@ func Serialize(s interface{}) ([]byte, error) {
 // Deserialize binary []byte into struct (Little-Endian)
 func Deserialize(data []byte, s interface{}) error {
 	val := reflect.ValueOf(s)
-	if val.Kind() != reflect.Ptr {
-		return errors.New("DeserializeBinary: expected a pointer")
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem() // Dereference pointer
 	}
 
-	buf := bytes.NewReader(data)
-	val = val.Elem()
 	typ := val.Type()
+	buf := bytes.NewReader(data)
 
 	// Handle slices of structs
 	if typ.Kind() == reflect.Slice {
@@ -544,8 +544,11 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 		val = val.Elem() // Dereference pointer
 	}
 
-	if val.Kind() == reflect.Slice {
-		elemType := val.Type().Elem()
+	typ := val.Type()
+	jsonMap := make(map[string]interface{})
+
+	if typ.Kind() == reflect.Slice {
+		elemType := typ.Elem()
 		if elemType.Kind() != reflect.Struct {
 			return nil, errors.New("MarshalJSON: expected a struct or slice of structs")
 		}
@@ -569,14 +572,6 @@ func MarshalJSON(s interface{}) ([]byte, error) {
 
 		return json.Marshal(jsonArray)
 	}
-
-	// Ensure input is a struct
-	if val.Kind() != reflect.Struct {
-		return nil, errors.New("MarshalJSON: expected a struct or slice of structs")
-	}
-
-	typ := val.Type()
-	jsonMap := make(map[string]interface{})
 
 	sortedFields, err := getSortedFields(typ, false)
 	if err != nil {

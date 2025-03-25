@@ -18,6 +18,7 @@ func TestSecretary(t *testing.T) {
 		1024,
 		125,
 		10,
+		1000,
 	)
 
 	imagesTree, imagesErr := s.NewBTree(
@@ -27,13 +28,17 @@ func TestSecretary(t *testing.T) {
 		1024*1024,
 		125,
 		10,
+		1000,
 	)
 	if userErr != nil || imagesErr != nil {
 		t.Fatal(userErr, imagesErr)
 	}
 
-	usersTree.SaveHeader()
-	imagesTree.SaveHeader()
+	userErr = usersTree.SaveHeader()
+	imagesErr = imagesTree.SaveHeader()
+	if userErr != nil || imagesErr != nil {
+		t.Fatal(userErr, imagesErr)
+	}
 
 	newSecretary, err := New()
 	if err != nil {
@@ -49,13 +54,13 @@ func TestSecretary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	eq, err := binstruct.Compare(*usersTree, *users)
+	eq, err := binstruct.Compare(usersTree, users)
 	if !eq || err != nil {
-		t.Fatalf("Should be equal %+v : %+v", *usersTree, *users)
+		t.Fatalf("Should be equal %+v : %+v", usersTree, users)
 	}
-	eq, err = binstruct.Compare(*imagesTree, *images)
+	eq, err = binstruct.Compare(imagesTree, images)
 	if !eq || err != nil {
-		t.Fatalf("Should be equal %+v : %+v", *imagesTree, *images)
+		t.Fatalf("Should be equal %+v : %+v", imagesTree, images)
 	}
 
 	_, err = newSecretary.Tree("unknown")

@@ -2,7 +2,7 @@ import { ui } from "./main";
 
 import { RedrawTree } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setInput, treeForm } from "./dom";
+import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setKey, setValue, treeForm } from "./dom";
 
 let TestCounter = 0
 let Tests = [
@@ -140,11 +140,12 @@ export function fetchAllBTree() {
     )
 }
 
-function setRecord(value: string | null) {
+function setRecord() {
     if (!ui.getTree()) return
 
-    value = value ?? setInput.value;
-    const payload = { value };
+    let key = setKey.value;
+    let value = setValue.value;
+    const payload = { key, value };
     makeRequest(
         `${ui.url}/set/${ui.currentTreeDef!.collectionName}`,
         {
@@ -270,7 +271,7 @@ export function setupCollectionRequest() {
         });
 
         runTestBtn.addEventListener("click", runTest);
-        setBtn.addEventListener("click", () => setRecord(null));
+        setBtn.addEventListener("click", () => setRecord());
         deleteBtn.addEventListener("click", () => deleteRecord(null));
         getBtn.addEventListener("click", () => getRecord(null));
 

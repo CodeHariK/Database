@@ -10,7 +10,7 @@ func TestStringsToArray(t *testing.T) {
 	var sortedKeys [][]byte
 
 	for r := 0; r < 26; r++ {
-		key := []byte(GenerateSeqString(&keySeq, 16))
+		key := []byte(GenerateSeqString(&keySeq, 16, 5))
 		sortedKeys = append(sortedKeys, key)
 	}
 

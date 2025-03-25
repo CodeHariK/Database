@@ -17,6 +17,7 @@ func (s *Secretary) NewBTree(
 	batchBaseSize uint32,
 	batchIncrement uint8,
 	batchLength uint8,
+	compactionBatchSize uint32,
 ) (*BTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
 		return nil, ErrorInvalidOrder
@@ -51,6 +52,8 @@ func (s *Secretary) NewBTree(
 		nodeSize: uint32(nodeSize),
 
 		minNumKeys: uint32(int(order)-1) / 2,
+
+		CompactionBatchSize: compactionBatchSize,
 	}
 
 	nodePager, err := tree.NewNodePager("index", 0)
@@ -87,29 +90,20 @@ func (tree *BTree) close() error {
 	return errors.Join(errs...)
 }
 
-func (tree *BTree) createHeader() ([]byte, error) {
-	header64, err := binstruct.Serialize(*tree)
-	if err != nil {
-		return nil, err
-	}
-
-	header64 = append([]byte(SECRETARY), header64...)
-
-	if len(header64) < SECRETARY_HEADER_LENGTH {
-		// header = append(header, make([]byte, rootHeaderSize-len(header))...)
-		header64 = append(header64, utils.MakeByteArray(SECRETARY_HEADER_LENGTH-len(header64), '-')...)
-	}
-
-	return header64, nil
-}
-
 func (tree *BTree) SaveHeader() error {
-	header, err := tree.createHeader()
+	headerBytes, err := binstruct.Serialize(tree)
 	if err != nil {
 		return err
 	}
 
-	return tree.nodePager.WriteAt(header, 0)
+	headerBytes = append([]byte(SECRETARY), headerBytes...)
+
+	if len(headerBytes) < SECRETARY_HEADER_LENGTH {
+		// header = append(header, make([]byte, rootHeaderSize-len(header))...)
+		headerBytes = append(headerBytes, utils.MakeByteArray(SECRETARY_HEADER_LENGTH-len(headerBytes), '-')...)
+	}
+
+	return tree.nodePager.WriteAt(headerBytes, 0)
 }
 
 func (tree *BTree) readRoot() error {
@@ -129,7 +123,7 @@ func (tree *BTree) readRoot() error {
 }
 
 func (tree *BTree) saveRoot() error {
-	rootHeader, err := binstruct.Serialize(*tree.root)
+	rootHeader, err := binstruct.Serialize(tree.root)
 	if err != nil {
 		return err
 	}
@@ -143,6 +137,7 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 		0,
 		0,
 		125,
+		0,
 		0,
 	)
 	if err != nil {

@@ -22,6 +22,7 @@ func main() {
 		1024,
 		125,
 		10,
+		1000,
 	)
 
 	images, imagesErr := s.NewBTree(
@@ -31,6 +32,7 @@ func main() {
 		1024*1024,
 		125,
 		10,
+		1000,
 	)
 	if userErr != nil || imagesErr != nil {
 		utils.Log(userErr, imagesErr)
@@ -45,7 +47,7 @@ func main() {
 	var sortedValues []string
 	for r := 0; r < 64; r++ {
 
-		key := []byte(utils.GenerateSeqString(&keySeq, 16))
+		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
 		sortedKeys = append(sortedKeys, key)
 
 		sortedRecords = append(sortedRecords, &secretary.Record{

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"sync/atomic"
 )
 
 var SAFE_COLLECTION_REGEX = regexp.MustCompile(`[^a-zA-Z0-9._]`)
@@ -23,13 +24,13 @@ func GenerateRandomString(length int) string {
 	return string(b)
 }
 
-func GenerateSeqString(sequence *uint64, length int) string {
-	*sequence += 1
+func GenerateSeqString(sequence *uint64, length int, increment uint64) string {
+	atomic.AddUint64(sequence, increment)
 	return fmt.Sprintf("%0*d", length, *sequence)
 }
 
-func GenerateSeqRandomString(sequence *uint64, length int, pad int, value ...string) string {
-	*sequence += 1
+func GenerateSeqRandomString(sequence *uint64, length int, increment uint64, pad int, value ...string) string {
+	atomic.AddUint64(sequence, increment)
 	str := fmt.Sprintf("%0*d:%s:%s", pad, *sequence, value, GenerateRandomString(length))
 	return str[:length]
 }

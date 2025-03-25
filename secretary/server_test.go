@@ -47,7 +47,7 @@ func TestGetBTreeHandler(t *testing.T) {
 	}
 
 	var keySeq uint64 = 0
-	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err = users.Set(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)
@@ -167,7 +167,7 @@ func TestGetHandler(t *testing.T) {
 	}
 
 	var keySeq uint64 = 0
-	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 4))
+	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err = u.Set(key, key)
 	if err != nil {
 		t.Errorf("Insert failed: %s", err)

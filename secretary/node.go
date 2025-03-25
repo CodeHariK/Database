@@ -3,6 +3,7 @@ package secretary
 import (
 	"bytes"
 	"sort"
+	"sync/atomic"
 
 	"github.com/codeharik/secretary/utils"
 )
@@ -144,7 +145,8 @@ func (tree *BTree) TreeVerify() []error {
 
 // Create a new internal node
 func (tree *BTree) createInternalNode(children []*Node) *Node {
-	tree.NodeSeq += 1
+	atomic.AddUint64(&tree.NodeSeq, 1)
+	atomic.AddUint64(&tree.NumNodeSeq, 1)
 
 	if children == nil {
 		children = make([]*Node, 0)
@@ -153,7 +155,6 @@ func (tree *BTree) createInternalNode(children []*Node) *Node {
 	return &Node{
 		Keys:     make([][]byte, 0),
 		children: children,
-		// NumKeys:  0,
 
 		NodeID: tree.NodeSeq,
 	}
@@ -161,12 +162,12 @@ func (tree *BTree) createInternalNode(children []*Node) *Node {
 
 // Create a new leaf node
 func (tree *BTree) createLeafNode() *Node {
-	tree.NodeSeq += 1
+	atomic.AddUint64(&tree.NodeSeq, 1)
+	atomic.AddUint64(&tree.NumNodeSeq, 1)
 
 	return &Node{
 		Keys:    make([][]byte, 0),
 		records: make([]*Record, 0),
-		// NumKeys: 0,
 
 		NodeID: tree.NodeSeq,
 	}
@@ -193,21 +194,18 @@ func (leaf *Node) setLeafKV(key []byte, value []byte) {
 			},
 		}, leaf.records[i:]...)...,
 	)
-	// leaf.NumKeys++
 }
 
-// Split a leaf node
+// Split a leaf node, Create new leaf node, copy half records to new leaf node
 func (tree *BTree) splitLeaf(leaf *Node) {
 	mid := len(leaf.Keys) / 2
 	newLeaf := tree.createLeafNode()
 
 	newLeaf.Keys = append(newLeaf.Keys, leaf.Keys[mid:]...)
 	newLeaf.records = append(newLeaf.records, leaf.records[mid:]...)
-	// newLeaf.NumKeys = uint8(len(newLeaf.Keys))
 
 	leaf.Keys = leaf.Keys[:mid]
 	leaf.records = leaf.records[:mid]
-	// leaf.NumKeys = uint8(len(leaf.Keys))
 
 	/**
 	 * +++++++++++  +++++++++++
@@ -225,16 +223,15 @@ func (tree *BTree) splitLeaf(leaf *Node) {
 	leaf.next = newLeaf
 	newLeaf.prev = leaf
 
-	tree.setParentKV(leaf, newLeaf.Keys[0], newLeaf)
+	tree.promoteKey(leaf, newLeaf.Keys[0], newLeaf)
 }
 
-func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
+func (tree *BTree) promoteKey(left *Node, promotedKey []byte, right *Node) {
 	// If left is leaf and root, then create new root
 	if left.parent == nil {
 		newRoot := tree.createInternalNode(nil)
-		newRoot.Keys = [][]byte{key}
+		newRoot.Keys = [][]byte{promotedKey}
 		newRoot.children = []*Node{left, right}
-		// newRoot.NumKeys = uint8(len(newRoot.Keys))
 
 		left.parent = newRoot
 		right.parent = newRoot
@@ -244,43 +241,45 @@ func (tree *BTree) setParentKV(left *Node, key []byte, right *Node) {
 	}
 
 	parent := left.parent
-	setIdx, _ := parent.getKey(key)
+	setIdx, _ := parent.getKey(promotedKey)
 
-	parent.Keys = append(
-		parent.Keys[:setIdx],
+	/*
+		Parent:   [30]
+		Children: [[10,20], [30,40]]
+
+		Parent:   [30]
+		Children: [[10, 20, 25], [30, 40]]
+
+		Parent:   [25, 30]
+		Children: [[10,20], [25], [30,40]]
+	*/
+
+	parent.Keys = append(parent.Keys[:setIdx],
 		append(
-			[][]byte{key},
+			[][]byte{promotedKey},
 			parent.Keys[setIdx:]...,
 		)...)
 
-	parent.children = append(
-		parent.children[:setIdx+1],
+	parent.children = append(parent.children[:setIdx+1],
 		append(
 			[]*Node{right},
 			parent.children[setIdx+1:]...,
 		)...)
 
 	right.parent = parent
-	// parent.NumKeys++
 
-	// if parent.NumKeys >= tree.Order {
 	if len(parent.Keys) >= int(tree.Order) {
 		tree.splitInternal(parent)
 	}
 }
 
-// Split an internal node
+// Split an internal node and promote key
 func (tree *BTree) splitInternal(node *Node) {
 	mid := len(node.Keys) / 2
 
 	newRightInternal := tree.createInternalNode(nil)
-	newRightInternal.Keys = append(
-		newRightInternal.Keys,
-		node.Keys[mid+1:]...)
-	newRightInternal.children = append(
-		newRightInternal.children,
-		node.children[mid+1:]...)
-	// newInternal.NumKeys = uint8(len(newInternal.Keys))
+	newRightInternal.Keys = append(newRightInternal.Keys, node.Keys[mid+1:]...)
+	newRightInternal.children = append(newRightInternal.children, node.children[mid+1:]...)
 
 	for _, child := range newRightInternal.children {
 		child.parent = newRightInternal
@@ -289,18 +288,17 @@ func (tree *BTree) splitInternal(node *Node) {
 	promotedKey := node.Keys[mid]
 	node.Keys = node.Keys[:mid]
 	node.children = node.children[:mid+1]
-	// node.NumKeys = uint8(len(node.Keys))
 
 	newRightInternal.next = node.next
 	node.next = newRightInternal
 	newRightInternal.prev = node
 
-	tree.setParentKV(node, promotedKey, newRightInternal)
+	tree.promoteKey(node, promotedKey, newRightInternal)
 }
 
-// Set a key-value pair into the B+ Tree
+// Set a Record key-value pair into the B+ Tree
 func (tree *BTree) Set(key []byte, value []byte) error {
-	if len(key) != 16 {
+	if len(key) != KEY_SIZE {
 		return ErrorInvalidKey
 	}
 
@@ -327,13 +325,13 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 
 // Update a key-value pair in the B+ Tree
 func (tree *BTree) Update(key []byte, value []byte) error {
-	if len(key) != 16 {
+	if len(key) != KEY_SIZE {
 		return ErrorInvalidKey
 	}
 
-	leaf, index, found := tree.getLeafNode(key)
+	leaf, keyIndex, found := tree.getLeafNode(key)
 	if found {
-		leaf.records[index].Value = value
+		leaf.records[keyIndex].Value = value
 		return nil
 	}
 	return ErrorKeyNotFound
@@ -379,7 +377,6 @@ func (tree *BTree) buildSortedLeafNodes(sortedRecords []*Record) []*Node {
 			leaf.Keys = append(leaf.Keys, sortedRecords[j].Key)
 			leaf.records = append(leaf.records, sortedRecords[j])
 		}
-		// leaf.NumKeys = uint8(len(leaf.Keys))
 
 		// Link leaf nodes
 		if len(leafNodes) > 0 {
@@ -455,8 +452,8 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 //------------------------------------------------------------------
 
 // Binary search helper function
-func (n *Node) getKey(key []byte) (index int, found bool) {
-	index = sort.Search(
+func (n *Node) getKey(key []byte) (keyIndex int, keyFound bool) {
+	keyIndex = sort.Search(
 		len(n.Keys),
 		func(i int) bool {
 			return bytes.Compare(n.Keys[i], key) >= 0
@@ -464,9 +461,9 @@ func (n *Node) getKey(key []byte) (index int, found bool) {
 	)
 
 	// Check if the key exists at the found index
-	found = index < len(n.Keys) && bytes.Equal(n.Keys[index], key)
+	keyFound = keyIndex < len(n.Keys) && bytes.Equal(n.Keys[keyIndex], key)
 
-	return index, found
+	return keyIndex, keyFound
 }
 
 func (node *Node) getMinLeafKey() ([]byte, error) {
@@ -480,7 +477,7 @@ func (node *Node) getMinLeafKey() ([]byte, error) {
 }
 
 // Find the appropriate leaf node
-func (tree *BTree) getLeafNode(key []byte) (node *Node, index int, found bool) {
+func (tree *BTree) getLeafNode(key []byte) (node *Node, keyIndex int, keyFound bool) {
 	node = tree.root
 
 	// Traverse internal nodes
@@ -494,15 +491,16 @@ func (tree *BTree) getLeafNode(key []byte) (node *Node, index int, found bool) {
 	}
 
 	// Search within the leaf node
-	index, found = node.getKey(key)
+	keyIndex, keyFound = node.getKey(key)
 
-	return node, index, found
+	return node, keyIndex, keyFound
 }
 
+// Get record using key
 func (tree *BTree) Get(key []byte) (*Record, error) {
-	node, index, found := tree.getLeafNode(key)
+	node, keyIndex, found := tree.getLeafNode(key)
 	if found {
-		return node.records[index], nil
+		return node.records[keyIndex], nil
 	}
 	return nil, ErrorKeyNotFound
 }
@@ -575,7 +573,6 @@ func (tree *BTree) Delete(key []byte) error {
 	// Remove the key and corresponding record
 	leaf.Keys = append(leaf.Keys[:index], leaf.Keys[index+1:]...)
 	leaf.records = append(leaf.records[:index], leaf.records[index+1:]...)
-	// leaf.NumKeys--
 
 	utils.Log("key", string(key), "leaf", leaf.NodeID, "index", index, "found", found)
 
@@ -803,6 +800,10 @@ func (tree *BTree) handleUnderflow(node *Node) {
 	}
 }
 
+//------------------------------------------------------------------
+// Fix Tree
+//------------------------------------------------------------------
+
 func (tree *BTree) fixInternalNodeChildLinks(node *Node) {
 	if node != nil && node.children != nil {
 		node.Keys = [][]byte{}
@@ -833,8 +834,6 @@ type NodeJSON struct {
 	NextId   uint64 `json:"nextID"`
 	PrevId   uint64 `json:"prevID"`
 	ParentId uint64 `json:"parentID"`
-
-	// NumKeys  uint8      `json:"numKeys"`
 
 	Key      []string   `json:"key"`
 	Value    []string   `json:"value"`
@@ -888,7 +887,6 @@ func (tree *BTree) NodeToJSON(node *Node, height int) NodeJSON {
 		Key:      keys,
 		Value:    values,
 		Children: children,
-		// NumKeys:  node.NumKeys,
 
 		Errors: utils.ArrayToStrings(tree.recursiveNodeVerify(node)),
 	}

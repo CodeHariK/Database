@@ -55,7 +55,8 @@ batchBaseSize  			(uint32)   15
 batchIncrement 			(uint8)    16
 batchLength    			(uint8)    17
 nodeSeq    				(uint64)   25
-keySeq    				(uint64)   33
+numNodeSeq    			(uint64)   33
+compactionBatchSize    	(uint32)   37
 collectionName			(string)
 ---------------------
 1  			Root		(5*1024 = 5120)
@@ -76,7 +77,8 @@ type BTree struct {
 	nodePager    *NodePager
 	recordPagers []*RecordPager
 
-	root *Node // Root node of the tree
+	root               *Node // Root node of the tree
+	nextCompactionNode *Node // Compaction Node For Current Batch
 
 	Order          uint8  `json:"order" bin:"order"`                   // Max = 255, Order of the tree (maximum number of children)
 	BatchNumLevel  uint8  `json:"batchNumLevel" bin:"batchNumLevel"`   // 32, Max 256 levels
@@ -84,10 +86,12 @@ type BTree struct {
 	BatchIncrement uint8  `json:"batchIncrement" bin:"batchIncrement"` // 125 => 1.25
 	BatchLength    uint8  `json:"batchLength" bin:"batchLength"`       // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
 	NodeSeq        uint64 `json:"nodeSeq" bin:"nodeSeq"`               // Incrementing Node sequence
-	KeySeq         uint64 `json:"keySeq" bin:"keySeq"`                 // Incrementing Key sequence
+	NumNodeSeq     uint64 `json:"numNodeSeq" bin:"numNodeSeq"`         // Incrementing Node sequence
 
 	nodeSize   uint32
 	minNumKeys uint32 // Minimum required keys in node
+
+	CompactionBatchSize uint32 `json:"compactionBatchSize" bin:"compactionBatchSize"`
 }
 
 /*

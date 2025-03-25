@@ -20,6 +20,7 @@ func dummyTree(t *testing.T, collectionName string, order uint8) (*Secretary, *B
 		1024,
 		125,
 		10,
+		1000,
 	)
 	if serr != nil || err != nil {
 		t.Fatal(err)
@@ -51,11 +52,11 @@ func TestSaveRoot(t *testing.T) {
 	}
 
 	jsonS, _ := binstruct.MarshalJSON(tree.root)
-	jsonD, _ := binstruct.MarshalJSON(root)
+	jsonD, _ := binstruct.MarshalJSON(&root)
 
-	t.Log("\n", *tree.root, "\n", root, "\n", string(jsonS), "\n", string(jsonD), "\n")
+	t.Log("\n", tree.root, "\n", &root, "\n", string(jsonS), "\n", string(jsonD), "\n")
 
-	eq, err := binstruct.Compare(*tree.root, root)
+	eq, err := binstruct.Compare(tree.root, &root)
 	if !eq || err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +386,7 @@ func TestSortedRecordSet(t *testing.T) {
 		var sortedValues []string
 		for r := 0; r < numKey; r++ {
 			sortedRecords = append(sortedRecords, &Record{
-				Key:   []byte(utils.GenerateSeqString(&keySeq, 16)),
+				Key:   []byte(utils.GenerateSeqString(&keySeq, 16, 5)),
 				Value: []byte(fmt.Sprint(r)),
 			})
 
@@ -425,7 +426,7 @@ func TestDelete(t *testing.T) {
 	var sortedKeys [][]byte
 	var sortedValues []string
 	for r := 0; r < 5120; r++ {
-		key := []byte(utils.GenerateSeqString(&keySeq, 16))
+		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
 		sortedKeys = append(sortedKeys, key)
 
 		sortedRecords = append(sortedRecords, &Record{
