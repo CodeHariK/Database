@@ -45,6 +45,8 @@
 * [Loro Is Local-First State With CRDT](https://www.youtube.com/watch?v=NB7HRfyufLk)
 * [How Yjs works from the inside out](https://www.youtube.com/watch?v=0l5XgnQ6rB4)
 
+* [An introduction to Conflict-Free Replicated Data Types (CRDTs)](https://www.youtube.com/watch?v=gZP2VUmH05A)
+
 ## Probablistic Data structures
 
 * [PapersWeLove : HyperLogLog](https://www.youtube.com/watch?v=y3fTaxA8PkU)
@@ -89,6 +91,19 @@ https://github.com/skyzh/mini-lsm
 
 * https://en.wikipedia.org/wiki/Actor_model
 
+* The Art of Multiprocessor Programming
+* Seven Concurrency Models in Seven Weeks
+
+* https://proto.actor/docs/
+
+* [The Actor Model](https://www.youtube.com/watch?v=7erJ1DV_Tlo)
+* [A brief introduction to the actor model & distributed actors](https://www.youtube.com/watch?v=YTQeJegJnbo)
+* [Introduction to the Actor Model for Concurrent Computation](https://www.youtube.com/watch?v=lPTqcecwkJg)
+
+* https://github.com/vladopajic/go-actor
+
+* https://www.brianstorti.com/the-actor-model/
+
 * [Code : Ring Buffer](https://www.youtube.com/watch?v=KyreJSKEagg)
 * https://kmdreko.github.io/posts/20191003/a-simple-lock-free-ring-buffer/
 
@@ -97,6 +112,7 @@ https://github.com/skyzh/mini-lsm
 * [Disruptor](https://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)
 * https://github.com/LMAX-Exchange/disruptor/wiki/Blogs-And-Articles
 
+* https://github.com/smarty-prototypes/go-disruptor
 
 ## Compress
 

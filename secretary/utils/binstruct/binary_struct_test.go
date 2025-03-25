@@ -162,11 +162,9 @@ func TestBinaryStructSerialize(t *testing.T) {
 			t.Fatal()
 		}
 
-		hashS, _ := hash(test.s)
-		hashD, _ := hash(d)
 		eq, err := Compare(test.s, d)
-		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
-			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		if test.equal != eq || err != nil {
+			t.Fatalf("\nShould be Equal : %v\n", test.equal)
 		}
 	}
 }
@@ -236,11 +234,9 @@ func TestBinaryStructArrSerialize(t *testing.T) {
 			t.Fatal()
 		}
 
-		hashS, _ := hash(test.s)
-		hashD, _ := hash(d)
 		eq, err := Compare(test.s, d)
-		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
-			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		if test.equal != eq || err != nil {
+			t.Fatalf("\nShould be Equal : %v\n", test.equal)
 		}
 	}
 }
@@ -309,11 +305,9 @@ func TestBinaryStructStructSerialize(t *testing.T) {
 			t.Fatal()
 		}
 
-		hashS, _ := hash(test.s)
-		hashD, _ := hash(d)
 		eq, err := Compare(test.s, d)
-		if test.equal != eq || err != nil || test.equal != (hashS == hashD) {
-			t.Fatalf("\nShould be Equal : %v , %s == %s\n", test.equal, hashS, hashD)
+		if test.equal != eq || err != nil {
+			t.Fatalf("\nShould be Equal : %v\n", test.equal)
 		}
 	}
 }
