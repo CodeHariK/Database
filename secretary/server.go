@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -20,22 +21,47 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
+var COMMAND_LOGS = ""
+
+func ServerLog(msgs ...any) {
+	msg, _ := utils.LogMessage(msgs...)
+	// fmt.Println(msg)
+	COMMAND_LOGS += fmt.Sprintf("<div style='color:%s;background:#000'>%s</div><br>", utils.LightColor().Hex, strings.ReplaceAll(msg, "\n", "<br>"))
+	if len(COMMAND_LOGS) > 10000 {
+		COMMAND_LOGS = ""
+	}
+}
+
+type JsonResponse struct {
+	Data any    `json:"data"`
+	Logs string `json:"logs"`
+}
+
 func writeJson(w http.ResponseWriter, code int, data any) {
-	jsonData, err := json.Marshal(data)
+	response := JsonResponse{
+		Data: data,
+		Logs: COMMAND_LOGS,
+	}
+
+	jsonData, err := json.Marshal(response)
 	if err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
+
 	w.Write(jsonData)
+
+	COMMAND_LOGS = ""
 }
 
 func (s *Secretary) getAllTreeHandler(w http.ResponseWriter, r *http.Request) {
-	var hello []*BTree
+	var trees []*BTree
 	for _, o := range s.trees {
-		hello = append(hello, o)
+		trees = append(trees, o)
 	}
-	writeJson(w, http.StatusOK, hello)
+	writeJson(w, http.StatusOK, trees)
 }
 
 func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
@@ -122,10 +148,17 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 		key = []byte(utils.GenerateSeqRandomString(&keySeq, KEY_SIZE, 5, 4, req.Value))
 	}
 	err := tree.Set(key, []byte(req.Value))
-	if err != nil {
+	if err == ErrorDuplicateKey {
+		err := tree.Update(key, []byte(req.Value))
+		if err != nil {
+			writeJson(w, http.StatusNotFound, err.Error())
+			return
+		}
+	} else if err != nil {
 		writeJson(w, http.StatusNotFound, err.Error())
 		return
 	}
+
 	if errs := tree.TreeVerify(); errs != nil {
 		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
 		return

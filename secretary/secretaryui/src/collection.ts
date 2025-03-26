@@ -11,7 +11,7 @@ let Tests = [
     "0000000000000024", "0000000000000023",
     "0000000000000025", "0000000000000017",
 ]
-function runTest() {
+async function runTest() {
     if (!ui.getTree()) return
 
     if (TestCounter < Tests.length) {
@@ -19,7 +19,7 @@ function runTest() {
 
         let t = Tests[TestCounter]
 
-        deleteRecord(t)
+        await deleteRecord(t)
     }
     TestCounter++
 }
@@ -64,14 +64,16 @@ export function displayNode(node: BTreeNode) {
         const updateButton = document.createElement("button");
         updateButton.textContent = " Update ";
         updateButton.style.backgroundColor = "#c8ffc3";
-        updateButton.onclick = () => {
+        updateButton.onclick = async () => {
+            await setRecord(key, valueInput.value)
             displayNode(node);
         };
 
         const deleteButton = document.createElement("button");
         deleteButton.textContent = " Delete ";
         deleteButton.style.backgroundColor = "#ffa1a1";
-        deleteButton.onclick = () => {
+        deleteButton.onclick = async () => {
+            await deleteRecord(key)
             displayNode(node);
         };
 
@@ -87,8 +89,8 @@ export function displayNode(node: BTreeNode) {
     infoBox.appendChild(list);
 }
 
-function fetchCurrentTree() {
-    makeRequest(
+async function fetchCurrentTree() {
+    await makeRequest(
         `${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`,
         undefined,
         (data) => {
@@ -111,8 +113,8 @@ function fetchCurrentTree() {
     )
 }
 
-export function fetchAllBTree() {
-    makeRequest(
+export async function fetchAllBTree() {
+    await makeRequest(
         `${ui.url}/getalltree`,
         undefined,
         (data: any[]) => {
@@ -140,13 +142,13 @@ export function fetchAllBTree() {
     )
 }
 
-function setRecord() {
+async function setRecord(key: string | null, value: string | null) {
     if (!ui.getTree()) return
 
-    let key = setKey.value;
-    let value = setValue.value;
+    key = key ?? setKey.value;
+    value = value ?? setValue.value;
     const payload = { key, value };
-    makeRequest(
+    await makeRequest(
         `${ui.url}/set/${ui.currentTreeDef!.collectionName}`,
         {
             method: "POST",
@@ -159,10 +161,10 @@ function setRecord() {
     )
 }
 
-function deleteRecord(id: string | null) {
+async function deleteRecord(id: string | null) {
     if (!ui.getTree()) return
 
-    makeRequest(
+    await makeRequest(
         `${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id ?? deleteInput.value}`,
         { method: "DELETE" },
         () => {
@@ -194,7 +196,7 @@ async function getRecord(getId: string | null) {
     RedrawTree()
 }
 
-function newTreeRequest(event: SubmitEvent) {
+async function newTreeRequest(event: SubmitEvent) {
     event.preventDefault(); // Prevent page reload
 
     const requestData = {
@@ -206,7 +208,7 @@ function newTreeRequest(event: SubmitEvent) {
         BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
     };
 
-    makeRequest(
+    await makeRequest(
         `${ui.url}/newtree`,
         {
             method: "POST",
@@ -219,12 +221,23 @@ function newTreeRequest(event: SubmitEvent) {
     )
 }
 
-async function makeRequest(url: RequestInfo | URL, parameters: RequestInit | undefined, after: (result: any, error: boolean) => void) {
+async function makeRequest(
+    url: RequestInfo | URL,
+    parameters: RequestInit | undefined,
+    after: (result: any, error: boolean) => void
+) {
     const response = await fetch(url, parameters);
+    let result;
 
-    let result = await response.json();
-    appendResult(url, result, !response.ok || response.status != 200)
-    after(result, !response.ok || response.status != 200)
+    try {
+        result = await response.json();
+    } catch {
+        result = { data: null, logs: "Invalid JSON response" };
+    }
+
+    const hasError = !response.ok || response.status !== 200;
+    appendResult(url, result.data, result.logs, hasError);
+    after(result.data, hasError);
 }
 
 declare global {
@@ -237,20 +250,25 @@ window.toggleVisibility = function (id: string) {
     content.style.display = content.style.display === "none" ? "block" : "none";
 };
 
-function appendResult(url: RequestInfo | URL, result: any, error: boolean) {
+function appendResult(url: RequestInfo | URL, data: any, logs: string, error: boolean) {
     const uniqueId = `json-content-${Date.now()}`;
-    const formattedJSON = JSON.stringify(result, null, 2);
+    const formattedData = JSON.stringify(data, null, 2);
+    const formattedLogs = logs ? `<pre style="color: gray;">${logs}</pre>` : "";
+
     const newResultHTML = `
-        <div style="background-color:${error ? "#ffb9b9" : "#bdffbd"}; color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
-            <div onclick="window.toggleVisibility('${uniqueId}')" 
+        <div style="background-color:${error ? "#ffb9b9" : "#bdffbd"}; 
+                    color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
+            <div onclick="window.toggleVisibility('${uniqueId}')"
                 style="cursor: pointer; font-weight: bold; padding: 4px;">
                 ${url.toString().split(ui.url)[1]}
             </div>
             <div id="${uniqueId}" style="display: none; padding: 4px;">
-                <pre>${formattedJSON}</pre>
+                <pre>${formattedData}</pre>
+                ${formattedLogs}
             </div>
         </div>
     `;
+
     resultDiv.innerHTML = newResultHTML + resultDiv.innerHTML;
 }
 
@@ -271,7 +289,7 @@ export function setupCollectionRequest() {
         });
 
         runTestBtn.addEventListener("click", runTest);
-        setBtn.addEventListener("click", () => setRecord());
+        setBtn.addEventListener("click", () => setRecord(null, null));
         deleteBtn.addEventListener("click", () => deleteRecord(null));
         getBtn.addEventListener("click", () => getRecord(null));
 

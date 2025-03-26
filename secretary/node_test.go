@@ -528,4 +528,15 @@ func TestSplitInternal(t *testing.T) {
 	if err := tree.TreeVerify(); err != nil {
 		t.Fatal(err)
 	}
+
+	nodes := tree.GetFirstNodePerHeight()
+	expected := []uint64{21, 7, 2, 0}
+	if len(nodes) != len(expected) {
+		t.Fatalf("Expected %d nodes, got %d", len(expected), len(nodes))
+	}
+	for i, node := range nodes {
+		if node.NodeID != expected[i] {
+			t.Errorf("At height %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+		}
+	}
 }

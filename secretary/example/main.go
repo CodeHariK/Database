@@ -46,9 +46,7 @@ func main() {
 	var sortedKeys [][]byte
 	var sortedValues []string
 
-	NumKeys := 10 // 64
-
-	for r := 0; r < NumKeys; r++ {
+	for r := 0; r < 64; r++ {
 		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
 		sortedKeys = append(sortedKeys, key)
 
@@ -65,9 +63,10 @@ func main() {
 		users.Set(r.Key, r.Value)
 	}
 
-	users.Set([]byte("0000000000000016"), []byte("Hello:16"))
-	users.Set([]byte("0000000000000017"), []byte("Hello:17"))
-	users.Set([]byte("0000000000000018"), []byte("Hello:18"))
+	users.Set([]byte("0000000000000196"), []byte("Hello:196"))
+	users.Set([]byte("0000000000000197"), []byte("Hello:197"))
+	users.Set([]byte("0000000000000198"), []byte("Hello:198"))
+	users.Set([]byte("0000000000000199"), []byte("Hello:199"))
 
 	s.Serve()
 }

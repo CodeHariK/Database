@@ -159,20 +159,32 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 	return &deserializedTree, nil
 }
 
-func (t *BTree) Height() int {
-	if t.root == nil {
-		return 0
-	}
-
+func (tree *BTree) Height() int {
 	height := 0
-	node := t.root
-	for node != nil {
+
+	for node := tree.root; node != nil; node = node.children[0] {
 		height++
-		if len(node.children) == 0 { // Leaf node reached
+
+		// Stop if we've reached a leaf node (no children)
+		if len(node.children) == 0 {
 			break
 		}
-		node = node.children[0] // Move to the first child
 	}
 
 	return height
+}
+
+func (tree *BTree) GetFirstNodePerHeight() []*Node {
+	var firstNodePerHeight []*Node
+
+	for node := tree.root; node != nil; node = node.children[0] {
+		firstNodePerHeight = append(firstNodePerHeight, node)
+
+		// Stop if we've reached a leaf node (no children)
+		if len(node.children) == 0 {
+			break
+		}
+	}
+
+	return firstNodePerHeight
 }

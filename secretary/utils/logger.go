@@ -40,6 +40,16 @@ func Log(msgs ...any) {
 		return
 	}
 
+	log, t := LogMessage(msgs...)
+
+	if t != nil {
+		t.Fatal(log)
+	} else {
+		fmt.Println(log)
+	}
+}
+
+func LogMessage(msgs ...any) (string, *testing.T) {
 	var t *testing.T
 	if len(msgs) > 0 {
 		if tt, ok := msgs[0].(*testing.T); ok {
@@ -56,8 +66,8 @@ func Log(msgs ...any) {
 	colorIndex++
 	color := Ternary(
 		MODE == NIGHT || (MODE == SWITCH && colorIndex%2 == 0),
-		nightColor(),
-		lightColor())
+		NightColor().TermColor,
+		LightColor().TermColor)
 
 	log := color
 
@@ -127,8 +137,6 @@ func Log(msgs ...any) {
 		log += p
 	}
 
-	// log += "$\n$"
-
 	for i := 0; i < len(msgs); i++ {
 		switch msg := msgs[i].(type) {
 
@@ -178,11 +186,7 @@ func Log(msgs ...any) {
 
 	log = processParagraph(log, len(color), width) + COLORRESET
 
-	if t != nil {
-		t.Fatal(log)
-	} else {
-		fmt.Println(log)
-	}
+	return log, t
 }
 
 func padLine(line string, width int, repeat string, suffix bool) string {
@@ -217,20 +221,33 @@ func processParagraph(paragraph string, colorlen int, width int) string {
 	return strings.Join(lines, "\n") // Merge lines back
 }
 
-func lightColor() string {
+type Color struct {
+	TermColor string
+	Hex       string
+}
+
+func LightColor() Color {
 	dlFR, dlFG, dlFB := 0, 0, 0
 	dlBR, dlBG, dlBB := randomColor(225, 256)
 
-	return fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
-		dlFR, dlFG, dlFB, dlBR, dlBG, dlBB)
+	hex := fmt.Sprintf("#%02X%02X%02X", dlBR, dlBG, dlBB)
+
+	return Color{
+		fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
+			dlFR, dlFG, dlFB, dlBR, dlBG, dlBB), hex,
+	}
 }
 
-func nightColor() string {
+func NightColor() Color {
 	ldFR, ldFG, ldFB := 255, 255, 255
 	ldBR, ldBG, ldBB := randomColor(10, 60)
 
-	return fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
-		ldFR, ldFG, ldFB, ldBR, ldBG, ldBB)
+	hex := fmt.Sprintf("#%02X%02X%02X", ldBR, ldBG, ldBB)
+
+	return Color{
+		fmt.Sprintf("\033[38;2;%d;%d;%dm\033[48;2;%d;%d;%dm",
+			ldFR, ldFG, ldFB, ldBR, ldBG, ldBB), hex,
+	}
 }
 
 func randomColor(min, max int) (int, int, int) {
