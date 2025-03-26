@@ -23,7 +23,7 @@ func TestAllocateBatch(t *testing.T) {
 		fileInfo, err := tree.nodePager.file.Stat()
 		allocatedSize := fileInfo.Size() - originalFileSize
 		if err != nil || allocatedSize != int64(tree.nodePager.pageSize) {
-			t.Errorf("Expected file size %d, got %d", tree.nodePager.pageSize, fileInfo.Size())
+			t.Fatalf("Expected file size %d, got %d", tree.nodePager.pageSize, fileInfo.Size())
 		}
 	}
 
@@ -38,7 +38,7 @@ func TestAllocateBatch(t *testing.T) {
 		allocatedSize := fileInfo.Size() - originalFileSize
 		expectedSize := int64(2 * tree.nodePager.pageSize)
 		if err != nil || allocatedSize != expectedSize {
-			t.Errorf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
+			t.Fatalf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 
 		fileInfo, err := tree.nodePager.file.Stat()
 		if err != nil || fileInfo.Size() != int64(tree.nodePager.headerSize) {
-			t.Errorf("Expected file size %d, got %d", tree.nodePager.headerSize, fileInfo.Size())
+			t.Fatalf("Expected file size %d, got %d", tree.nodePager.headerSize, fileInfo.Size())
 		}
 
 		// Read the data back
@@ -68,7 +68,7 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 
 		// Compare written and read data
 		if !bytes.Equal(data, readData) {
-			t.Errorf("Expected '%s', got '%s'", data, readData[:len(data)])
+			t.Fatalf("Expected '%s', got '%s'", data, readData[:len(data)])
 		}
 	}
 
@@ -89,12 +89,12 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 
 		// Compare written and read data for the second batch
 		if !bytes.Equal(data, readData) {
-			t.Errorf("Expected '%s' at offset %d, got '%s'", data, offset, readData[:len(data)])
+			t.Fatalf("Expected '%s' at offset %d, got '%s'", data, offset, readData[:len(data)])
 		}
 
 		fileInfo, err := tree.nodePager.file.Stat()
 		if err != nil || fileInfo.Size() != int64(tree.nodePager.headerSize)+4*int64(tree.nodePager.pageSize) {
-			t.Errorf("Expected file size %d, got %d", 4*int64(tree.nodePager.pageSize), fileInfo.Size())
+			t.Fatalf("Expected file size %d, got %d", 4*int64(tree.nodePager.pageSize), fileInfo.Size())
 		}
 	}
 

@@ -105,7 +105,7 @@ func testMachine(t *testing.T, dynamicMachine *DynamicStruct, pass bool, machine
 	}
 
 	if pass && (err != nil || reflect.DeepEqual(machine, newMachine) == false) {
-		t.Errorf("Json Mismatch %v", err)
+		t.Fatalf("Json Mismatch %v", err)
 	}
 
 	m, _ := binstruct.Serialize(machine)

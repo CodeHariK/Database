@@ -28,7 +28,7 @@ func TestGetAllBTreeHandler(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status OK; got %v", resp.Status)
+		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestGetBTreeHandler(t *testing.T) {
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err = users.Set(key, key)
 	if err != nil {
-		t.Errorf("Insert failed: %s", err)
+		t.Fatalf("Insert failed: %s", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/gettree/123", nil)
@@ -59,7 +59,7 @@ func TestGetBTreeHandler(t *testing.T) {
 	resp := rec.Result()
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("expected status StatusNotFound; got %v", resp.Status)
+		t.Fatalf("expected status StatusNotFound; got %v", resp.Status)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/gettree/users", nil)
@@ -68,7 +68,7 @@ func TestGetBTreeHandler(t *testing.T) {
 	resp = rec.Result()
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status OK; got %v", resp.Status)
+		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
 }
 
@@ -92,7 +92,7 @@ func TestSetHandler(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status OK; got %v", resp.Status)
+		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
 }
 
@@ -170,7 +170,7 @@ func TestGetHandler(t *testing.T) {
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err = u.Set(key, key)
 	if err != nil {
-		t.Errorf("Insert failed: %s", err)
+		t.Fatalf("Insert failed: %s", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/get/users/123", nil)
@@ -179,7 +179,7 @@ func TestGetHandler(t *testing.T) {
 	resp := rec.Result()
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("expected status StatusNoContent; got %v", resp.Status)
+		t.Fatalf("expected status StatusNoContent; got %v", resp.Status)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/get/users/"+string(key), nil)
@@ -188,6 +188,6 @@ func TestGetHandler(t *testing.T) {
 	resp = rec.Result()
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status StatusOK; got %v", resp.Status)
+		t.Fatalf("expected status StatusOK; got %v", resp.Status)
 	}
 }

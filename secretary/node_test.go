@@ -140,7 +140,7 @@ func TestNodeScan(t *testing.T) {
 		node := &Node{Keys: test.keys}
 		result, found := node.getKey(test.search)
 		if result != test.expectedIndex || found != test.expectedFound {
-			t.Errorf("NodeScan(%q) = %d, expected %d", test.search, result, test.expectedIndex)
+			t.Fatalf("NodeScan(%q) = %d, expected %d", test.search, result, test.expectedIndex)
 		}
 	}
 }
@@ -208,7 +208,7 @@ func TestGetLeafNode(t *testing.T) {
 		result, index, found := tree.getLeafNode(test.key)
 
 		if result.NodeID != test.expectedNode.NodeID || index != test.expectedIndex || found != test.expectedFound {
-			t.Errorf("GetLeafNode(%q) returned wrong leaf node\n ExpNode:%d - Got:%d\n ExpID:%d - Got:%d\n ExpFound:%v - Got:%v\n %v",
+			t.Fatalf("GetLeafNode(%q) returned wrong leaf node\n ExpNode:%d - Got:%d\n ExpID:%d - Got:%d\n ExpFound:%v - Got:%v\n %v",
 				test.key,
 				test.expectedNode.NodeID, result.NodeID,
 				test.expectedIndex, index,
@@ -222,14 +222,14 @@ func TestGetLeafNode(t *testing.T) {
 	emptyTree := &BTree{root: &Node{}}
 	emptyNode, _, _ := emptyTree.getLeafNode([]byte("x"))
 	if emptyNode.NodeID != emptyTree.root.NodeID {
-		t.Errorf("GetLeafNode on empty tree should return root")
+		t.Fatalf("GetLeafNode on empty tree should return root")
 	}
 
 	// Test single-node tree
 	singleNodeTree := &BTree{root: &Node{Keys: [][]byte{[]byte("a"), []byte("b"), []byte("c")}}}
 	singleNode, _, _ := singleNodeTree.getLeafNode([]byte("b"))
 	if singleNode.NodeID != singleNodeTree.root.NodeID {
-		t.Errorf("GetLeafNode on single-node tree should return root")
+		t.Fatalf("GetLeafNode on single-node tree should return root")
 	}
 }
 
@@ -368,7 +368,7 @@ func TestRangeScan(t *testing.T) {
 			resultKeys = append(resultKeys, string(record.Value))
 		}
 		if !utils.CompareArray(resultKeys, tt.expected) {
-			t.Errorf("RangeScan(%q, %q) = %v, expected %v", tt.startKey, tt.endKey, resultKeys, tt.expected)
+			t.Fatalf("RangeScan(%q, %q) = %v, expected %v", tt.startKey, tt.endKey, resultKeys, tt.expected)
 		}
 	}
 }
@@ -495,4 +495,37 @@ func TestDelete(t *testing.T) {
 	// 		t.Fatal(err)
 	// 	}
 	// }
+}
+
+func TestSplitInternal(t *testing.T) {
+	_, tree := dummyTree(t, "TestSplitInternal", 4)
+
+	var keySeq uint64 = 0
+	var sortedRecords []*Record
+	var sortedKeys [][]byte
+	var sortedValues []string
+	for r := 0; r < 64; r++ {
+
+		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
+		sortedKeys = append(sortedKeys, key)
+
+		sortedRecords = append(sortedRecords, &Record{
+			Key:   key,
+			Value: []byte(fmt.Sprint(r + 1)),
+		})
+
+		sortedValues = append(sortedValues, fmt.Sprint(r))
+	}
+
+	for _, r := range sortedRecords {
+		tree.Set(r.Key, r.Value)
+	}
+
+	tree.Set([]byte("0000000000000196"), []byte("Hello:196"))
+	tree.Set([]byte("0000000000000197"), []byte("Hello:197"))
+	tree.Set([]byte("0000000000000198"), []byte("Hello:198"))
+	tree.Set([]byte("0000000000000199"), []byte("Hello:199"))
+	if err := tree.TreeVerify(); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -127,7 +127,7 @@ func Log(msgs ...any) {
 		log += p
 	}
 
-	log += "\n"
+	// log += "$\n$"
 
 	for i := 0; i < len(msgs); i++ {
 		switch msg := msgs[i].(type) {
@@ -137,9 +137,9 @@ func Log(msgs ...any) {
 			uint, uint8, uint16, uint32, uint64:
 			log += fmt.Sprint(msg)
 		case []string, []int, []float32:
-			log += fmt.Sprintf("%v %d\n", msg, reflect.ValueOf(msg).Len())
+			log += fmt.Sprintf("%d %v", reflect.ValueOf(msg).Len(), msg)
 		case []byte:
-			log += fmt.Sprintf("%v %d\n", msg, reflect.ValueOf(msg).Len())
+			log += fmt.Sprintf("%d %v", reflect.ValueOf(msg).Len(), msg)
 		case error:
 			extractError(msg)
 		case []error:
@@ -154,13 +154,13 @@ func Log(msgs ...any) {
 					log += fmt.Sprint("Error: Not enough values for format string:", msg)
 					break
 				}
-				log += fmt.Sprintf(msg+"\n", msgs[i+1:i+1+count]...)
+				log += fmt.Sprintf(msg+"--\n--", msgs[i+1:i+1+count]...)
 				i += count // Move index forward by number of consumed values
 			} else {
 				if msg == "\n" || msg == "" {
-					log += "\n"
+					log += "=\n="
 				} else {
-					log += msg + " "
+					log += "\n" + msg + " "
 				}
 			}
 		default:

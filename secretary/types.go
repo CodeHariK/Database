@@ -108,10 +108,10 @@ type BTree struct {
 +----------------+----------------+----------------+----------------+
 */
 type Node struct {
-	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
-
-	Version uint64       `bin:"Version"` // ✅ OCC Version Number
 	mu      sync.RWMutex // 🚦 Latch for Synchronization
+	Version uint64       `bin:"Version"` // ✅ OCC Version Number
+
+	NodeID uint64 `bin:"NodeID"` // Unique ID for the node
 
 	parent   *Node
 	next     *Node

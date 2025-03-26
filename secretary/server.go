@@ -96,7 +96,7 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type SetRequest struct {
-	// Key   string `json:"key"`
+	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
@@ -105,21 +105,11 @@ var keySeq uint64 = 0
 func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
-	// helo := new(bytes.Buffer)
-	// io.Copy(helo, r.Body)
-	// bodyStr := helo.String()
-	// utils.Log(bodyStr)
-
 	var req SetRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(strings.Trim(req.Value, " ")) == 0 {
-		// if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.Log(err)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (len(strings.Trim(req.Value, " ")) == 0) {
 		writeJson(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// utils.Log(req, len(req.Key), len(req.Value))
 
 	tree, exists := s.trees[table]
 	if !exists {
@@ -127,13 +117,13 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// var key []byte = []byte(req.Key)
-	// if len(req.Key) == 0 {
-	key := []byte(utils.GenerateSeqRandomString(&keySeq, KEY_SIZE, 5, 4, req.Value))
-	// }
-	err := tree.Set(key, key)
+	var key []byte = []byte(req.Key)
+	if len(req.Key) == 0 || len(req.Key) != KEY_SIZE {
+		key = []byte(utils.GenerateSeqRandomString(&keySeq, KEY_SIZE, 5, 4, req.Value))
+	}
+	err := tree.Set(key, []byte(req.Value))
 	if err != nil {
-		writeJson(w, http.StatusNotFound, "Tree not found")
+		writeJson(w, http.StatusNotFound, err.Error())
 		return
 	}
 	if errs := tree.TreeVerify(); errs != nil {

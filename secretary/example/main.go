@@ -45,8 +45,10 @@ func main() {
 	var sortedRecords []*secretary.Record
 	var sortedKeys [][]byte
 	var sortedValues []string
-	for r := 0; r < 64; r++ {
 
+	NumKeys := 10 // 64
+
+	for r := 0; r < NumKeys; r++ {
 		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
 		sortedKeys = append(sortedKeys, key)
 
@@ -62,6 +64,10 @@ func main() {
 	for _, r := range sortedRecords {
 		users.Set(r.Key, r.Value)
 	}
+
+	users.Set([]byte("0000000000000016"), []byte("Hello:16"))
+	users.Set([]byte("0000000000000017"), []byte("Hello:17"))
+	users.Set([]byte("0000000000000018"), []byte("Hello:18"))
 
 	s.Serve()
 }

@@ -107,22 +107,22 @@ func TestBTreeHeight(t *testing.T) {
 		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 		err := tree.Set(key, key)
 		if err != nil {
-			t.Errorf("Set failed: %s", err)
+			t.Fatalf("Set failed: %s", err)
 		}
 	}
 
 	if tree.Height() != 2 {
-		t.Errorf("Expected height %d", tree.Height())
+		t.Fatalf("Expected height %d", tree.Height())
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
 	err := tree.Set(key, key)
 	if err != nil {
-		t.Errorf("Set failed: %s", err)
+		t.Fatalf("Set failed: %s", err)
 	}
 
 	if tree.Height() != 3 {
-		t.Errorf("Expected height %d", tree.Height())
+		t.Fatalf("Expected height %d", tree.Height())
 	}
 }
 
