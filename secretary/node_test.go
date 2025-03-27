@@ -27,20 +27,20 @@ func dummyTree(t *testing.T, collectionName string, order uint8) (*Secretary, *B
 	return s, tree
 }
 
-func TestSaveRoot(t *testing.T) {
-	_, tree := dummyTree(t, "TestSaveRoot", 10)
+func TestNodeSaveRoot(t *testing.T) {
+	s, tree := dummyTree(t, "TestNodeSaveRoot", 10)
 
 	root := Node{
 		ParentIndex: 101,
-		NextIndex:   102,
-		PrevIndex:   103,
+		// NextIndex:   102,
+		// PrevIndex:   103,
 
 		Keys:        [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 		KeyLocation: []uint64{2, 3, 4, 5, 6},
 	}
 	tree.root = &root
 
-	err := tree.saveRoot()
+	err := tree.writeRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,6 +59,8 @@ func TestSaveRoot(t *testing.T) {
 	if !eq || err != nil {
 		t.Fatal(err)
 	}
+
+	s.PagerShutdown()
 }
 
 func TestNodeScan(t *testing.T) {
@@ -144,7 +146,7 @@ func TestNodeScan(t *testing.T) {
 	}
 }
 
-func TestGetLeafNode(t *testing.T) {
+func TestNodeGetLeafNode(t *testing.T) {
 	// Create a simple B+ tree manually
 	root := &Node{
 		Keys: [][]byte{[]byte("h"), []byte("r")},
@@ -232,8 +234,8 @@ func TestGetLeafNode(t *testing.T) {
 	}
 }
 
-func TestSet(t *testing.T) {
-	_, tree := dummyTree(t, "TestSet", 10)
+func TestNodeSet(t *testing.T) {
+	s, tree := dummyTree(t, "TestNodeSet", 10)
 
 	r, err := tree.Get([]byte(utils.GenerateRandomString(16)))
 	if err == nil || r != nil {
@@ -268,10 +270,12 @@ func TestSet(t *testing.T) {
 	if r == nil || bytes.Compare(r.Value, value) != 0 {
 		t.Fatalf("expected %v and got %v \n", value, r)
 	}
+
+	s.PagerShutdown()
 }
 
-func TestUpdate(t *testing.T) {
-	_, tree := dummyTree(t, "TestUpdate", 10)
+func TestNodeUpdate(t *testing.T) {
+	s, tree := dummyTree(t, "TestNodeUpdate", 10)
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
@@ -305,9 +309,11 @@ func TestUpdate(t *testing.T) {
 	if r == nil || !reflect.DeepEqual(r.Value, newValue) {
 		t.Fatalf("expected %v and got %v \n", value, r)
 	}
+
+	s.PagerShutdown()
 }
 
-func TestRangeScan(t *testing.T) {
+func TestNodeRangeScan(t *testing.T) {
 	node1 := &Node{
 		NodeID:  2,
 		Keys:    [][]byte{[]byte("b"), []byte("e")},
@@ -372,7 +378,7 @@ func TestRangeScan(t *testing.T) {
 	}
 }
 
-func TestSortedRecordSet(t *testing.T) {
+func TestNodeSortedRecordSet(t *testing.T) {
 	var keySeq uint64 = 0
 
 	numKeys := make([]int, 1024)
@@ -392,7 +398,7 @@ func TestSortedRecordSet(t *testing.T) {
 			sortedValues = append(sortedValues, fmt.Sprint(r))
 		}
 
-		_, tree := dummyTree(t, "TestSortedLoad", 4)
+		s, tree := dummyTree(t, "TestNodeSortedRecordSet", 4)
 
 		err := tree.SortedRecordSet(sortedRecords)
 		if err != nil {
@@ -416,10 +422,12 @@ func TestSortedRecordSet(t *testing.T) {
 				t.Fatal("Record should be equal")
 			}
 		}
+
+		s.PagerShutdown()
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestNodeDelete(t *testing.T) {
 	var keySeq uint64 = 0
 	var sortedRecords []*Record
 	var sortedKeys [][]byte
@@ -445,7 +453,7 @@ func TestDelete(t *testing.T) {
 
 		t.Log(utils.ArrayToStrings(keys))
 
-		_, tree := dummyTree(t, "TestDelete", 8)
+		s, tree := dummyTree(t, "TestNodeDelete", 8)
 
 		if i%2 == 1 {
 			for _, r := range sortedRecords {
@@ -473,6 +481,8 @@ func TestDelete(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+
+		s.PagerShutdown()
 	}
 
 	// for _, keys := range shuffledKeys {
@@ -496,8 +506,8 @@ func TestDelete(t *testing.T) {
 	// }
 }
 
-func TestSplitInternal(t *testing.T) {
-	_, tree := dummyTree(t, "TestSplitInternal", 4)
+func TestNodeSplitInternal(t *testing.T) {
+	s, tree := dummyTree(t, "TestNodeSplitInternal", 4)
 
 	var keySeq uint64 = 0
 	var sortedRecords []*Record
@@ -579,4 +589,6 @@ func TestSplitInternal(t *testing.T) {
 			}
 		}
 	}
+
+	s.PagerShutdown()
 }

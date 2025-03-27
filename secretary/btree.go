@@ -70,18 +70,25 @@ func (s *Secretary) NewBTree(
 	}
 	tree.recordPagers = recordPagers
 
+	s.AddTree(tree)
+
 	return tree, nil
 }
 
 func (tree *BTree) close() error {
 	errs := []error{}
-	if err := tree.nodePager.file.Close(); err != nil {
-		errs = append(errs, err)
+
+	if tree.nodePager != nil {
+		if err := tree.nodePager.file.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	for _, pager := range tree.recordPagers {
-		if err := pager.file.Close(); err != nil {
-			errs = append(errs, err)
+		if pager != nil {
+			if err := pager.file.Close(); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
@@ -104,23 +111,7 @@ func (tree *BTree) SaveHeader() error {
 }
 
 func (tree *BTree) ReadNodeAtIndex(index uint64) (*Node, error) {
-	// offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
-
-	// rootBytes, err := tree.nodePager.ReadAt(int64(offset), int32(tree.nodeSize))
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// var node Node
-	// err = binstruct.Deserialize(rootBytes, &node)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// return &node, nil
-
 	page, err := tree.nodePager.ReadPage(int64(index))
-
 	return page.Data, err
 }
 
@@ -133,7 +124,22 @@ func (tree *BTree) readRoot() error {
 	return nil
 }
 
-func (tree *BTree) SaveNode(node *Node) error {
+func (tree *BTree) WriteNodeAtIndex(node *Node, index uint64) error {
+	node.Index = index
+	if node.parent != nil {
+		node.ParentIndex = node.parent.Index
+	}
+	// if node.next != nil {
+	// 	node.NextIndex = node.next.Index
+	// }
+	// if node.prev != nil {
+	// 	node.PrevIndex = node.prev.Index
+	// }
+
+	return tree.nodePager.WritePage(node, int64(index))
+}
+
+func (tree *BTree) WriteNode(node *Node) error {
 	if node.Index == 0 {
 		lastFileIndex, err := tree.nodePager.NumPages()
 		if err != nil {
@@ -142,37 +148,15 @@ func (tree *BTree) SaveNode(node *Node) error {
 		if uint64(lastFileIndex) != tree.NumNodeSeq {
 			return fmt.Errorf("NumNodes dont match %d != %d", lastFileIndex, tree.NumNodeSeq)
 		}
-		tree.SaveNodeAtIndex(node, uint64(lastFileIndex))
+		tree.WriteNodeAtIndex(node, uint64(lastFileIndex))
 	} else {
-		tree.SaveNodeAtIndex(node, uint64(node.Index))
+		tree.WriteNodeAtIndex(node, uint64(node.Index))
 	}
 	return nil
 }
 
-func (tree *BTree) SaveNodeAtIndex(node *Node, index uint64) error {
-	node.Index = index
-	if node.parent != nil {
-		node.ParentIndex = node.parent.Index
-	}
-	if node.next != nil {
-		node.NextIndex = node.next.Index
-	}
-	if node.prev != nil {
-		node.PrevIndex = node.prev.Index
-	}
-
-	rootHeader, err := binstruct.Serialize(node)
-	if err != nil {
-		return err
-	}
-
-	offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
-
-	return tree.nodePager.WriteAt(rootHeader, int64(offset))
-}
-
-func (tree *BTree) saveRoot() error {
-	return tree.SaveNodeAtIndex(tree.root, 0)
+func (tree *BTree) writeRoot() error {
+	return tree.WriteNodeAtIndex(tree.root, 0)
 }
 
 func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
@@ -201,6 +185,47 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 
 	return &deserializedTree, nil
 }
+
+// func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
+// 	temptree := BTree{CollectionName: collectionName}
+// 	nodePager, err := temptree.NewNodePager("index", 0)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	headerData, err := nodePager.ReadAt(0, SECRETARY_HEADER_LENGTH)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	data := bytes.Trim(headerData, "-")[len(SECRETARY):]
+// 	var deserializedTree BTree
+// 	err = binstruct.Deserialize(data, &deserializedTree)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	tree, err := s.NewBTree(
+// 		collectionName,
+// 		deserializedTree.Order,
+// 		deserializedTree.NumLevel,
+// 		deserializedTree.BaseSize,
+// 		deserializedTree.Increment,
+// 		deserializedTree.CompactionBatchSize,
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	tree.NodeSeq = deserializedTree.NodeSeq
+// 	tree.NumNodeSeq = deserializedTree.NumNodeSeq
+
+// 	// if err := tree.readRoot(); err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	return tree, nil
+// }
 
 func (tree *BTree) Height() int {
 	height := 0

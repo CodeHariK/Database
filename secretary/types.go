@@ -120,10 +120,10 @@ type Node struct {
 
 	Index       uint64 `bin:"Index"`
 	ParentIndex uint64 `bin:"ParentIndex"`
-	NextIndex   uint64 `bin:"NextIndex"`
-	PrevIndex   uint64 `bin:"PrevIndex"`
+	// NextIndex   uint64 `bin:"NextIndex"`
+	// PrevIndex   uint64 `bin:"PrevIndex"`
 
-	KeyLocation []uint64 `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
+	KeyLocation []uint64 `bin:"KeyLocations"`             // (8 bytes) [node index | record location]
 	Keys        [][]byte `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 

@@ -7,14 +7,17 @@ clean:
 one: clean
 	go test ./... -v -run $(test)
 
+mul: clean
+	go test ./... -v -run "^$(test)$$" 
+
 test: clean
-	go test -cover -coverprofile=cover.txt ./...
+	go test ./... -cover -coverprofile=cover.txt
 
 vtest: clean
-	go test -cover -coverprofile=cover.txt -v ./...
+	go test ./... -v -cover -coverprofile=cover.txt
 
 cover: clean
-	go test -cover -coverprofile=cover.txt ./...
+	go test ./... -cover -coverprofile=cover.txt
 	go tool cover -func=cover.txt
 	go tool cover -html=cover.txt
 

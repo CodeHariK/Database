@@ -8,13 +8,10 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-// TestBTreeSerialization tests the serialization and deserialization of BPlusTree
 func TestBTreeSerialization(t *testing.T) {
-	_, originalTree := dummyTree(t, "TestBTreeSerialization", 10)
+	s, originalTree := dummyTree(t, "TestBTreeSerialization", 10)
 
-	// Serialize the tree
 	serializedData, err := binstruct.Serialize(originalTree)
-	// serializedData, err := originalTree.Serialize()
 	if err != nil {
 		t.Fatalf("Serialization failed: %v", err)
 	}
@@ -33,6 +30,8 @@ func TestBTreeSerialization(t *testing.T) {
 	if !eq || err != nil {
 		t.Fatalf("\nShould be Equal\n")
 	}
+
+	s.PagerShutdown()
 }
 
 func TestBtreeInvalid(t *testing.T) {
@@ -67,10 +66,12 @@ func TestBtreeInvalid(t *testing.T) {
 	if invalidNameErr == nil || invalidIncrementErr == nil || invalidOrderErr == nil {
 		t.Fatal(invalidNameErr, invalidIncrementErr, invalidOrderErr)
 	}
+
+	s.PagerShutdown()
 }
 
-func TestSaveReadHeader(t *testing.T) {
-	s, tree := dummyTree(t, "TestSaveHeader", 10)
+func TestBtreeSaveReadHeader(t *testing.T) {
+	s, tree := dummyTree(t, "TestBtreeSaveReadHeader", 10)
 
 	err := tree.SaveHeader()
 	if err != nil {
@@ -92,10 +93,12 @@ func TestSaveReadHeader(t *testing.T) {
 	if dErr != nil || tErr != nil || bytes.Compare(tJson, dJson) != 0 {
 		t.Log("\n", string(tJson), "\n", string(dJson))
 	}
+
+	s.PagerShutdown()
 }
 
 func TestBTreeHeight(t *testing.T) {
-	_, tree := dummyTree(t, "TestSaveHeader", 4)
+	s, tree := dummyTree(t, "TestBTreeHeight", 4)
 
 	var keySeq uint64 = 0
 
@@ -121,12 +124,14 @@ func TestBTreeHeight(t *testing.T) {
 	if tree.Height() != 3 {
 		t.Fatalf("Expected height %d", tree.Height())
 	}
+
+	s.PagerShutdown()
 }
 
 func TestBTreeClose(t *testing.T) {
-	_, tree := dummyTree(t, "TestSaveHeader", 4)
+	s, _ := dummyTree(t, "TestBTreeClose", 4)
 
-	err := tree.close()
+	err := s.PagerShutdown()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -36,9 +36,6 @@ func main() {
 		utils.Log(userErr, imagesErr)
 	}
 
-	s.AddTree(users)
-	s.AddTree(images)
-
 	var keySeq uint64 = 0
 	var sortedRecords []*secretary.Record
 	var sortedKeys [][]byte

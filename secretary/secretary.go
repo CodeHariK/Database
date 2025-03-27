@@ -1,6 +1,8 @@
 package secretary
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/codeharik/secretary/utils"
@@ -14,6 +16,8 @@ func New() (*Secretary, error) {
 
 	secretary := &Secretary{
 		trees: map[string]*BTree{},
+
+		quit: make(chan any),
 	}
 
 	dirPath := "./SECRETARY"
@@ -58,11 +62,19 @@ func (s *Secretary) AddTree(tree *BTree) {
 	s.trees[tree.CollectionName] = tree
 }
 
-func (s *Secretary) Close() {
+func (s *Secretary) Shutdown() {
+	s.PagerShutdown()
+	s.ServerShutdown()
+}
+
+func (s *Secretary) PagerShutdown() error {
+	closingErrors := make([]error, len(s.trees))
+	i := 0
 	for _, ss := range s.trees {
 		if err := ss.close(); err != nil {
-			utils.Log("Error closing", ss.CollectionName, err)
+			closingErrors[i] = fmt.Errorf("Error closing %s : %s", ss.CollectionName, err.Error())
 		}
+		i++
 	}
-	s.Shutdown()
+	return errors.Join(closingErrors...)
 }

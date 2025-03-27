@@ -114,8 +114,6 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.AddTree(tree)
-
 	writeJson(w, http.StatusOK, "New tree created")
 }
 
@@ -298,7 +296,7 @@ func (s *Secretary) Serve() {
 	}
 }
 
-func (s *Secretary) Shutdown() {
+func (s *Secretary) ServerShutdown() {
 	s.once.Do(func() { // Ensures this runs only once
 
 		// Close quit channel only if this call initiated shutdown

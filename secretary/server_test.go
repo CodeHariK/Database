@@ -11,7 +11,7 @@ import (
 )
 
 // Test /getallbtree
-func TestGetAllBTreeHandler(t *testing.T) {
+func TestServerGetAllBTreeHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -30,10 +30,12 @@ func TestGetAllBTreeHandler(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
+
+	s.PagerShutdown()
 }
 
 // Test /getbtree with query params
-func TestGetBTreeHandler(t *testing.T) {
+func TestServerGetBTreeHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -70,10 +72,12 @@ func TestGetBTreeHandler(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
+
+	s.PagerShutdown()
 }
 
-// Test /insert with POST data
-func TestSetHandler(t *testing.T) {
+// Test /set with POST data
+func TestServerSetHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -94,10 +98,12 @@ func TestSetHandler(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status OK; got %v", resp.Status)
 	}
+
+	s.PagerShutdown()
 }
 
-// Test /insert with POST data
-func TestNewTreeHandler(t *testing.T) {
+// Test /newtree with POST data
+func TestServerNewTreeHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -151,9 +157,11 @@ func TestNewTreeHandler(t *testing.T) {
 			t.Fatalf("expected status OK; got %v", resp.Status)
 		}
 	}
+
+	s.PagerShutdown()
 }
 
-func TestGetHandler(t *testing.T) {
+func TestServerGetHandler(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
@@ -190,4 +198,6 @@ func TestGetHandler(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected status StatusOK; got %v", resp.Status)
 	}
+
+	s.PagerShutdown()
 }

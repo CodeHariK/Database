@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestAllocateBatch(t *testing.T) {
-	_, tree := dummyTree(t, "TestAllocateBatch", 10)
+func TestPagerAllocateBatch(t *testing.T) {
+	s, tree := dummyTree(t, "TestPagerAllocateBatch", 10)
 
 	fileInfo, err := tree.nodePager.file.Stat()
 	if err != nil {
@@ -41,10 +41,12 @@ func TestAllocateBatch(t *testing.T) {
 			t.Fatalf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
 		}
 	}
+
+	s.PagerShutdown()
 }
 
-func TestWriteAndReadAtOffset(t *testing.T) {
-	_, tree := dummyTree(t, "TestWriteAndReadAtOffset", 10)
+func TestPagerWriteAndReadAtOffset(t *testing.T) {
+	s, tree := dummyTree(t, "TestPagerWriteAndReadAtOffset", 10)
 
 	{ // Test: Write small data within the first batch
 		data := []byte("Hello, B+ Tree!")
@@ -107,4 +109,6 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 			t.Fatalf("WriteAt should be failing, data should not exceed batch : %v", err)
 		}
 	}
+
+	s.PagerShutdown()
 }

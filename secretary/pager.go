@@ -274,6 +274,14 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 	return page, nil
 }
 
+func (store *Pager[T]) WritePage(data T, index int64) error {
+	rootHeader, err := data.ToBytes()
+	if err != nil {
+		return err
+	}
+	return store.WriteAt(rootHeader, index*store.itemSize+store.headerSize)
+}
+
 // SyncPage writes a page to disk if it's dirty.
 func (store *Pager[T]) SyncPage(index int64) error {
 	// Get page from cache
@@ -294,8 +302,7 @@ func (store *Pager[T]) SyncPage(index int64) error {
 		return err
 	}
 
-	offset := index * store.itemSize
-	err = store.WriteAt(data, offset)
+	err = store.WriteAt(data, index*store.itemSize+store.headerSize)
 	if err != nil {
 		return err
 	}

@@ -65,4 +65,6 @@ func TestSecretary(t *testing.T) {
 	if err == nil {
 		t.Fatal(err)
 	}
+
+	s.PagerShutdown()
 }
