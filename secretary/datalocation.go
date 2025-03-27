@@ -15,6 +15,20 @@ func (nodes *Node) ToBytes() ([]byte, error) {
 	return binstruct.Serialize(nodes)
 }
 
+func (nodes *Node) NewPage(index int64) *Page[*Node] {
+	return &Page[*Node]{
+		Index: index,
+		Data:  &Node{},
+	}
+}
+
+func (records *Record) NewPage(index int64) *Page[*Record] {
+	return &Page[*Record]{
+		Index: index,
+		Data:  &Record{},
+	}
+}
+
 func (nodes *Node) FromBytes(data []byte) error {
 	err := binstruct.Deserialize(data, nodes)
 	if err != nil {

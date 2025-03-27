@@ -58,8 +58,8 @@ func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, e
 }
 
 // Opens or creates a file and sets up the Pager
-func NewPager[T PageBox](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
-	pageSize := int64(float64(tree.BatchBaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
+func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
+	pageSize := int64(float64(tree.BaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
 
 	var headerSize int64 = 0
 
@@ -112,7 +112,7 @@ func NewPager[T PageBox](tree *BTree, fileType string, level uint8) (*Pager[T], 
 	cache, err := ristretto.NewCache(
 		&ristretto.Config[int64, *Page[T]]{
 			NumCounters: 10000,   // Track frequency of ~10,000 items
-			MaxCost:     1 << 20, // 1MB total cache size
+			MaxCost:     1 << 24, // 16MB total cache size
 			BufferItems: 64,      // Batch writes for performance
 			OnEvict: func(item *ristretto.Item[*Page[T]]) {
 				delete(pager.dirtyPages, item.Value.Index) // Mark page as clean
@@ -154,7 +154,7 @@ func (store *Pager[T]) AllocatePage(index int64) error {
 	return nil
 }
 
-func (store *Pager[T]) NumPages(index int32) (int64, error) {
+func (store *Pager[T]) NumPages() (int64, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -214,8 +214,7 @@ func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 		}
 	}
 
-	{
-		// Write data at the given offset
+	{ // Write data at the given offset
 		n, err := store.file.WriteAt(data, offset)
 		if err != nil || (len(data)) != int(n) {
 			return ErrorWritingDataAtOffset(offset, err)
@@ -247,19 +246,22 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 		return cachedPage, nil
 	}
 
-	page := &Page[T]{
-		Index: index,
-	}
+	var item T
+	page := item.NewPage(index) // Calls the NewPage method of PageItem[T]
+
+	// page := &Page[T]{
+	// 	Index: index,
+	// }
 	// Store in Ristretto cache
-	store.cache.Set(index, page, store.itemSize) // Cost = size of page
-	store.cache.Wait()                           // Ensure writes are processed
+	store.cache.Set(index, page, store.itemSize)
+	store.cache.Wait()
 
 	store.mu.Unlock()
 
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
-	data, err := store.ReadAt(index*store.itemSize, int32(store.itemSize))
+	data, err := store.ReadAt(index*store.itemSize+store.headerSize, int32(store.itemSize))
 	if err != nil {
 		return nil, err
 	}

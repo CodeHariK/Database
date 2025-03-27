@@ -14,7 +14,7 @@ func (s *Secretary) NewBTree(
 	collectionName string,
 	order uint8,
 	numLevel uint8,
-	batchBaseSize uint32,
+	baseSize uint32,
 	increment uint8,
 	compactionBatchSize uint32,
 ) (*BTree, error) {
@@ -42,10 +42,10 @@ func (s *Secretary) NewBTree(
 
 		root: &Node{},
 
-		Order:         order,
-		NumLevel:      numLevel,
-		BatchBaseSize: batchBaseSize,
-		Increment:     increment,
+		Order:     order,
+		NumLevel:  numLevel,
+		BaseSize:  baseSize,
+		Increment: increment,
 
 		nodeSize: uint32(nodeSize),
 
@@ -104,20 +104,24 @@ func (tree *BTree) SaveHeader() error {
 }
 
 func (tree *BTree) ReadNodeAtIndex(index uint64) (*Node, error) {
-	offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
+	// offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
 
-	rootBytes, err := tree.nodePager.ReadAt(int64(offset), int32(tree.nodeSize))
-	if err != nil {
-		return nil, err
-	}
+	// rootBytes, err := tree.nodePager.ReadAt(int64(offset), int32(tree.nodeSize))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	var node Node
-	err = binstruct.Deserialize(rootBytes, &node)
-	if err != nil {
-		return nil, err
-	}
+	// var node Node
+	// err = binstruct.Deserialize(rootBytes, &node)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return &node, nil
+	// return &node, nil
+
+	page, err := tree.nodePager.ReadPage(int64(index))
+
+	return page.Data, err
 }
 
 func (tree *BTree) readRoot() error {
@@ -131,15 +135,14 @@ func (tree *BTree) readRoot() error {
 
 func (tree *BTree) SaveNode(node *Node) error {
 	if node.Index == 0 {
-		stat, err := tree.nodePager.file.Stat()
+		lastFileIndex, err := tree.nodePager.NumPages()
 		if err != nil {
 			return err
 		}
-		lastFileIndex := uint64(stat.Size()) - uint64(SECRETARY_HEADER_LENGTH)/uint64(tree.nodeSize)
-		if lastFileIndex != tree.NumNodeSeq {
+		if uint64(lastFileIndex) != tree.NumNodeSeq {
 			return fmt.Errorf("NumNodes dont match %d != %d", lastFileIndex, tree.NumNodeSeq)
 		}
-		tree.SaveNodeAtIndex(node, lastFileIndex)
+		tree.SaveNodeAtIndex(node, uint64(lastFileIndex))
 	} else {
 		tree.SaveNodeAtIndex(node, uint64(node.Index))
 	}

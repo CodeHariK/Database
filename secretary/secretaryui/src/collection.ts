@@ -203,7 +203,7 @@ async function newTreeRequest(event: SubmitEvent) {
         CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
         Order: Number((document.getElementById("order") as HTMLInputElement).value),
         NumLevel: Number((document.getElementById("NumLevel") as HTMLInputElement).value),
-        BatchBaseSize: Number((document.getElementById("batchBaseSize") as HTMLInputElement).value),
+        BaseSize: Number((document.getElementById("BaseSize") as HTMLInputElement).value),
         Increment: Number((document.getElementById("Increment") as HTMLInputElement).value),
     };
 

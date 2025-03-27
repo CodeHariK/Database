@@ -51,7 +51,7 @@ type Secretary struct {
 SECRETARY				(9 bytes)  9
 order 					(uint8)    10
 NumLevel  				(uint8)    11
-batchBaseSize  			(uint32)   15
+baseSize  			(uint32)   15
 increment 				(uint8)    16
 nodeSeq    				(uint64)   24
 numNodeSeq    			(uint64)   32
@@ -79,10 +79,10 @@ type BTree struct {
 	root               *Node // Root node of the tree
 	nextCompactionNode *Node // Compaction Node For Current Batch
 
-	Order         uint8  `json:"order" bin:"order"`                 // Max = 255, Order of the tree (maximum number of children)
-	NumLevel      uint8  `json:"numLevel" bin:"numLevel"`           // 32, Max 256 levels
-	BatchBaseSize uint32 `json:"batchBaseSize" bin:"batchBaseSize"` // 1024MB
-	Increment     uint8  `json:"increment" bin:"increment"`         // 125 => 1.25
+	Order     uint8  `json:"order" bin:"order"`         // Max = 255, Order of the tree (maximum number of children)
+	NumLevel  uint8  `json:"numLevel" bin:"numLevel"`   // 32, Max 256 levels
+	BaseSize  uint32 `json:"baseSize" bin:"baseSize"`   // 1024Bytes
+	Increment uint8  `json:"increment" bin:"increment"` // 125 => 1.25
 
 	NodeSeq    uint64 `json:"nodeSeq" bin:"nodeSeq"` // Incrementing Node sequence
 	NumNodeSeq uint64 `json:"numNodeSeq" bin:"numNodeSeq"`
@@ -127,7 +127,8 @@ type Node struct {
 	Keys        [][]byte `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
-type PageBox interface {
+type PageItem[T any] interface {
+	NewPage(index int64) *Page[T]
 	ToBytes() ([]byte, error)
 	FromBytes([]byte) error
 }
@@ -141,7 +142,7 @@ type Page[T any] struct {
 }
 
 // Pager manages reading and writing pages.
-type Pager[T PageBox] struct {
+type Pager[T PageItem[T]] struct {
 	file *os.File
 
 	level uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
