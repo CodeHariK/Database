@@ -159,41 +159,19 @@ func (tree *BTree) writeRoot() error {
 	return tree.WriteNodeAtIndex(tree.root, 0)
 }
 
-func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
-	temp, err := s.NewBTree(collectionName,
-		10,
-		0,
-		0,
-		125,
-		0,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	headerData, err := temp.nodePager.ReadAt(0, SECRETARY_HEADER_LENGTH)
-	if err != nil {
-		return nil, err
-	}
-
-	data := bytes.Trim(headerData, "-")[len(SECRETARY):]
-	var deserializedTree BTree
-	err = binstruct.Deserialize(data, &deserializedTree)
-	if err != nil {
-		return nil, err
-	}
-
-	return &deserializedTree, nil
-}
-
 // func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
-// 	temptree := BTree{CollectionName: collectionName}
-// 	nodePager, err := temptree.NewNodePager("index", 0)
+// 	temp, err := s.NewBTree(collectionName,
+// 		10,
+// 		0,
+// 		0,
+// 		125,
+// 		0,
+// 	)
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	headerData, err := nodePager.ReadAt(0, SECRETARY_HEADER_LENGTH)
+// 	headerData, err := temp.nodePager.ReadAt(0, SECRETARY_HEADER_LENGTH)
 // 	if err != nil {
 // 		return nil, err
 // 	}
@@ -205,27 +183,50 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 // 		return nil, err
 // 	}
 
-// 	tree, err := s.NewBTree(
-// 		collectionName,
-// 		deserializedTree.Order,
-// 		deserializedTree.NumLevel,
-// 		deserializedTree.BaseSize,
-// 		deserializedTree.Increment,
-// 		deserializedTree.CompactionBatchSize,
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	tree.NodeSeq = deserializedTree.NodeSeq
-// 	tree.NumNodeSeq = deserializedTree.NumNodeSeq
-
-// 	// if err := tree.readRoot(); err != nil {
-// 	// 	return nil, err
-// 	// }
-
-// 	return tree, nil
+// 	return &deserializedTree, nil
 // }
+
+func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
+	temptree := BTree{CollectionName: collectionName}
+	nodePager, err := temptree.NewNodePager("index", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	headerData, err := nodePager.ReadAt(0, SECRETARY_HEADER_LENGTH)
+	if err != nil {
+		return nil, err
+	}
+
+	data := bytes.Trim(headerData, "-")[len(SECRETARY):]
+	var deserializedTree BTree
+	err = binstruct.Deserialize(data, &deserializedTree)
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := s.NewBTree(
+		collectionName,
+		deserializedTree.Order,
+		deserializedTree.NumLevel,
+		deserializedTree.BaseSize,
+		deserializedTree.Increment,
+		deserializedTree.CompactionBatchSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	tree.NodeSeq = deserializedTree.NodeSeq
+	tree.NumNodeSeq = deserializedTree.NumNodeSeq
+
+	// if err := tree.readRoot(); err != nil {
+	// 	fmt.Println("--> ", collectionName, err.Error())
+	// 	return nil, err
+	// }
+
+	return tree, nil
+}
 
 func (tree *BTree) Height() int {
 	height := 0

@@ -6,7 +6,7 @@ import (
 )
 
 func TestPagerAllocateBatch(t *testing.T) {
-	s, tree := dummyTree(t, "TestPagerAllocateBatch", 10)
+	s, tree := dummySecretary(t, "TestPagerAllocateBatch", 10)
 
 	fileInfo, err := tree.nodePager.file.Stat()
 	if err != nil {
@@ -46,7 +46,7 @@ func TestPagerAllocateBatch(t *testing.T) {
 }
 
 func TestPagerWriteAndReadAtOffset(t *testing.T) {
-	s, tree := dummyTree(t, "TestPagerWriteAndReadAtOffset", 10)
+	s, tree := dummySecretary(t, "TestPagerWriteAndReadAtOffset", 10)
 
 	{ // Test: Write small data within the first batch
 		data := []byte("Hello, B+ Tree!")

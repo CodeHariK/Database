@@ -36,6 +36,7 @@ func (tree *BTree) NodeVerify(node *Node) error {
 		return ErrorKeysGTEOrder
 	}
 	if node != tree.root && len(node.Keys) < int(tree.minNumKeys) {
+		fmt.Println(node.NodeID, utils.ArrayToStrings(node.Keys), tree.minNumKeys)
 		return ErrorKeysLTOrder
 	}
 
@@ -121,7 +122,7 @@ func (tree *BTree) recursiveNodeVerify(node *Node) []error {
 	if node != nil {
 		err := tree.NodeVerify(node)
 		if err != nil {
-			rErrs = append(rErrs, err)
+			rErrs = append(rErrs, fmt.Errorf("%d : %v", node.NodeID, err))
 		}
 		for _, n := range node.children {
 			cErrs := tree.recursiveNodeVerify(n)
@@ -360,6 +361,11 @@ func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
 
 	tree.root = tree.buildInternalNodes(leafNodes)
+
+	lastIndex := len(leafNodes) - 1
+	if lastIndex > 0 {
+		tree.handleUnderflow(leafNodes[lastIndex])
+	}
 
 	return nil
 }

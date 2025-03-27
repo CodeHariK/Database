@@ -27,9 +27,9 @@ func ServerLog(msgs ...any) {
 	msg, _ := utils.LogMessage(msgs...)
 	// fmt.Println(msg)
 	COMMAND_LOGS += fmt.Sprintf("<div style='color:%s;background:#000'>%s</div><br>", utils.LightColor().Hex, strings.ReplaceAll(msg, "\n", "<br>"))
-	if len(COMMAND_LOGS) > 10000 {
-		COMMAND_LOGS = ""
-	}
+	// if len(COMMAND_LOGS) > 10000 {
+	// 	COMMAND_LOGS = ""
+	// }
 }
 
 type JsonResponse struct {
@@ -73,7 +73,7 @@ func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errs := tree.TreeVerify(); errs != nil {
+	if errs := tree.TreeVerify(); len(errs) != 0 {
 		writeJson(w, http.StatusConflict, tree.ToJSON())
 		return
 	}
@@ -155,7 +155,7 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errs := tree.TreeVerify(); errs != nil {
+	if errs := tree.TreeVerify(); len(errs) != 0 {
 		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
 		return
 	}
@@ -212,7 +212,7 @@ func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) 
 		writeJson(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if errs := tree.TreeVerify(); errs != nil {
+	if errs := tree.TreeVerify(); len(errs) != 0 {
 		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
 		return
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/codeharik/secretary"
@@ -26,7 +25,7 @@ func main() {
 
 	images, imagesErr := s.NewBTree(
 		"images",
-		4,
+		8,
 		32,
 		1024*1024,
 		125,
@@ -36,22 +35,7 @@ func main() {
 		utils.Log(userErr, imagesErr)
 	}
 
-	var keySeq uint64 = 0
-	var sortedRecords []*secretary.Record
-	var sortedKeys [][]byte
-	var sortedValues []string
-
-	for r := 0; r < 64; r++ {
-		key := []byte(utils.GenerateSeqString(&keySeq, 16, 5))
-		sortedKeys = append(sortedKeys, key)
-
-		sortedRecords = append(sortedRecords, &secretary.Record{
-			Key:   key,
-			Value: []byte(fmt.Sprint(r + 1)),
-		})
-
-		sortedValues = append(sortedValues, fmt.Sprint(r))
-	}
+	_, sortedRecords := secretary.SampleSortedKeyRecords()
 	images.SortedRecordSet(sortedRecords)
 
 	for _, r := range sortedRecords {

@@ -8,7 +8,7 @@ one: clean
 	go test ./... -v -run $(test)
 
 mul: clean
-	go test ./... -v -run "^$(test)$$" 
+	go test ./... -v -run "^$(test).*$$" 
 
 test: clean
 	go test ./... -cover -coverprofile=cover.txt
