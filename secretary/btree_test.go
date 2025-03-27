@@ -9,7 +9,7 @@ import (
 )
 
 func TestBTreeSerialization(t *testing.T) {
-	s, originalTree := dummySecretary(t, "TestBTreeSerialization", 10)
+	s, originalTree := dummySecretary(t, 10)
 
 	serializedData, err := binstruct.Serialize(originalTree)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestBtreeInvalid(t *testing.T) {
 }
 
 func TestBtreeSaveReadHeader(t *testing.T) {
-	s, tree := dummySecretary(t, "TestBtreeSaveReadHeader", 10)
+	s, tree := dummySecretary(t, 10)
 
 	err := tree.SaveHeader()
 	if err != nil {
@@ -98,7 +98,7 @@ func TestBtreeSaveReadHeader(t *testing.T) {
 }
 
 func TestBTreeHeight(t *testing.T) {
-	s, tree := dummySecretary(t, "TestBTreeHeight", 4)
+	s, tree := dummySecretary(t, 4)
 
 	var keySeq uint64 = 0
 
@@ -129,7 +129,7 @@ func TestBTreeHeight(t *testing.T) {
 }
 
 func TestBTreeClose(t *testing.T) {
-	s, _ := dummySecretary(t, "TestBTreeClose", 4)
+	s, _ := dummySecretary(t, 4)
 
 	err := s.PagerShutdown()
 	if err != nil {

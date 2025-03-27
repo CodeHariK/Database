@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-
-	"github.com/dgraph-io/ristretto/v2"
 )
 
 const (
@@ -150,7 +148,7 @@ type Pager[T PageItem[T]] struct {
 	headerSize int64
 	itemSize   int64 // Maximum batch size = 4GB
 
-	cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
+	// cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
 	dirtyPages map[int64]bool
 
 	mu sync.Mutex

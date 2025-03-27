@@ -35,7 +35,7 @@ func main() {
 		utils.Log(userErr, imagesErr)
 	}
 
-	_, sortedRecords := secretary.SampleSortedKeyRecords()
+	_, sortedRecords := secretary.SampleSortedKeyRecords(64)
 	images.SortedRecordSet(sortedRecords)
 
 	for _, r := range sortedRecords {

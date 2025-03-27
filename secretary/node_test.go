@@ -10,10 +10,11 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func dummySecretary(t *testing.T, collectionName string, order uint8) (*Secretary, *BTree) {
+func dummySecretary(t *testing.T, order uint8) (*Secretary, *BTree) {
 	s, serr := New()
+
 	tree, err := s.NewBTree(
-		collectionName,
+		utils.GenerateRandomString(16),
 		order,
 		32,
 		1024,
@@ -35,7 +36,7 @@ func dummySecretary(t *testing.T, collectionName string, order uint8) (*Secretar
 }
 
 func TestNodeSaveRoot(t *testing.T) {
-	s, tree := dummySecretary(t, "TestNodeSaveRoot", 10)
+	s, tree := dummySecretary(t, 10)
 
 	root := Node{
 		ParentIndex: 101,
@@ -237,7 +238,7 @@ func TestNodeGetLeafNode(t *testing.T) {
 }
 
 func TestNodeSet(t *testing.T) {
-	s, tree := dummySecretary(t, "TestNodeSet", 10)
+	s, tree := dummySecretary(t, 10)
 
 	r, err := tree.Get([]byte(utils.GenerateRandomString(16)))
 	if err == nil || r != nil {
@@ -277,7 +278,7 @@ func TestNodeSet(t *testing.T) {
 }
 
 func TestNodeUpdate(t *testing.T) {
-	s, tree := dummySecretary(t, "TestNodeUpdate", 10)
+	s, tree := dummySecretary(t, 10)
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
@@ -382,9 +383,9 @@ func TestNodeRangeScan(t *testing.T) {
 
 // func TestNodeSortedRecordSet(t *testing.T) {
 // 	// {
-// 	// 	_, sortedRecords := SampleSortedKeyRecords()
+// 	// 	_, sortedRecords := SampleSortedKeyRecords(64)
 
-// 	// 	s, tree := dummySecretary(t, "TestNodeDelete", 8)
+// 	// 	s, tree := dummySecretary(t, 8)
 
 // 	// 	tree.SortedRecordSet(sortedRecords)
 
@@ -396,55 +397,40 @@ func TestNodeRangeScan(t *testing.T) {
 // 	// }
 
 // 	{
-// 		var keySeq uint64 = 0
-
 // 		numKeys := make([]int32, 10)
 // 		for i := range numKeys {
 // 			numKeys[i] = 10 + rand.Int32N(500)
 // 		}
 
 // 		for _, numKey := range numKeys {
-// 			var sortedRecords []*Record
-// 			var sortedValues []string
-// 			for r := int32(0); r < numKey; r++ {
-// 				sortedRecords = append(sortedRecords, &Record{
-// 					Key:   []byte(utils.GenerateSeqString(&keySeq, 16, 5)),
-// 					Value: []byte(fmt.Sprint(r)),
-// 				})
+// 			_, sortedRecords := SampleSortedKeyRecords(int(numKey))
 
-// 				sortedValues = append(sortedValues, fmt.Sprint(r))
-// 			}
-
-// 			s, tree := dummySecretary(t, "TestNodeSortedRecordSet", 8)
+// 			_, tree := dummySecretary(t, 8)
 
 // 			err := tree.SortedRecordSet(sortedRecords)
 // 			if err != nil {
 // 				t.Fatal(err)
 // 			}
 
-// 			if errs := tree.TreeVerify(); len(errs) != 0 {
-// 				t.Fatal(errs)
-// 			}
-
-// 			startKey := sortedRecords[0].Key
-// 			endKey := sortedRecords[len(sortedRecords)-1].Key
-
-// 			rangeScan := tree.RangeScan([]byte(startKey), []byte(endKey))
-// 			if len(sortedValues) != len(rangeScan) {
-// 				t.Fatal("Range should be equal", len(sortedValues), len(rangeScan))
-// 			}
-
-// 			for i, s := range sortedRecords {
-// 				if string(rangeScan[i].Value) != string(s.Value) || string(rangeScan[i].Key) != string(s.Key) {
-// 					t.Fatal("Record should be equal")
-// 				}
-// 			}
-
 // 			// if errs := tree.TreeVerify(); len(errs) != 0 {
-// 			// 	utils.Log(t, errs)
+// 			// 	t.Fatal(errs)
 // 			// }
 
-// 			s.PagerShutdown()
+// 			// startKey := sortedRecords[0].Key
+// 			// endKey := sortedRecords[len(sortedRecords)-1].Key
+
+// 			// rangeScan := tree.RangeScan([]byte(startKey), []byte(endKey))
+// 			// if len(sortedValues) != len(rangeScan) {
+// 			// 	t.Fatal("Range should be equal", len(sortedValues), len(rangeScan))
+// 			// }
+
+// 			// for i, s := range sortedRecords {
+// 			// 	if string(rangeScan[i].Value) != string(s.Value) || string(rangeScan[i].Key) != string(s.Key) {
+// 			// 		t.Fatal("Record should be equal")
+// 			// 	}
+// 			// }
+
+// 			// s.PagerShutdown()
 // 		}
 // 	}
 // }
@@ -510,7 +496,7 @@ func TestNodeRangeScan(t *testing.T) {
 // }
 
 func TestNodeSplitInternal(t *testing.T) {
-	s, tree := dummySecretary(t, "TestNodeSplitInternal", 4)
+	s, tree := dummySecretary(t, 4)
 
 	var keySeq uint64 = 0
 	var sortedRecords []*Record

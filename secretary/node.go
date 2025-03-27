@@ -358,14 +358,20 @@ func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 		return ErrorRecordsNotSorted
 	}
 
-	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
+	o := len(sortedRecords) % (int(tree.Order-1) * int(tree.Order-1))
+	leafNodes := tree.buildSortedLeafNodes(sortedRecords[:len(sortedRecords)-o])
 
 	tree.root = tree.buildInternalNodes(leafNodes)
 
-	lastIndex := len(leafNodes) - 1
-	if lastIndex > 0 {
-		tree.handleUnderflow(leafNodes[lastIndex])
-	}
+	// for _, r := range sortedRecords[len(sortedRecords)-o:] {
+	// 	err := tree.Set(r.Key, r.Value)
+	// 	if err != nil {
+	// 		log.Fatal(err, r.Key)
+	// 	}
+	// }
+
+	// leafNodes := tree.buildSortedLeafNodes(sortedRecords)
+	// tree.root = tree.buildInternalNodes(leafNodes)
 
 	return nil
 }
