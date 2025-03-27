@@ -4,17 +4,10 @@ import (
 	"github.com/codeharik/secretary/utils/binstruct"
 )
 
-func (datalocation DataLocation) toRecordLocation() RecordLocation {
+func ToRecordLocation(datalocation uint64) RecordLocation {
 	return RecordLocation{
 		batchLevel: uint8((uint64(datalocation) & RECORD_BATCH_LEVEL_AND) >> 56),
 		offset:     uint64(datalocation) & RECORD_BATCH_OFFSET_AND,
-	}
-}
-
-func (datalocation DataLocation) toNodeLocation() NodeLocation {
-	return NodeLocation{
-		index:       uint16((uint64(datalocation) & NODE_INDEX_AND) >> 48),
-		batchOffset: uint64(datalocation) & NODE_BATCH_OFFSET_AND,
 	}
 }
 

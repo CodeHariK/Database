@@ -83,10 +83,9 @@ func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 type NewTreeRequest struct {
 	CollectionName      string `json:"CollectionName"`
 	Order               uint8  `json:"Order"`
-	BatchNumLevel       uint8  `json:"BatchNumLevel"`
+	NumLevel            uint8  `json:"NumLevel"`
 	BatchBaseSize       uint32 `json:"BatchBaseSize"`
-	BatchIncrement      uint8  `json:"BatchIncrement"`
-	BatchLength         uint8  `json:"BatchLength"`
+	Increment           uint8  `json:"Increment"`
 	CompactionBatchSize uint32 `json:"compactionBatchSize"`
 }
 
@@ -100,10 +99,9 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 	tree, err := s.NewBTree(
 		req.CollectionName,
 		req.Order,
-		req.BatchNumLevel,
+		req.NumLevel,
 		req.BatchBaseSize,
-		req.BatchIncrement,
-		req.BatchLength,
+		req.Increment,
 		req.CompactionBatchSize,
 	)
 	if err != nil {

@@ -202,10 +202,9 @@ async function newTreeRequest(event: SubmitEvent) {
     const requestData = {
         CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
         Order: Number((document.getElementById("order") as HTMLInputElement).value),
-        BatchNumLevel: Number((document.getElementById("batchNumLevel") as HTMLInputElement).value),
+        NumLevel: Number((document.getElementById("NumLevel") as HTMLInputElement).value),
         BatchBaseSize: Number((document.getElementById("batchBaseSize") as HTMLInputElement).value),
-        BatchIncrement: Number((document.getElementById("batchIncrement") as HTMLInputElement).value),
-        BatchLength: Number((document.getElementById("batchLength") as HTMLInputElement).value),
+        Increment: Number((document.getElementById("Increment") as HTMLInputElement).value),
     };
 
     await makeRequest(

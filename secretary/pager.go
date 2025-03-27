@@ -59,14 +59,14 @@ func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, e
 
 // Opens or creates a file and sets up the Pager
 func NewPager[T PageBox](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
-	pageSize := int64(float64(tree.BatchBaseSize) * math.Pow(float64(tree.BatchIncrement)/100, float64(level)))
+	pageSize := int64(float64(tree.BatchBaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
 
-	headerSize := 0
+	var headerSize int64 = 0
 
 	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, pageSize)
 	if fileType == "index" {
 
-		headerSize = SECRETARY_HEADER_LENGTH + int(tree.nodeSize) // Header = SECRETARY_HEADER_LENGTH + ROOT_NODE
+		headerSize = SECRETARY_HEADER_LENGTH
 		pageSize = 1024 * 1024
 
 		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.CollectionName, fileType)
@@ -104,7 +104,7 @@ func NewPager[T PageBox](tree *BTree, fileType string, level uint8) (*Pager[T], 
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
-		pageSize:   pageSize,
+		itemSize:   pageSize,
 		dirtyPages: map[int64]bool{},
 	}
 
@@ -128,7 +128,7 @@ func NewPager[T PageBox](tree *BTree, fileType string, level uint8) (*Pager[T], 
 }
 
 // AllocatePage writes zeroed data in chunks of pageSize for alignment
-func (store *Pager[T]) AllocatePage(index int32) error {
+func (store *Pager[T]) AllocatePage(index int64) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -140,12 +140,12 @@ func (store *Pager[T]) AllocatePage(index int32) error {
 	fileSize := fileInfo.Size()
 
 	// Align to the next page boundary
-	if ((fileSize - int64(store.headerSize)) % store.pageSize) > 0 {
+	if ((fileSize - store.headerSize) % store.itemSize) > 0 {
 		return ErrorFileNotAligned(fileInfo)
 	}
 
 	// Expand file by writing zeros
-	zeroBuf := make([]byte, store.pageSize*int64(index))
+	zeroBuf := make([]byte, store.itemSize*int64(index))
 	_, err = store.file.WriteAt(zeroBuf, fileSize)
 	if err != nil {
 		return err
@@ -165,7 +165,7 @@ func (store *Pager[T]) NumPages(index int32) (int64, error) {
 	}
 	fileSize := fileInfo.Size()
 
-	return (fileSize - int64(store.headerSize)) / store.pageSize, nil
+	return (fileSize - store.headerSize) / store.itemSize, nil
 }
 
 /**
@@ -191,9 +191,9 @@ func (store *Pager[T]) NumPages(index int32) (int64, error) {
 // If there is not enough free space, it allocates a new batch.
 func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 	// Ensure data size does not exceed pageSize
-	if ((int64(len(data)) + offset - int64(store.headerSize)) / store.pageSize) !=
-		((offset - int64(store.headerSize)) / store.pageSize) {
-		return ErrorDataExceedPageSize(len(data), store.pageSize, offset)
+	if ((int64(len(data)) + offset - store.headerSize) / store.itemSize) !=
+		((offset - store.headerSize) / store.itemSize) {
+		return ErrorDataExceedPageSize(len(data), store.itemSize, offset)
 	}
 
 	{ // Get current file size
@@ -203,11 +203,11 @@ func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 		}
 		fileSize := fileInfo.Size()
 
-		n := 1 + (offset+int64(len(data))-fileSize)/store.pageSize
+		n := 1 + (offset+int64(len(data))-fileSize)/store.itemSize
 
 		// If the requested offset is beyond the current file size, allocate a new batch
 		if offset+int64(len(data)) > fileSize {
-			err := store.AllocatePage(int32(n))
+			err := store.AllocatePage(n)
 			if err != nil {
 				return ErrorAllocatingBatch(err)
 			}
@@ -251,7 +251,7 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 		Index: index,
 	}
 	// Store in Ristretto cache
-	store.cache.Set(index, page, store.pageSize) // Cost = size of page
+	store.cache.Set(index, page, store.itemSize) // Cost = size of page
 	store.cache.Wait()                           // Ensure writes are processed
 
 	store.mu.Unlock()
@@ -259,7 +259,7 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 	page.mu.Lock()
 	defer page.mu.Unlock()
 
-	data, err := store.ReadAt(index*store.pageSize, int32(store.pageSize))
+	data, err := store.ReadAt(index*store.itemSize, int32(store.itemSize))
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (store *Pager[T]) SyncPage(index int64) error {
 		return err
 	}
 
-	offset := index * store.pageSize
+	offset := index * store.itemSize
 	err = store.WriteAt(data, offset)
 	if err != nil {
 		return err

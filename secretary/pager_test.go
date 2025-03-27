@@ -22,8 +22,8 @@ func TestAllocateBatch(t *testing.T) {
 
 		fileInfo, err := tree.nodePager.file.Stat()
 		allocatedSize := fileInfo.Size() - originalFileSize
-		if err != nil || allocatedSize != int64(tree.nodePager.pageSize) {
-			t.Fatalf("Expected file size %d, got %d", tree.nodePager.pageSize, fileInfo.Size())
+		if err != nil || allocatedSize != int64(tree.nodePager.itemSize) {
+			t.Fatalf("Expected file size %d, got %d", tree.nodePager.itemSize, fileInfo.Size())
 		}
 	}
 
@@ -36,7 +36,7 @@ func TestAllocateBatch(t *testing.T) {
 		// Ensure the file size has increased correctly
 		fileInfo, err = tree.nodePager.file.Stat()
 		allocatedSize := fileInfo.Size() - originalFileSize
-		expectedSize := int64(2 * tree.nodePager.pageSize)
+		expectedSize := int64(2 * tree.nodePager.itemSize)
 		if err != nil || allocatedSize != expectedSize {
 			t.Fatalf("Expected file size %d, got %d", expectedSize, fileInfo.Size())
 		}
@@ -56,7 +56,7 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 		}
 
 		fileInfo, err := tree.nodePager.file.Stat()
-		if err != nil || fileInfo.Size() != int64(tree.nodePager.headerSize) {
+		if err != nil || fileInfo.Size() != tree.nodePager.headerSize {
 			t.Fatalf("Expected file size %d, got %d", tree.nodePager.headerSize, fileInfo.Size())
 		}
 
@@ -73,7 +73,7 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 	}
 
 	{ // Test: Writing beyond the current file size should allocate more batch
-		offset := int64(float64(tree.nodePager.pageSize) * 3.5) // Beyond the first batch (1024)
+		offset := int64(float64(tree.nodePager.itemSize) * 3.5) // Beyond the first batch (1024)
 		data := []byte("Second Batch Data")
 
 		err := tree.nodePager.WriteAt(data, offset)
@@ -93,14 +93,14 @@ func TestWriteAndReadAtOffset(t *testing.T) {
 		}
 
 		fileInfo, err := tree.nodePager.file.Stat()
-		if err != nil || fileInfo.Size() != int64(tree.nodePager.headerSize)+4*int64(tree.nodePager.pageSize) {
-			t.Fatalf("Expected file size %d, got %d", 4*int64(tree.nodePager.pageSize), fileInfo.Size())
+		if err != nil || fileInfo.Size() != tree.nodePager.headerSize+4*int64(tree.nodePager.itemSize) {
+			t.Fatalf("Expected file size %d, got %d", 4*int64(tree.nodePager.itemSize), fileInfo.Size())
 		}
 	}
 
 	{ // Test: Write data that exceed batch size, Should Fail
-		offset := int64(float64(tree.nodePager.pageSize) * 5.8)
-		data := make([]byte, int64(float64(tree.nodePager.pageSize)*0.4))
+		offset := int64(float64(tree.nodePager.itemSize) * 5.8)
+		data := make([]byte, int64(float64(tree.nodePager.itemSize)*0.4))
 
 		err := tree.nodePager.WriteAt(data, offset)
 		if err == nil {

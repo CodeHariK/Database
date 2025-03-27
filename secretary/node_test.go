@@ -19,8 +19,7 @@ func dummyTree(t *testing.T, collectionName string, order uint8) (*Secretary, *B
 		32,
 		1024,
 		125,
-		10,
-		1000,
+		20,
 	)
 	if serr != nil || err != nil {
 		t.Fatal(err)
@@ -32,12 +31,12 @@ func TestSaveRoot(t *testing.T) {
 	_, tree := dummyTree(t, "TestSaveRoot", 10)
 
 	root := Node{
-		ParentOffset: 101,
-		NextOffset:   102,
-		PrevOffset:   103,
+		ParentIndex: 101,
+		NextIndex:   102,
+		PrevIndex:   103,
 
-		Keys:       [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-		KeyOffsets: []DataLocation{2, 3, 4, 5, 6},
+		Keys:        [][]byte{{10, 21, 32, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		KeyLocation: []uint64{2, 3, 4, 5, 6},
 	}
 	tree.root = &root
 
@@ -529,14 +528,55 @@ func TestSplitInternal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nodes := tree.GetFirstNodePerHeight()
-	expected := []uint64{21, 7, 2, 0}
-	if len(nodes) != len(expected) {
-		t.Fatalf("Expected %d nodes, got %d", len(expected), len(nodes))
+	{
+		nodes := tree.GetFirstNodePerHeight()
+		expected := []uint64{21, 7, 2, 0}
+		if len(nodes) != len(expected) {
+			t.Fatalf("Expected %d nodes, got %d", len(expected), len(nodes))
+		}
+		for i, node := range nodes {
+			if node.NodeID != expected[i] {
+				t.Errorf("At height %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+			}
+		}
 	}
-	for i, node := range nodes {
-		if node.NodeID != expected[i] {
-			t.Errorf("At height %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+
+	{ // Perform batch traversal
+		compactBatch := tree.BFSCompactBatchTraversal()
+		expected := []uint64{21, 7, 20, 34, 47, 2, 6, 11, 15, 19, 25, 29, 50, 33, 38, 42, 46, 0, 1, 3}
+		if len(compactBatch) != len(expected) {
+			t.Fatalf("Expected %d nodes, got %d", len(expected), len(compactBatch))
+		}
+		for i, node := range compactBatch {
+			if node.NodeID != expected[i] {
+				t.Errorf("At index %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+			}
+		}
+
+		compactBatch = tree.BFSCompactBatchTraversal()
+		expected = []uint64{4, 5, 8, 9, 10, 12, 13, 14, 16, 17, 18, 22, 23, 24, 26, 27, 28, 48, 49, 30}
+
+		if len(compactBatch) != len(expected) {
+			t.Fatalf("Expected %d nodes, got %d", len(expected), len(compactBatch))
+		}
+		for i, node := range compactBatch {
+			if node.NodeID != expected[i] {
+				t.Errorf("At index %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+			}
+		}
+
+		compactBatch = tree.BFSCompactBatchTraversal()
+		expected = []uint64{31, 32, 35, 36, 37, 39, 40, 41, 43, 44, 45}
+
+		// utils.Log(utils.Map(compactBatch, func(s *Node) uint64 { return s.NodeID }))
+
+		if len(compactBatch) != len(expected) {
+			t.Fatalf("Expected %d nodes, got %d", len(expected), len(compactBatch))
+		}
+		for i, node := range compactBatch {
+			if node.NodeID != expected[i] {
+				t.Errorf("At index %d, expected NodeID %d, got %d", i, expected[i], node.NodeID)
+			}
 		}
 	}
 }

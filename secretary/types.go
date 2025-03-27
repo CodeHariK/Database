@@ -50,13 +50,12 @@ type Secretary struct {
 ------128 bytes------
 SECRETARY				(9 bytes)  9
 order 					(uint8)    10
-batchNumLevel  			(uint8)    11
+NumLevel  				(uint8)    11
 batchBaseSize  			(uint32)   15
-batchIncrement 			(uint8)    16
-batchLength    			(uint8)    17
-nodeSeq    				(uint64)   25
-numNodeSeq    			(uint64)   33
-compactionBatchSize    	(uint32)   37
+increment 				(uint8)    16
+nodeSeq    				(uint64)   24
+numNodeSeq    			(uint64)   32
+compactionBatchSize    	(uint32)   36
 collectionName			(string)
 ---------------------
 1  			Root		(5*1024 = 5120)
@@ -80,13 +79,13 @@ type BTree struct {
 	root               *Node // Root node of the tree
 	nextCompactionNode *Node // Compaction Node For Current Batch
 
-	Order          uint8  `json:"order" bin:"order"`                   // Max = 255, Order of the tree (maximum number of children)
-	BatchNumLevel  uint8  `json:"batchNumLevel" bin:"batchNumLevel"`   // 32, Max 256 levels
-	BatchBaseSize  uint32 `json:"batchBaseSize" bin:"batchBaseSize"`   // 1024MB
-	BatchIncrement uint8  `json:"batchIncrement" bin:"batchIncrement"` // 125 => 1.25
-	BatchLength    uint8  `json:"batchLength" bin:"batchLength"`       // 64 (2432*64/1024 = 152 KB), 128 (304KB), 431 (1 MB)
-	NodeSeq        uint64 `json:"nodeSeq" bin:"nodeSeq"`               // Incrementing Node sequence
-	NumNodeSeq     uint64 `json:"numNodeSeq" bin:"numNodeSeq"`         // Incrementing Node sequence
+	Order         uint8  `json:"order" bin:"order"`                 // Max = 255, Order of the tree (maximum number of children)
+	NumLevel      uint8  `json:"numLevel" bin:"numLevel"`           // 32, Max 256 levels
+	BatchBaseSize uint32 `json:"batchBaseSize" bin:"batchBaseSize"` // 1024MB
+	Increment     uint8  `json:"increment" bin:"increment"`         // 125 => 1.25
+
+	NodeSeq    uint64 `json:"nodeSeq" bin:"nodeSeq"` // Incrementing Node sequence
+	NumNodeSeq uint64 `json:"numNodeSeq" bin:"numNodeSeq"`
 
 	nodeSize   uint32
 	minNumKeys uint32 // Minimum required keys in node
@@ -119,14 +118,13 @@ type Node struct {
 	children []*Node
 	records  []*Record
 
-	Offset       DataLocation
-	ParentOffset DataLocation `bin:"ParentOffset"`
-	NextOffset   DataLocation `bin:"NextOffset"`
-	PrevOffset   DataLocation `bin:"PrevOffset"`
+	Index       uint64 `bin:"Index"`
+	ParentIndex uint64 `bin:"ParentIndex"`
+	NextIndex   uint64 `bin:"NextIndex"`
+	PrevIndex   uint64 `bin:"PrevIndex"`
 
-	// NumKeys    uint8          `bin:"NumKeys"`
-	KeyOffsets []DataLocation `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
-	Keys       [][]byte       `bin:"Keys" array_elem_len:"16"` // (16 bytes)
+	KeyLocation []uint64 `bin:"KeyOffsets"`               // (8 bytes) [node children offset | record offset]
+	Keys        [][]byte `bin:"Keys" array_elem_len:"16"` // (16 bytes)
 }
 
 type PageBox interface {
@@ -146,10 +144,10 @@ type Page[T any] struct {
 type Pager[T PageBox] struct {
 	file *os.File
 
-	headerSize int
-	level      uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
+	level uint8 // (1.25 ^ 0)MB  (1.25 ^ 1)MB  ... (1.25 ^ 31)MB
 
-	pageSize int64 // Maximum batch size = 4GB
+	headerSize int64
+	itemSize   int64 // Maximum batch size = 4GB
 
 	cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
 	dirtyPages map[int64]bool
@@ -165,25 +163,11 @@ type RecordPager struct {
 	*Pager[*Record]
 }
 
-// Record
-// 8  bit BatchLevel
-// 56 bit Offset
-//
-// Node
-// 16 bit NodeIndex	   (Max nodes in batch = 2^16)
-// 48 bit BatchOffset  (Max batch in file  = 2^48)
-type DataLocation uint64
-
 type Record struct {
-	Offset DataLocation // (8 bytes)
-	Size   uint32       // (4 bytes) Max size = 4GB
-	Key    []byte       // (8 bytes or 16 bytes)
+	Offset uint64 // (8 bytes)
+	Size   uint32 // (4 bytes) Max size = 4GB
+	Key    []byte // (8 bytes or 16 bytes)
 	Value  []byte
-}
-
-type NodeLocation struct {
-	index       uint16
-	batchOffset uint64
 }
 
 type RecordLocation struct {

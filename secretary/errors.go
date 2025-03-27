@@ -31,7 +31,7 @@ var (
 	ErrorRecordsNotSorted  = errors.New("Records not sorted")
 
 	ErrorInvalidOrder          = fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
-	ErrorInvalidBatchIncrement = errors.New("Batch Increment must be between 110 and 200")
+	ErrorInvalidIncrement      = errors.New("Increment must be between 110 and 200")
 	ErrorInvalidCollectionName = errors.New("Collection name is not valid, should be a-z 0-9 and with >4 & <30 characters")
 
 	// File I/O

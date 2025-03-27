@@ -17,7 +17,6 @@ func TestSecretary(t *testing.T) {
 		32,
 		1024,
 		125,
-		10,
 		1000,
 	)
 
@@ -27,7 +26,6 @@ func TestSecretary(t *testing.T) {
 		32,
 		1024*1024,
 		125,
-		10,
 		1000,
 	)
 	if userErr != nil || imagesErr != nil {

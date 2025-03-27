@@ -13,18 +13,17 @@ import (
 func (s *Secretary) NewBTree(
 	collectionName string,
 	order uint8,
-	batchNumLevel uint8,
+	numLevel uint8,
 	batchBaseSize uint32,
-	batchIncrement uint8,
-	batchLength uint8,
+	increment uint8,
 	compactionBatchSize uint32,
 ) (*BTree, error) {
 	if order < MIN_ORDER || order > MAX_ORDER {
 		return nil, ErrorInvalidOrder
 	}
 
-	if batchIncrement < 110 || batchIncrement > 200 {
-		return nil, ErrorInvalidBatchIncrement
+	if increment < 110 || increment > 200 {
+		return nil, ErrorInvalidIncrement
 	}
 
 	nodeSize := uint32(order)*(KEY_SIZE+KEY_OFFSET_SIZE) + 3*POINTER_SIZE + 1
@@ -43,11 +42,10 @@ func (s *Secretary) NewBTree(
 
 		root: &Node{},
 
-		Order:          order,
-		BatchNumLevel:  batchNumLevel,
-		BatchBaseSize:  batchBaseSize,
-		BatchIncrement: batchIncrement,
-		BatchLength:    batchLength,
+		Order:         order,
+		NumLevel:      numLevel,
+		BatchBaseSize: batchBaseSize,
+		Increment:     increment,
 
 		nodeSize: uint32(nodeSize),
 
@@ -62,7 +60,7 @@ func (s *Secretary) NewBTree(
 	}
 	tree.nodePager = nodePager
 
-	recordPagers := make([]*RecordPager, batchNumLevel)
+	recordPagers := make([]*RecordPager, numLevel)
 	for i := range recordPagers {
 		pager, err := tree.NewRecordPager("record", uint8(i))
 		if err != nil {
@@ -99,36 +97,79 @@ func (tree *BTree) SaveHeader() error {
 	headerBytes = append([]byte(SECRETARY), headerBytes...)
 
 	if len(headerBytes) < SECRETARY_HEADER_LENGTH {
-		// header = append(header, make([]byte, rootHeaderSize-len(header))...)
 		headerBytes = append(headerBytes, utils.MakeByteArray(SECRETARY_HEADER_LENGTH-len(headerBytes), '-')...)
 	}
 
 	return tree.nodePager.WriteAt(headerBytes, 0)
 }
 
+func (tree *BTree) ReadNodeAtIndex(index uint64) (*Node, error) {
+	offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
+
+	rootBytes, err := tree.nodePager.ReadAt(int64(offset), int32(tree.nodeSize))
+	if err != nil {
+		return nil, err
+	}
+
+	var node Node
+	err = binstruct.Deserialize(rootBytes, &node)
+	if err != nil {
+		return nil, err
+	}
+
+	return &node, nil
+}
+
 func (tree *BTree) readRoot() error {
-	rootBytes, err := tree.nodePager.ReadAt(SECRETARY_HEADER_LENGTH, int32(tree.nodeSize))
+	node, err := tree.ReadNodeAtIndex(0)
 	if err != nil {
 		return err
 	}
-
-	var root Node
-	err = binstruct.Deserialize(rootBytes, &root)
-	if err != nil {
-		return err
-	}
-
-	tree.root = &root
+	tree.root = node
 	return nil
 }
 
-func (tree *BTree) saveRoot() error {
-	rootHeader, err := binstruct.Serialize(tree.root)
+func (tree *BTree) SaveNode(node *Node) error {
+	if node.Index == 0 {
+		stat, err := tree.nodePager.file.Stat()
+		if err != nil {
+			return err
+		}
+		lastFileIndex := uint64(stat.Size()) - uint64(SECRETARY_HEADER_LENGTH)/uint64(tree.nodeSize)
+		if lastFileIndex != tree.NumNodeSeq {
+			return fmt.Errorf("NumNodes dont match %d != %d", lastFileIndex, tree.NumNodeSeq)
+		}
+		tree.SaveNodeAtIndex(node, lastFileIndex)
+	} else {
+		tree.SaveNodeAtIndex(node, uint64(node.Index))
+	}
+	return nil
+}
+
+func (tree *BTree) SaveNodeAtIndex(node *Node, index uint64) error {
+	node.Index = index
+	if node.parent != nil {
+		node.ParentIndex = node.parent.Index
+	}
+	if node.next != nil {
+		node.NextIndex = node.next.Index
+	}
+	if node.prev != nil {
+		node.PrevIndex = node.prev.Index
+	}
+
+	rootHeader, err := binstruct.Serialize(node)
 	if err != nil {
 		return err
 	}
 
-	return tree.nodePager.WriteAt(rootHeader, SECRETARY_HEADER_LENGTH)
+	offset := SECRETARY_HEADER_LENGTH + index*uint64(tree.nodeSize)
+
+	return tree.nodePager.WriteAt(rootHeader, int64(offset))
+}
+
+func (tree *BTree) saveRoot() error {
+	return tree.SaveNodeAtIndex(tree.root, 0)
 }
 
 func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
@@ -137,7 +178,6 @@ func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
 		0,
 		0,
 		125,
-		0,
 		0,
 	)
 	if err != nil {
@@ -174,6 +214,20 @@ func (tree *BTree) Height() int {
 	return height
 }
 
+func (tree *BTree) Level(node *Node) int {
+	if node == nil || tree.root == nil {
+		return -1 // Return -1 for invalid nodes
+	}
+
+	level := 0
+	for node != nil && node != tree.root {
+		level++
+		node = node.parent
+	}
+
+	return level
+}
+
 func (tree *BTree) GetFirstNodePerHeight() []*Node {
 	var firstNodePerHeight []*Node
 
@@ -187,4 +241,46 @@ func (tree *BTree) GetFirstNodePerHeight() []*Node {
 	}
 
 	return firstNodePerHeight
+}
+
+func (tree *BTree) BFSCompactBatchTraversal() []*Node {
+	var compactBatch []*Node
+
+	firstNodePerHeight := tree.GetFirstNodePerHeight()
+
+	if tree.root == nil {
+		return compactBatch
+	}
+	if tree.nextCompactionNode == nil {
+		tree.nextCompactionNode = tree.root
+	}
+
+	for i := 0; i < int(tree.CompactionBatchSize); i++ {
+
+		// Ensure nextCompactionNode is not nil
+		if tree.nextCompactionNode == nil {
+			// utils.Log("tree.nextCompactionNode == nil")
+			break
+		}
+
+		compactBatch = append(compactBatch, tree.nextCompactionNode)
+
+		if tree.nextCompactionNode.next != nil {
+			tree.nextCompactionNode = tree.nextCompactionNode.next
+		} else {
+			// Ensure nextCompactionNode is not nil before calling Level()
+			level := tree.Level(tree.nextCompactionNode)
+
+			// utils.Log("level", level, "lenfirst", len(firstNodePerHeight), level > 0 && (level+1) < len(firstNodePerHeight))
+
+			if level >= 0 && (level+1) < len(firstNodePerHeight) {
+				firstNode := firstNodePerHeight[level+1]
+				tree.nextCompactionNode = firstNode
+			} else {
+				break
+			}
+		}
+	}
+
+	return compactBatch
 }

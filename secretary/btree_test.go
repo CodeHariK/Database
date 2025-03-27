@@ -46,7 +46,6 @@ func TestBtreeInvalid(t *testing.T) {
 		32,
 		1024,
 		125,
-		10,
 		1000,
 	)
 	_, invalidIncrementErr := s.NewBTree(
@@ -55,7 +54,6 @@ func TestBtreeInvalid(t *testing.T) {
 		32,
 		1024,
 		225,
-		10,
 		1000,
 	)
 	_, invalidOrderErr := s.NewBTree(
@@ -64,7 +62,6 @@ func TestBtreeInvalid(t *testing.T) {
 		32,
 		1024,
 		225,
-		10,
 		1000,
 	)
 	if invalidNameErr == nil || invalidIncrementErr == nil || invalidOrderErr == nil {
