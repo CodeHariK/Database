@@ -15,6 +15,8 @@ import (
 	"sort"
 )
 
+var BYTEORDER binary.ByteOrder = binary.LittleEndian
+
 // Serialize struct to binary []byte (Little-Endian)
 // bin : type name
 // lenbyte : number of bytes used for length of string or []byte
@@ -38,7 +40,7 @@ func Serialize(s interface{}) ([]byte, error) {
 
 		// Write slice length
 		sliceLen := val.Len()
-		if err := binary.Write(buf, binary.LittleEndian, int32(sliceLen)); err != nil {
+		if err := binary.Write(buf, BYTEORDER, int32(sliceLen)); err != nil {
 			return nil, err
 		}
 
@@ -53,7 +55,7 @@ func Serialize(s interface{}) ([]byte, error) {
 
 			// Write struct size before writing struct data
 			structSize := int32(len(structData))
-			if err := binary.Write(buf, binary.LittleEndian, structSize); err != nil {
+			if err := binary.Write(buf, BYTEORDER, structSize); err != nil {
 				return nil, err
 			}
 
@@ -83,23 +85,23 @@ func Serialize(s interface{}) ([]byte, error) {
 		// Handle fields based on their types
 		switch fieldValue.Kind() {
 		case reflect.Int8:
-			binary.Write(buf, binary.LittleEndian, int8(fieldValue.Int()))
+			binary.Write(buf, BYTEORDER, int8(fieldValue.Int()))
 		case reflect.Uint8:
-			binary.Write(buf, binary.LittleEndian, uint8(fieldValue.Uint()))
+			binary.Write(buf, BYTEORDER, uint8(fieldValue.Uint()))
 		case reflect.Int16:
-			binary.Write(buf, binary.LittleEndian, int16(fieldValue.Int()))
+			binary.Write(buf, BYTEORDER, int16(fieldValue.Int()))
 		case reflect.Uint16:
-			binary.Write(buf, binary.LittleEndian, uint16(fieldValue.Uint()))
+			binary.Write(buf, BYTEORDER, uint16(fieldValue.Uint()))
 		case reflect.Int32:
-			binary.Write(buf, binary.LittleEndian, int32(fieldValue.Int()))
+			binary.Write(buf, BYTEORDER, int32(fieldValue.Int()))
 		case reflect.Uint32:
-			binary.Write(buf, binary.LittleEndian, uint32(fieldValue.Uint()))
+			binary.Write(buf, BYTEORDER, uint32(fieldValue.Uint()))
 		case reflect.Int64:
-			binary.Write(buf, binary.LittleEndian, int64(fieldValue.Int()))
+			binary.Write(buf, BYTEORDER, int64(fieldValue.Int()))
 		case reflect.Uint64:
-			binary.Write(buf, binary.LittleEndian, uint64(fieldValue.Uint()))
+			binary.Write(buf, BYTEORDER, uint64(fieldValue.Uint()))
 		case reflect.Float64:
-			binary.Write(buf, binary.LittleEndian, float64(fieldValue.Float()))
+			binary.Write(buf, BYTEORDER, float64(fieldValue.Float()))
 		case reflect.String:
 			str := fieldValue.String()
 			if len(str) >= maxSize {
@@ -120,7 +122,7 @@ func Serialize(s interface{}) ([]byte, error) {
 
 			// Write struct size before the actual struct data
 			structSize := int32(len(structBytes))
-			if err := binary.Write(buf, binary.LittleEndian, structSize); err != nil {
+			if err := binary.Write(buf, BYTEORDER, structSize); err != nil {
 				continue
 			}
 
@@ -165,39 +167,39 @@ func Serialize(s interface{}) ([]byte, error) {
 						item := fieldValue.Index(i).Interface().([]int16)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint16(itemBytes[j*elemLen:], uint16(v))
+							BYTEORDER.PutUint16(itemBytes[j*elemLen:], uint16(v))
 						}
 					case reflect.Uint16:
 						item := fieldValue.Index(i).Interface().([]uint16)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint16(itemBytes[j*elemLen:], v)
+							BYTEORDER.PutUint16(itemBytes[j*elemLen:], v)
 						}
 
 					case reflect.Int32:
 						item := fieldValue.Index(i).Interface().([]int32)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], uint32(v))
+							BYTEORDER.PutUint32(itemBytes[j*elemLen:], uint32(v))
 						}
 					case reflect.Uint32:
 						item := fieldValue.Index(i).Interface().([]uint32)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], v)
+							BYTEORDER.PutUint32(itemBytes[j*elemLen:], v)
 						}
 
 					case reflect.Int64:
 						item := fieldValue.Index(i).Interface().([]int64)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], uint64(v))
+							BYTEORDER.PutUint64(itemBytes[j*elemLen:], uint64(v))
 						}
 					case reflect.Uint64:
 						item := fieldValue.Index(i).Interface().([]uint64)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
-							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], v)
+							BYTEORDER.PutUint64(itemBytes[j*elemLen:], v)
 						}
 
 					case reflect.Float32:
@@ -205,14 +207,14 @@ func Serialize(s interface{}) ([]byte, error) {
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
 							bits := math.Float32bits(v)
-							binary.LittleEndian.PutUint32(itemBytes[j*elemLen:], bits)
+							BYTEORDER.PutUint32(itemBytes[j*elemLen:], bits)
 						}
 					case reflect.Float64:
 						item := fieldValue.Index(i).Interface().([]float64)
 						itemBytes = make([]byte, len(item)*elemLen)
 						for j, v := range item {
 							bits := math.Float64bits(v)
-							binary.LittleEndian.PutUint64(itemBytes[j*elemLen:], bits)
+							BYTEORDER.PutUint64(itemBytes[j*elemLen:], bits)
 						}
 
 					default:
@@ -245,7 +247,7 @@ func Serialize(s interface{}) ([]byte, error) {
 				truncatedSlice := fieldValue.Slice(0, length).Interface()
 
 				// Write entire slice in one go
-				binary.Write(buf, binary.LittleEndian, truncatedSlice)
+				binary.Write(buf, BYTEORDER, truncatedSlice)
 			}
 
 		default:
@@ -274,7 +276,7 @@ func Deserialize(data []byte, s interface{}) error {
 
 		// Read the slice length
 		var sliceLen int32
-		if err := binary.Read(buf, binary.LittleEndian, &sliceLen); err != nil {
+		if err := binary.Read(buf, BYTEORDER, &sliceLen); err != nil {
 			return err
 		}
 
@@ -287,7 +289,7 @@ func Deserialize(data []byte, s interface{}) error {
 		for i := 0; i < int(sliceLen); i++ {
 			// Read struct size
 			var structSize int32
-			if err := binary.Read(buf, binary.LittleEndian, &structSize); err != nil {
+			if err := binary.Read(buf, BYTEORDER, &structSize); err != nil {
 				return err
 			}
 
@@ -337,39 +339,39 @@ func Deserialize(data []byte, s interface{}) error {
 		switch fieldValue.Kind() {
 		case reflect.Int8:
 			var num int8
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetInt(int64(num))
 		case reflect.Uint8:
 			var num uint8
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetUint(uint64(num))
 		case reflect.Int16:
 			var num int16
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetInt(int64(num))
 		case reflect.Uint16:
 			var num uint16
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetUint(uint64(num))
 		case reflect.Int32:
 			var num int32
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetInt(int64(num))
 		case reflect.Uint32:
 			var num uint32
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetUint(uint64(num))
 		case reflect.Int64:
 			var num int64
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetInt(num)
 		case reflect.Uint64:
 			var num uint64
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetUint(num)
 		case reflect.Float64:
 			var num float64
-			binary.Read(buf, binary.LittleEndian, &num)
+			binary.Read(buf, BYTEORDER, &num)
 			fieldValue.SetFloat(num)
 		case reflect.String:
 			length, err := readByteLen(buf, numBytes)
@@ -383,7 +385,7 @@ func Deserialize(data []byte, s interface{}) error {
 		case reflect.Struct:
 			// Read struct size first
 			var structSize int32
-			if err := binary.Read(buf, binary.LittleEndian, &structSize); err != nil {
+			if err := binary.Read(buf, BYTEORDER, &structSize); err != nil {
 				continue
 			}
 
@@ -455,53 +457,53 @@ func Deserialize(data []byte, s interface{}) error {
 					case reflect.Int16:
 						item := make([]int16, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = int16(binary.LittleEndian.Uint16(itemBytes[j*elemLen:]))
+							item[j] = int16(BYTEORDER.Uint16(itemBytes[j*elemLen:]))
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 					case reflect.Uint16:
 						item := make([]uint16, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = binary.LittleEndian.Uint16(itemBytes[j*elemLen:])
+							item[j] = BYTEORDER.Uint16(itemBytes[j*elemLen:])
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 
 					case reflect.Int32:
 						item := make([]int32, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = int32(binary.LittleEndian.Uint32(itemBytes[j*elemLen:]))
+							item[j] = int32(BYTEORDER.Uint32(itemBytes[j*elemLen:]))
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 					case reflect.Uint32:
 						item := make([]uint32, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = binary.LittleEndian.Uint32(itemBytes[j*elemLen:])
+							item[j] = BYTEORDER.Uint32(itemBytes[j*elemLen:])
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 
 					case reflect.Int64:
 						item := make([]int64, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = int64(binary.LittleEndian.Uint64(itemBytes[j*elemLen:]))
+							item[j] = int64(BYTEORDER.Uint64(itemBytes[j*elemLen:]))
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 					case reflect.Uint64:
 						item := make([]uint64, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							item[j] = binary.LittleEndian.Uint64(itemBytes[j*elemLen:])
+							item[j] = BYTEORDER.Uint64(itemBytes[j*elemLen:])
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 
 					case reflect.Float32:
 						item := make([]float32, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							bits := binary.LittleEndian.Uint32(itemBytes[j*elemLen:])
+							bits := BYTEORDER.Uint32(itemBytes[j*elemLen:])
 							item[j] = math.Float32frombits(bits)
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
 					case reflect.Float64:
 						item := make([]float64, len(itemBytes)/elemLen)
 						for j := 0; j < len(item); j++ {
-							bits := binary.LittleEndian.Uint64(itemBytes[j*elemLen:])
+							bits := BYTEORDER.Uint64(itemBytes[j*elemLen:])
 							item[j] = math.Float64frombits(bits)
 						}
 						newSlice.Index(i).Set(reflect.ValueOf(item))
@@ -523,7 +525,7 @@ func Deserialize(data []byte, s interface{}) error {
 				newSlice := reflect.MakeSlice(fieldValue.Type(), length, length)
 
 				// Read the entire slice in one go
-				err := binary.Read(buf, binary.LittleEndian, newSlice.Interface())
+				err := binary.Read(buf, BYTEORDER, newSlice.Interface())
 				if err != nil {
 					return fmt.Errorf("failed to read slice: %w", err)
 				}
@@ -717,13 +719,13 @@ func extractFieldParameters(val reflect.Value, field reflect.StructField) (refle
 func writeByteLen(buf *bytes.Buffer, numByte int, length int) error {
 	switch numByte {
 	case 2:
-		return binary.Write(buf, binary.LittleEndian, uint16(length))
+		return binary.Write(buf, BYTEORDER, uint16(length))
 	case 3:
-		return binary.Write(buf, binary.LittleEndian, uint32(length))
+		return binary.Write(buf, BYTEORDER, uint32(length))
 	case 4:
-		return binary.Write(buf, binary.LittleEndian, uint64(length))
+		return binary.Write(buf, BYTEORDER, uint64(length))
 	default:
-		return binary.Write(buf, binary.LittleEndian, uint8(length))
+		return binary.Write(buf, BYTEORDER, uint8(length))
 	}
 }
 
@@ -733,19 +735,19 @@ func readByteLen(buf *bytes.Reader, numByte int) (int, error) {
 	switch numByte {
 	case 2:
 		var temp uint16
-		err = binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)
 	case 3:
 		var temp uint32
-		err = binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)
 	case 4:
 		var temp uint64
-		err = binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)
 	default:
 		var temp uint8
-		err = binary.Read(buf, binary.LittleEndian, &temp)
+		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp) // Default to 8-bit length
 	}
 

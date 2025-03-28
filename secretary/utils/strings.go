@@ -26,7 +26,8 @@ func GenerateRandomString(length int) string {
 
 func GenerateSeqString(sequence *uint64, length int, increment uint64) string {
 	atomic.AddUint64(sequence, increment)
-	return fmt.Sprintf("%0*d", length, *sequence)
+	key := fmt.Sprintf("%0*d", length, *sequence)
+	return key
 }
 
 func GenerateSeqRandomString(sequence *uint64, length int, increment uint64, pad int, value ...string) string {

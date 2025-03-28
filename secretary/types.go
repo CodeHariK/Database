@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 const (
@@ -18,6 +20,8 @@ const (
 	KEY_SIZE        = 16
 	KEY_OFFSET_SIZE = 8
 	POINTER_SIZE    = 8
+
+	KEY_INCREMENT = 5
 
 	BYTE_8  = uint64(1<<8 - 1)
 	BYTE_16 = uint64(1<<16 - 1)
@@ -51,9 +55,10 @@ order 					(uint8)    10
 NumLevel  				(uint8)    11
 baseSize  			(uint32)   15
 increment 				(uint8)    16
-nodeSeq    				(uint64)   24
-numNodeSeq    			(uint64)   32
-compactionBatchSize    	(uint32)   36
+keySeq    				(uint64)   24
+nodeSeq    				(uint64)   32
+numNodeSeq    			(uint64)   40
+compactionBatchSize    	(uint32)   48
 collectionName			(string)
 ---------------------
 1  			Root		(5*1024 = 5120)
@@ -82,6 +87,7 @@ type BTree struct {
 	BaseSize  uint32 `json:"baseSize" bin:"baseSize"`   // 1024Bytes
 	Increment uint8  `json:"increment" bin:"increment"` // 125 => 1.25
 
+	KeySeq     uint64 `json:"keySeq" bin:"keySeq"`   // Incrementing Key sequence
 	NodeSeq    uint64 `json:"nodeSeq" bin:"nodeSeq"` // Incrementing Node sequence
 	NumNodeSeq uint64 `json:"numNodeSeq" bin:"numNodeSeq"`
 
@@ -148,7 +154,7 @@ type Pager[T PageItem[T]] struct {
 	headerSize int64
 	itemSize   int64 // Maximum batch size = 4GB
 
-	// cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
+	cache      *ristretto.Cache[int64, *Page[T]] // In-memory cache
 	dirtyPages map[int64]bool
 
 	mu sync.Mutex

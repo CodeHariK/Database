@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 /*
@@ -106,26 +108,21 @@ func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[
 		dirtyPages: map[int64]bool{},
 	}
 
-	//-------
-	//-------
-	// // Initialize Ristretto Cache
-	// cache, err := ristretto.NewCache(
-	// 	&ristretto.Config[int64, *Page[T]]{
-	// 		NumCounters: 10000,   // Track frequency of ~10,000 items
-	// 		MaxCost:     1 << 24, // 16MB total cache size
-	// 		BufferItems: 64,      // Batch writes for performance
-	// 		OnEvict: func(item *ristretto.Item[*Page[T]]) {
-	// 			delete(pager.dirtyPages, item.Value.Index) // Mark page as clean
-	// 		},
-	// 	})
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// Initialize Ristretto Cache
+	cache, err := ristretto.NewCache(
+		&ristretto.Config[int64, *Page[T]]{
+			NumCounters: 10000,   // Track frequency of ~10,000 items
+			MaxCost:     1 << 24, // 16MB total cache size
+			BufferItems: 64,      // Batch writes for performance
+			OnEvict: func(item *ristretto.Item[*Page[T]]) {
+				delete(pager.dirtyPages, item.Value.Index) // Mark page as clean
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
 
-	// pager.cache = cache
-
-	//-------
-	//-------
+	pager.cache = cache
 
 	return pager, nil
 }
@@ -246,28 +243,16 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 
 	// Check if page exists in Ristretto cache
 
-	// --------
-	// --------
-	// if cachedPage, found := store.cache.Get(index); found {
-	// 	return cachedPage, nil
-	// }
-	// --------
-	// --------
-	// --------
+	if cachedPage, found := store.cache.Get(index); found {
+		return cachedPage, nil
+	}
 
 	var item T
 	page := item.NewPage(index) // Calls the NewPage method of PageItem[T]
 
-	// page := &Page[T]{
-	// 	Index: index,
-	// }
 	// Store in Ristretto cache
-	// --------
-	// --------
-	// store.cache.Set(index, page, store.itemSize)
-	// store.cache.Wait()
-	// --------
-	// --------
+	store.cache.Set(index, page, store.itemSize)
+	store.cache.Wait()
 
 	store.mu.Unlock()
 
@@ -346,11 +331,7 @@ func (store *Pager[T]) Close() error {
 		return err
 	}
 
-	//--------
-	//--------
-	// store.cache.Close()
-	//--------
-	//--------
+	store.cache.Close()
 
 	return store.file.Close()
 }

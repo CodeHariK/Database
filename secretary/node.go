@@ -2,6 +2,7 @@ package secretary
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"sort"
 	"sync/atomic"
@@ -296,13 +297,22 @@ func (tree *BTree) splitInternal(node *Node) {
 	tree.promoteKey(node, promotedKey, newRightInternal)
 }
 
-// Set a Record key-value pair into the B+ Tree
-func (tree *BTree) Set(key []byte, value []byte) error {
+func (tree *BTree) Set(value []byte) error {
+	buf := make([]byte, 16)
+	binary.BigEndian.PutUint64(buf[8:], tree.KeySeq)
+	return tree.SetKV(buf, value)
+}
+
+// SetKV a Record key-value pair into the B+ Tree
+func (tree *BTree) SetKV(key []byte, value []byte) error {
 	if len(key) != KEY_SIZE {
 		return ErrorInvalidKey
 	}
 
 	if tree.root == nil {
+
+		atomic.AddUint64(&tree.KeySeq, KEY_INCREMENT)
+
 		tree.root = tree.createLeafNode()
 		tree.root.setLeafKV(key, value)
 
@@ -313,6 +323,8 @@ func (tree *BTree) Set(key []byte, value []byte) error {
 	if found && bytes.Compare(leaf.Keys[index], key) == 0 {
 		return ErrorDuplicateKey
 	}
+
+	atomic.AddUint64(&tree.KeySeq, KEY_INCREMENT)
 
 	leaf.setLeafKV(key, value)
 
@@ -364,7 +376,7 @@ func equiDivision(len int, max int) []int {
 			ends[i]++
 		}
 	}
-	// fmt.Println("ends", ends)
+	ServerLog("ends", ends)
 	return ends
 }
 
@@ -377,13 +389,15 @@ func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
 	tree.root = tree.buildInternalNodes(leafNodes)
 
+	atomic.AddUint64(&tree.KeySeq, KEY_INCREMENT*uint64(len(sortedRecords)))
+
 	return nil
 }
 
 func (tree *BTree) buildSortedLeafNodes(sortedRecords []*Record) []*Node {
 	leafNodes := []*Node{}
 
-	// fmt.Println("---", len(sortedRecords))
+	ServerLog("---", len(sortedRecords))
 	ends := equiDivision(len(sortedRecords), int(tree.Order-1))
 
 	end := 0

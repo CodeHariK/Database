@@ -35,17 +35,17 @@ func main() {
 		utils.Log(userErr, imagesErr)
 	}
 
-	_, sortedRecords := secretary.SampleSortedKeyRecords(64)
+	sortedRecords := secretary.SampleSortedKeyRecords(64)
 	images.SortedRecordSet(sortedRecords)
 
 	for _, r := range sortedRecords {
-		users.Set(r.Key, r.Value)
+		users.SetKV(r.Key, r.Value)
 	}
 
-	users.Set([]byte("0000000000000196"), []byte("Hello:196"))
-	users.Set([]byte("0000000000000197"), []byte("Hello:197"))
-	users.Set([]byte("0000000000000198"), []byte("Hello:198"))
-	users.Set([]byte("0000000000000199"), []byte("Hello:199"))
+	users.SetKV([]byte("0000000000000196"), []byte("Hello:196"))
+	users.SetKV([]byte("0000000000000197"), []byte("Hello:197"))
+	users.SetKV([]byte("0000000000000198"), []byte("Hello:198"))
+	users.SetKV([]byte("0000000000000199"), []byte("Hello:199"))
 
 	s.Serve()
 }

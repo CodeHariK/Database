@@ -50,7 +50,7 @@ func TestServerGetBTreeHandler(t *testing.T) {
 
 	var keySeq uint64 = 0
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err = users.Set(key, key)
+	err = users.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Insert failed: %s", err)
 	}
@@ -176,7 +176,7 @@ func TestServerGetHandler(t *testing.T) {
 
 	var keySeq uint64 = 0
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err = u.Set(key, key)
+	err = u.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Insert failed: %s", err)
 	}

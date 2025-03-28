@@ -105,12 +105,12 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 		req.CompactionBatchSize,
 	)
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err.Error())
+		writeJson(w, http.StatusInternalServerError, err)
 		return
 	}
 	err = tree.SaveHeader()
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err.Error())
+		writeJson(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -122,14 +122,12 @@ type SetRequest struct {
 	Value string `json:"value"`
 }
 
-var keySeq uint64 = 0
-
 func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
 	var req SetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (len(strings.Trim(req.Value, " ")) == 0) {
-		writeJson(w, http.StatusBadRequest, err.Error())
+		writeJson(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -140,18 +138,22 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var key []byte = []byte(req.Key)
+	var err error
 	if len(req.Key) == 0 || len(req.Key) != KEY_SIZE {
-		key = []byte(utils.GenerateSeqRandomString(&keySeq, KEY_SIZE, 5, 4, req.Value))
+		key = []byte(utils.GenerateSeqString(&tree.KeySeq, KEY_SIZE, KEY_INCREMENT))
+		err = tree.SetKV(key, []byte(req.Value))
+	} else {
+		err = tree.SetKV(key, []byte(req.Value))
 	}
-	err := tree.Set(key, []byte(req.Value))
+
 	if err == ErrorDuplicateKey {
 		err := tree.Update(key, []byte(req.Value))
 		if err != nil {
-			writeJson(w, http.StatusNotFound, err.Error())
+			writeJson(w, http.StatusNotFound, err)
 			return
 		}
 	} else if err != nil {
-		writeJson(w, http.StatusNotFound, err.Error())
+		writeJson(w, http.StatusNotFound, err)
 		return
 	}
 
@@ -177,7 +179,7 @@ func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Reques
 
 	var req SortedSetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Value < 1 {
-		writeJson(w, http.StatusBadRequest, err.Error())
+		writeJson(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -189,7 +191,7 @@ func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Reques
 
 	tree.Erase()
 
-	_, sortedRecords := SampleSortedKeyRecords(req.Value)
+	sortedRecords := SampleSortedKeyRecords(req.Value)
 
 	tree.SortedRecordSet(sortedRecords)
 
@@ -247,7 +249,7 @@ func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) 
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err.Error())
+		writeJson(w, http.StatusInternalServerError, err)
 		return
 	}
 	if errs := tree.TreeVerify(); len(errs) != 0 {

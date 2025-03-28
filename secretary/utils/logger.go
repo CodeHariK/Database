@@ -100,17 +100,17 @@ func LogMessage(msgs ...any) (string, *testing.T) {
 	}
 
 	extractError := func(err error) {
-		log += RED + err.Error() + COLORRESET + " "
+		log += "\n" + RED + err.Error() + COLORRESET + "\n"
 
 		lines := strings.Split(string(debug.Stack()), "\n")
 
 		for i := range lines {
 			name, loc := extracTrace(lines, i)
-			if loc != "" {
+			if loc != "" && !strings.Contains(loc, "logger") {
 				log += name + loc + " "
 			}
 		}
-		log += color + " \n"
+		log += color
 	}
 
 	{

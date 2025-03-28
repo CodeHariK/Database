@@ -1,8 +1,8 @@
 import { ui } from "./main";
 
-import { RedrawTree } from "./draw";
+import { RedrawTree, ZoomToElement } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setKey, setValue, treeForm, clearBtn, sortedSetBtn, sortedSetValue, sortedSetSubBtn, sortedSetAddBtn } from "./dom";
+import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setKey, setValue, treeForm, clearBtn, sortedSetBtn, sortedSetValue, sortedSetSubBtn, sortedSetAddBtn, zoomBtn } from "./dom";
 
 let TestCounter = 0
 let Tests = [
@@ -96,12 +96,12 @@ async function fetchCurrentTree() {
         (data) => {
             const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
 
-            if (ui.getTree()?.name != bTree.name) {
-                ui.TreeSnapshots = []
-                ui.currentTreeSnapshotIndex = 0
-                ui.NODEMAP = new Map()
-                ui.MouseCurrentNode = null
-            }
+            // if (ui.getTree()?.name != bTree.name) {
+            ui.TreeSnapshots = []
+            ui.currentTreeSnapshotIndex = 0
+            ui.NODEMAP = new Map()
+            ui.MouseCurrentNode = null
+            // }
             ui.TreeSnapshots.push(bTree)
             ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
 
@@ -305,6 +305,14 @@ function appendResult(url: RequestInfo | URL, data: any, logs: string, error: bo
     resultDiv.innerHTML = newResultHTML + resultDiv.innerHTML;
 }
 
+function Zoom() {
+    let tree = ui.getTree()
+    let nodeDef = ui.NODEMAP.get(tree.root.nodeID)
+    if (nodeDef?.box) {
+        ZoomToElement(nodeDef?.box)
+    }
+}
+
 export function setupCollectionRequest() {
     document.addEventListener("DOMContentLoaded", () => {
 
@@ -329,6 +337,7 @@ export function setupCollectionRequest() {
         deleteBtn.addEventListener("click", () => deleteRecord(null));
         getBtn.addEventListener("click", () => getRecord(null));
         clearBtn.addEventListener("click", () => clearTree());
+        zoomBtn.addEventListener("click", () => Zoom());
 
         treeForm.addEventListener("submit", newTreeRequest)
     });

@@ -108,7 +108,7 @@ func TestBTreeHeight(t *testing.T) {
 	// Set more keys to increase height
 	for i := 0; i < 9; i++ {
 		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-		err := tree.Set(key, key)
+		err := tree.SetKV(key, key)
 		if err != nil {
 			t.Fatalf("Set failed: %s", err)
 		}
@@ -119,7 +119,7 @@ func TestBTreeHeight(t *testing.T) {
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err := tree.Set(key, key)
+	err := tree.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Set failed: %s", err)
 	}

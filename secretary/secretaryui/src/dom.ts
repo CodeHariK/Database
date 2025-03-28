@@ -13,6 +13,7 @@ export const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonEle
 export const setBtn = document.getElementById("set-btn") as HTMLButtonElement;
 export const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
 export const getBtn = document.getElementById("get-btn") as HTMLButtonElement;
+export const zoomBtn = document.getElementById("zoom-btn") as HTMLButtonElement;
 export const clearBtn = document.getElementById("clear-btn") as HTMLButtonElement;
 export const sortedSetBtn = document.getElementById("sortedset-btn") as HTMLButtonElement;
 export const sortedSetAddBtn = document.getElementById("sortedset-add-btn") as HTMLButtonElement;

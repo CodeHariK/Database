@@ -30,7 +30,7 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
             fill: ui.DARK ? "#fff" : "#000",
             fontSize: 16,
             text: "\n" + node.prevID + "<Prev " + "Parent^" + node.parentID + " Next >" + node.nextID + "\n" +
-                node.keys.map((a, i) => {
+                node.keys?.map((a, i) => {
                     return "\n" + (a == getInput.value ? " > " : "") + a + "  " + (node.value[i] ? node.value[i].substring(0, 12) : "*")
                 }).join("") +
                 "\n\n" + (node.errors?.length > 0 ? (node.errors + "\n") : "")
@@ -89,6 +89,8 @@ let MapToNodeDef = (x: number, y: number, node: BTreeNode) => {
 
 function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
 
+    // console.log("drawLink")
+
     const link = new shapes.standard.Link();
 
     if (!nodeDef?.box || (nodeDef?.box && !ui.graph.getCell(nodeDef.box.id))) {
@@ -102,6 +104,8 @@ function drawLink(nodeDef: NodeDef, childDef: NodeDef) {
 
     link.source(nodeDef.box!);
     link.target(childDef.box!);
+
+    // console.log(">", nodeDef.node?.nodeID + " " + childDef.node?.nodeID)
 
     link.appendLabel({
         attrs: {
@@ -162,6 +166,8 @@ function createTreeRecursive(
             if (childNodeDef) {
                 let childDef = ui.NODEMAP.get(child.nodeID)!;
 
+                // console.log("p-c", nodeDef.node?.nodeID + " " + childDef.node?.nodeID)
+
                 drawLink(nodeDef, childDef);
             }
         });
@@ -182,9 +188,13 @@ export function RedrawTree() {
     const height = tree.height();
     const maxSpacing = Math.pow(order, height - 1) * ui.BOXWIDTH / 3;
 
+    // console.log("RedrawTree")
+
     createTreeRecursive(tree.root, order, height, 1, x, y, maxSpacing);
 
     ui.NODEMAP.forEach((nodeDef) => {
+        // console.log("n-r", nodeDef.node?.nodeID + " " + nodeDef.node?.nextID)
+
         if ((nodeDef.node?.nextID ?? 0) > 0) {
             let nextDef = ui.NODEMAP.get(nodeDef.node!.nextID)!
             drawLink(nodeDef, nextDef)
@@ -240,4 +250,17 @@ export function setupDraw() {
     window.onresize = () => {
         ui.paper.setDimensions(canvasSection().clientWidth, canvasSection().clientHeight)
     }
+}
+
+export function ZoomToElement(element: shapes.standard.HeaderedRectangle) {
+    const view = ui.paper.findViewByModel(element);
+    if (!view) return;
+    // Get the bounding box of the element
+    const bbox = view.getBBox();
+    // Get the center of the bounding box
+    const elementCenter = {
+        x: bbox.x + bbox.width / 2,
+        y: bbox.y + bbox.height / 2
+    };
+    ui.paper.translate(-elementCenter.x + Number(ui.paper.options.width) / 2, -elementCenter.y + Number(ui.paper.options.height) / 2);
 }

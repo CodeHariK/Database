@@ -255,7 +255,7 @@ func TestNodeSet(t *testing.T) {
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
-	err = tree.Set(key, value)
+	err = tree.SetKV(key, value)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -269,7 +269,7 @@ func TestNodeSet(t *testing.T) {
 	}
 
 	// Duplicate Key error
-	err = tree.Set(key, append(value, []byte("world1")...))
+	err = tree.SetKV(key, append(value, []byte("world1")...))
 	if err == nil {
 		t.Fatalf("expected error but got nil %v", err)
 	}
@@ -297,7 +297,7 @@ func TestNodeUpdate(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = tree.Set(key, value)
+	err = tree.SetKV(key, value)
 	if err != nil {
 		t.Error(err)
 	}
@@ -400,7 +400,7 @@ func TestNodeSortedRecordSet(t *testing.T) {
 
 	for numKey := 1; numKey < 500; numKey++ {
 
-		_, sortedRecords := SampleSortedKeyRecords(int(numKey))
+		sortedRecords := SampleSortedKeyRecords(int(numKey))
 
 		for i := range trees {
 			tree := trees[i]
@@ -433,101 +433,89 @@ func TestNodeSortedRecordSet(t *testing.T) {
 	s.PagerShutdown()
 }
 
-// func TestNodeDelete(t *testing.T) {
-// 	s := dummySecretary(t)
-// 	tree4 := dummyTree(t, s, 4)
-// 	// tree8 := dummyTree(t, s, 8)
-// 	// tree16 := dummyTree(t, s, 16)
+func TestNodeDelete(t *testing.T) {
+	s := dummySecretary(t)
+	tree4 := dummyTree(t, s, 4)
+	tree8 := dummyTree(t, s, 8)
+	tree16 := dummyTree(t, s, 16)
 
-// 	trees := []*BTree{
-// 		tree4,
-// 		// tree8,
-// 		// tree16,
-// 	}
+	trees := []*BTree{
+		tree4,
+		tree8,
+		tree16,
+	}
 
-// 	for numKey := 1; numKey < 500; numKey++ {
+	tests := []int{10, 32, 150}
 
-// 		sortedKeys, sortedRecords := SampleSortedKeyRecords(numKey)
+	for _, numKey := range tests {
 
-// 		for i := range trees {
-// 			tree := trees[i]
-// 			tree.Erase()
+		sortedRecords := SampleSortedKeyRecords(numKey)
 
-// 			var shuffledKeys [][][]byte
-// 			for i := 0; i < numKey/5; i++ {
-// 				shuffledKeys = append(shuffledKeys, utils.Shuffle(sortedKeys)[:rand.IntN(len(sortedKeys))])
-// 			}
+		for order := range trees {
 
-// 			// failed := []string{
-// 			// 	 "0000000000000320 0000000000000165 0000000000000020 0000000000000135 0000000000000010 0000000000000100 0000000000000075 0000000000000005 0000000000000080 0000000000000315 0000000000000060 0000000000000240 0000000000000280 0000000000000200 0000000000000310 0000000000000105 0000000000000265 0000000000000140 0000000000000295 0000000000000245 0000000000000155 0000000000000250 0000000000000125 0000000000000035 0000000000000160 0000000000000055 0000000000000065 0000000000000145 0000000000000290 0000000000000070 0000000000000115 0000000000000260 0000000000000300 0000000000000130 0000000000000095 0000000000000050 0000000000000220",
-// 			// }
-// 			// for _, s := range failed {
-// 			// 	b := utils.Map(strings.Split(s, " "),
-// 			// 		func(s string) []byte {
-// 			// 			return []byte(s)
-// 			// 		})
-// 			// 	shuffledKeys = append(shuffledKeys, b)
-// 			// }
+			tree := trees[order]
 
-// 			for i, keys := range shuffledKeys {
+			var shuffledRecordsArr [][]*Record
+			for i := 0; i < 4; i++ {
+				shuffledRecordsArr = append(shuffledRecordsArr, utils.Shuffle(sortedRecords))
+			}
 
-// 				if i%2 == 1 {
-// 					for _, r := range sortedRecords {
-// 						tree.Set(r.Key, r.Value)
-// 					}
-// 				} else {
-// 					tree.SortedRecordSet(sortedRecords)
-// 				}
+			// failed := []string{
+			// 	 "0000000000000320 0000000000000165 0000000000000020 0000000000000135 0000000000000010 0000000000000100 0000000000000075 0000000000000005 0000000000000080 0000000000000315 0000000000000060 0000000000000240 0000000000000280 0000000000000200 0000000000000310 0000000000000105 0000000000000265 0000000000000140 0000000000000295 0000000000000245 0000000000000155 0000000000000250 0000000000000125 0000000000000035 0000000000000160 0000000000000055 0000000000000065 0000000000000145 0000000000000290 0000000000000070 0000000000000115 0000000000000260 0000000000000300 0000000000000130 0000000000000095 0000000000000050 0000000000000220",
+			// }
+			// for _, s := range failed {
+			// 	b := utils.Map(strings.Split(s, " "),
+			// 		func(s string) []byte {
+			// 			return []byte(s)
+			// 		})
+			// 	shuffledKeys = append(shuffledKeys, b)
+			// }
 
-// 				for _, k := range keys {
-// 					rec, err := tree.Get(k)
-// 					if err != nil || bytes.Compare(rec.Value, k) != 0 {
-// 						utils.Log(t,
-// 							"type", utils.Ternary(i%2 == 1, "set", "sortedset"),
-// 							"numKey", numKey,
-// 							"k", string(k),
-// 							"err", err,
-// 							"keys", utils.ArrayToStrings(keys),
-// 						)
-// 					}
-// 					err = tree.Delete(k)
-// 					if err != nil {
-// 						utils.Log(t,
-// 							"type", utils.Ternary(i%2 == 1, "set", "sortedset"),
-// 							"numKey", numKey,
-// 							"k", string(k),
-// 							"err", err,
-// 							"keys", utils.ArrayToStrings(keys),
-// 						)
-// 					}
-// 					_, err = tree.Get(k)
-// 					if err == nil {
-// 						utils.Log(t,
-// 							"type", utils.Ternary(i%2 == 1, "set", "sortedset"),
-// 							"numKey", numKey,
-// 							"k", string(k),
-// 							"err", err,
-// 							"keys", utils.ArrayToStrings(keys),
-// 						)
-// 					}
+			for i, shuffledRecords := range shuffledRecordsArr {
 
-// 					if errs := tree.TreeVerify(); len(errs) != 0 {
-// 						utils.Log(t,
-// 							"type", utils.Ternary(i%2 == 1, "set", "sortedset"),
-// 							"numKey", numKey,
-// 							"k", string(k),
-// 							"errs", errs,
-// 							"keys", utils.ArrayToStrings(keys),
-// 						)
-// 					}
-// 				}
-// 			}
+				tree.Erase()
 
-// 		}
-// 	}
+				if i%2 == 1 {
+					for _, r := range sortedRecords {
+						err := tree.SetKV(r.Key, r.Value)
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+				} else {
+					err := tree.SortedRecordSet(sortedRecords)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
 
-// 	s.PagerShutdown()
-// }
+				for _, record := range shuffledRecords {
+					rec, err := tree.Get(record.Key)
+					if err != nil || bytes.Compare(rec.Value, record.Key) != 0 {
+						t.Fatal(err)
+					}
+
+					err = tree.Delete(record.Key)
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					_, err = tree.Get(record.Key)
+					if err == nil {
+						t.Fatal(err)
+					}
+
+					if errs := tree.TreeVerify(); len(errs) != 0 {
+						t.Fatal(errs)
+					}
+				}
+			}
+
+		}
+	}
+
+	s.PagerShutdown()
+}
 
 func TestNodeSplitInternal(t *testing.T) {
 	s := dummySecretary(t)
@@ -551,13 +539,13 @@ func TestNodeSplitInternal(t *testing.T) {
 	}
 
 	for _, r := range sortedRecords {
-		tree.Set(r.Key, r.Value)
+		tree.SetKV(r.Key, r.Value)
 	}
 
-	tree.Set([]byte("0000000000000196"), []byte("Hello:196"))
-	tree.Set([]byte("0000000000000197"), []byte("Hello:197"))
-	tree.Set([]byte("0000000000000198"), []byte("Hello:198"))
-	tree.Set([]byte("0000000000000199"), []byte("Hello:199"))
+	tree.SetKV([]byte("0000000000000196"), []byte("Hello:196"))
+	tree.SetKV([]byte("0000000000000197"), []byte("Hello:197"))
+	tree.SetKV([]byte("0000000000000198"), []byte("Hello:198"))
+	tree.SetKV([]byte("0000000000000199"), []byte("Hello:199"))
 	if errs := tree.TreeVerify(); len(errs) != 0 {
 		t.Fatal(errs)
 	}
