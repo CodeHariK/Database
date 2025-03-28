@@ -2,7 +2,7 @@ import { ui } from "./main";
 
 import { RedrawTree } from "./draw";
 import { BTree, BTreeNode } from "./tree";
-import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setKey, setValue, treeForm } from "./dom";
+import { deleteBtn, deleteInput, setBtn, nextTreeBtn, prevTreeBtn, resultDiv, runTestBtn, getBtn, getInput, setKey, setValue, treeForm, clearBtn, sortedSetBtn, sortedSetValue, sortedSetSubBtn, sortedSetAddBtn } from "./dom";
 
 let TestCounter = 0
 let Tests = [
@@ -161,6 +161,28 @@ async function setRecord(key: string | null, value: string | null) {
     )
 }
 
+let SortedSetValue = 1
+async function sortedSetRecord(add: number | null) {
+    if (!ui.getTree()) return
+
+    let value = add != null ? SortedSetValue + add : Number(sortedSetValue.value);
+    if (value <= 0) { return }
+    SortedSetValue = value
+    const payload = { value };
+    sortedSetValue.value = String(value)
+    await makeRequest(
+        `${ui.url}/sortedset/${ui.currentTreeDef!.collectionName}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        },
+        () => {
+            fetchCurrentTree()
+        }
+    )
+}
+
 async function deleteRecord(id: string | null) {
     if (!ui.getTree()) return
 
@@ -194,6 +216,18 @@ async function getRecord(getId: string | null) {
         )
     }
     RedrawTree()
+}
+
+async function clearTree() {
+    if (!ui.getTree()) return
+
+    await makeRequest(
+        `${ui.url}/clear/${ui.currentTreeDef!.collectionName}`,
+        { method: "DELETE", },
+        () => {
+            fetchCurrentTree()
+        }
+    )
 }
 
 async function newTreeRequest(event: SubmitEvent) {
@@ -289,8 +323,12 @@ export function setupCollectionRequest() {
 
         runTestBtn.addEventListener("click", runTest);
         setBtn.addEventListener("click", () => setRecord(null, null));
+        sortedSetBtn.addEventListener("click", () => sortedSetRecord(null));
+        sortedSetAddBtn.addEventListener("click", () => sortedSetRecord(1));
+        sortedSetSubBtn.addEventListener("click", () => sortedSetRecord(-1));
         deleteBtn.addEventListener("click", () => deleteRecord(null));
         getBtn.addEventListener("click", () => getRecord(null));
+        clearBtn.addEventListener("click", () => clearTree());
 
         treeForm.addEventListener("submit", newTreeRequest)
     });

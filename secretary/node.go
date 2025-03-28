@@ -36,7 +36,6 @@ func (tree *BTree) NodeVerify(node *Node) error {
 		return ErrorKeysGTEOrder
 	}
 	if node != tree.root && len(node.Keys) < int(tree.minNumKeys) {
-		fmt.Println(node.NodeID, utils.ArrayToStrings(node.Keys), tree.minNumKeys)
 		return ErrorKeysLTOrder
 	}
 
@@ -352,46 +351,52 @@ func areRecordsSorted(records []*Record) bool {
 	return true // Sorted
 }
 
+func equiDivision(len int, max int) []int {
+	numGroup := len / max
+	if (len % max) != 0 {
+		numGroup++
+	}
+	extraKeys := len % numGroup
+	ends := make([]int, numGroup)
+	for i := 0; i < numGroup; i++ {
+		ends[i] = (len - extraKeys) / numGroup
+		if i < extraKeys {
+			ends[i]++
+		}
+	}
+	// fmt.Println("ends", ends)
+	return ends
+}
+
 // SortedRecordSet: set sorted records into the B+ Tree efficiently
 func (tree *BTree) SortedRecordSet(sortedRecords []*Record) error {
 	if !areRecordsSorted(sortedRecords) || len(sortedRecords) == 0 {
 		return ErrorRecordsNotSorted
 	}
 
-	o := len(sortedRecords) % (int(tree.Order-1) * int(tree.Order-1))
-	leafNodes := tree.buildSortedLeafNodes(sortedRecords[:len(sortedRecords)-o])
-
+	leafNodes := tree.buildSortedLeafNodes(sortedRecords)
 	tree.root = tree.buildInternalNodes(leafNodes)
-
-	// for _, r := range sortedRecords[len(sortedRecords)-o:] {
-	// 	err := tree.Set(r.Key, r.Value)
-	// 	if err != nil {
-	// 		log.Fatal(err, r.Key)
-	// 	}
-	// }
-
-	// leafNodes := tree.buildSortedLeafNodes(sortedRecords)
-	// tree.root = tree.buildInternalNodes(leafNodes)
 
 	return nil
 }
 
 func (tree *BTree) buildSortedLeafNodes(sortedRecords []*Record) []*Node {
-	// Step 1: Create leaf nodes
 	leafNodes := []*Node{}
-	for i := 0; i < len(sortedRecords); i += int(tree.Order) - 1 {
-		end := i + int(tree.Order) - 1
-		if end > len(sortedRecords) {
-			end = len(sortedRecords)
-		}
+
+	// fmt.Println("---", len(sortedRecords))
+	ends := equiDivision(len(sortedRecords), int(tree.Order-1))
+
+	end := 0
+	for i := 0; i < len(ends); i++ {
+		start := end
+		end = start + ends[i]
 
 		leaf := tree.createLeafNode()
-		for j := i; j < end; j++ {
+		for j := start; j < end; j++ {
 			leaf.Keys = append(leaf.Keys, sortedRecords[j].Key)
 			leaf.records = append(leaf.records, sortedRecords[j])
 		}
 
-		// Link leaf nodes
 		if len(leafNodes) > 0 {
 			leafNodes[len(leafNodes)-1].next = leaf
 			leaf.prev = leafNodes[len(leafNodes)-1]
@@ -409,30 +414,14 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 		return children[0] // Root node
 	}
 
+	ends := equiDivision(len(children), int(tree.Order))
+
 	internalNodes := []*Node{}
 
-	// group cant have less than 2 and more than tree.Order, there has to be 1 key atleast
-	// Order 4 Keys : 3  Children : 1 : [1]
-	// Order 4 Keys : 5  Children : 2 : [2]
-	// Order 4 Keys : 8  Children : 3 : [3]
-	// Order 4 Keys : 12 Children : 4 : [4]
-	// Order 4 Keys : 14 Children : 5 : [3,2]
-	// Order 4 Keys : 16 Children : 6 : [4,2]
-	// Order 4 Keys : 20 Children : 7 : [4,3]
-	// Order 4 Keys : 24 Children : 8 : [4,4]
-	// Order 4 Keys : 26 Children : 9 : [4,3,2]
-
-	for start := 0; start < len(children); {
-		var end int
-		if (len(children)-start)%int(tree.Order) == 1 {
-			end = start + int(tree.Order) - 1
-		} else {
-			end = start + int(tree.Order)
-		}
-
-		if end > len(children) {
-			end = len(children)
-		}
+	end := 0
+	for i := 0; i < len(ends); i++ {
+		start := end
+		end = start + ends[i]
 
 		// Create an internal node from this chunk of children
 		node := tree.createInternalNode(children[start:end])
@@ -449,12 +438,6 @@ func (tree *BTree) buildInternalNodes(children []*Node) *Node {
 		}
 
 		internalNodes = append(internalNodes, node)
-
-		if (len(children)-start)%int(tree.Order) == 1 {
-			start += int(tree.Order) - 1
-		} else {
-			start += int(tree.Order)
-		}
 	}
 
 	return tree.buildInternalNodes(internalNodes)

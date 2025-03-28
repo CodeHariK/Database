@@ -9,9 +9,10 @@ import (
 )
 
 func TestBTreeSerialization(t *testing.T) {
-	s, originalTree := dummySecretary(t, 10)
+	s := dummySecretary(t)
+	tree := dummyTree(t, s, 10)
 
-	serializedData, err := binstruct.Serialize(originalTree)
+	serializedData, err := binstruct.Serialize(tree)
 	if err != nil {
 		t.Fatalf("Serialization failed: %v", err)
 	}
@@ -26,7 +27,7 @@ func TestBTreeSerialization(t *testing.T) {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
 
-	eq, err := binstruct.Compare(originalTree, &deserializedTree)
+	eq, err := binstruct.Compare(tree, &deserializedTree)
 	if !eq || err != nil {
 		t.Fatalf("\nShould be Equal\n")
 	}
@@ -71,7 +72,8 @@ func TestBtreeInvalid(t *testing.T) {
 }
 
 func TestBtreeSaveReadHeader(t *testing.T) {
-	s, tree := dummySecretary(t, 10)
+	s := dummySecretary(t)
+	tree := dummyTree(t, s, 10)
 
 	err := tree.SaveHeader()
 	if err != nil {
@@ -98,7 +100,8 @@ func TestBtreeSaveReadHeader(t *testing.T) {
 }
 
 func TestBTreeHeight(t *testing.T) {
-	s, tree := dummySecretary(t, 4)
+	s := dummySecretary(t)
+	tree := dummyTree(t, s, 4)
 
 	var keySeq uint64 = 0
 
@@ -129,7 +132,7 @@ func TestBTreeHeight(t *testing.T) {
 }
 
 func TestBTreeClose(t *testing.T) {
-	s, _ := dummySecretary(t, 4)
+	s := dummySecretary(t)
 
 	err := s.PagerShutdown()
 	if err != nil {

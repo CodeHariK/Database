@@ -46,16 +46,31 @@
     }
 
     input,
+    textarea {
+      width: 100%;
+    }
+
+    input,
     textarea,
     button {
       width: 100%;
-      flex: 1;
+      /* flex: 1; */
       min-width: 0;
       padding: 10px;
       font-size: 14px;
       border: 1px solid #ccc;
       outline: none;
       transition: border-color 0.3s ease-in-out;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+    }
+
+    .expand {
+      flex-grow: 1;
+      text-align: center;
     }
 
     input:focus {
@@ -73,7 +88,7 @@
     }
 
     #form-section>div {
-      padding: 10px 0px;
+      padding: 3px 0px;
     }
 
     form>div {
@@ -174,9 +189,12 @@
     </div>
 
     <div id="form-section" class="section">
-      <button type="button" id="run-test">Test</button>
-      <button type="button" id="prev-tree">Prev</button>
-      <button type="button" id="next-tree">Next</button>
+
+      <div class="btn-group">
+        <button type="button" id="prev-tree">Prev</button>
+        <button type="button" class="expand" id="run-test">Test</button>
+        <button type="button" id="next-tree">Next</button>
+      </div>
 
       <div>
         <input type="text" id="set-key" placeholder="Enter Key" />
@@ -192,6 +210,19 @@
       <div>
         <input type="text" id="get-id" placeholder="Enter query id" />
         <button type="button" id="get-btn">Query</button>
+      </div>
+
+      <div>
+        <input type="text" id="sortedset-value" placeholder="Enter Number of Keys" />
+        <div class="btn-group">
+          <button type="button" id="sortedset-sub-btn">-</button>
+          <button type="button" class="expand" id="sortedset-btn">SortSet</button>
+          <button type="button" id="sortedset-add-btn">+</button>
+        </div>
+      </div>
+
+      <div>
+        <button type="button" id="clear-btn">Clear tree</button>
       </div>
 
       <div id="info-box"></div>

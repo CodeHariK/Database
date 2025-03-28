@@ -168,6 +168,44 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	writeJson(w, http.StatusOK, response)
 }
 
+func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+
+	type SortedSetRequest struct {
+		Value int `json:"value"`
+	}
+
+	var req SortedSetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Value < 1 {
+		writeJson(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	tree, exists := s.trees[table]
+	if !exists {
+		writeJson(w, http.StatusNotFound, "Tree not found")
+		return
+	}
+
+	tree.Erase()
+
+	_, sortedRecords := SampleSortedKeyRecords(req.Value)
+
+	tree.SortedRecordSet(sortedRecords)
+
+	if errs := tree.TreeVerify(); len(errs) != 0 {
+		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
+		return
+	}
+
+	response := map[string]any{
+		"message": "Data set successfully",
+		"table":   table,
+	}
+
+	writeJson(w, http.StatusOK, response)
+}
+
 func (s *Secretary) getRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 	id := r.PathValue("id")
@@ -225,13 +263,34 @@ func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) 
 	writeJson(w, http.StatusOK, response)
 }
 
+func (s *Secretary) clearTreeHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+
+	tree, exists := s.trees[table]
+	if !exists {
+		writeJson(w, http.StatusNotFound, "Tree not found")
+		return
+	}
+
+	tree.Erase()
+
+	response := map[string]any{
+		"table":  table,
+		"result": "Clear table success",
+	}
+
+	writeJson(w, http.StatusOK, response)
+}
+
 func (s *Secretary) setupRouter(mux *http.ServeMux) http.Handler {
 	mux.HandleFunc("GET /getalltree", s.getAllTreeHandler)
 	mux.HandleFunc("GET /gettree/{table}", s.getTreeHandler)
 	mux.HandleFunc("POST /newtree", s.newTreeHandler)
 	mux.HandleFunc("POST /set/{table}", s.setRecordHandler)
+	mux.HandleFunc("POST /sortedset/{table}", s.sortedSetRecordHandler)
 	mux.HandleFunc("GET /get/{table}/{id}", s.getRecordHandler)
 	mux.HandleFunc("DELETE /delete/{table}/{id}", s.deleteRecordHandler)
+	mux.HandleFunc("DELETE /clear/{table}", s.clearTreeHandler)
 
 	// Enable CORS with custom settings
 	handler := cors.New(cors.Options{

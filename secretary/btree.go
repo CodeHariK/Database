@@ -313,3 +313,9 @@ func (tree *BTree) BFSCompactBatchTraversal() []*Node {
 
 	return compactBatch
 }
+
+func (tree *BTree) Erase() {
+	tree.root = nil
+	tree.NodeSeq = 0
+	tree.NumNodeSeq = 0
+}

@@ -4,6 +4,7 @@ export const getInput = document.getElementById("get-id") as HTMLInputElement
 export const deleteInput = document.getElementById("delete-id") as HTMLInputElement
 export const setKey = document.getElementById("set-key") as HTMLInputElement
 export const setValue = document.getElementById("set-value") as HTMLInputElement
+export const sortedSetValue = document.getElementById("sortedset-value") as HTMLInputElement
 
 export const runTestBtn = document.getElementById("run-test") as HTMLButtonElement;
 export const prevTreeBtn = document.getElementById("prev-tree") as HTMLButtonElement;
@@ -12,6 +13,10 @@ export const nextTreeBtn = document.getElementById("next-tree") as HTMLButtonEle
 export const setBtn = document.getElementById("set-btn") as HTMLButtonElement;
 export const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
 export const getBtn = document.getElementById("get-btn") as HTMLButtonElement;
+export const clearBtn = document.getElementById("clear-btn") as HTMLButtonElement;
+export const sortedSetBtn = document.getElementById("sortedset-btn") as HTMLButtonElement;
+export const sortedSetAddBtn = document.getElementById("sortedset-add-btn") as HTMLButtonElement;
+export const sortedSetSubBtn = document.getElementById("sortedset-sub-btn") as HTMLButtonElement;
 export const resultDiv = document.getElementById("result") as HTMLDivElement;
 
 export const treeForm = document.getElementById("treeForm") as HTMLFormElement;
