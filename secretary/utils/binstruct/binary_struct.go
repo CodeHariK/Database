@@ -15,7 +15,7 @@ import (
 	"sort"
 )
 
-var BYTEORDER binary.ByteOrder = binary.LittleEndian
+var BYTEORDER binary.ByteOrder = binary.BigEndian
 
 // Serialize struct to binary []byte (Little-Endian)
 // bin : type name
@@ -720,9 +720,9 @@ func writeByteLen(buf *bytes.Buffer, numByte int, length int) error {
 	switch numByte {
 	case 2:
 		return binary.Write(buf, BYTEORDER, uint16(length))
-	case 3:
-		return binary.Write(buf, BYTEORDER, uint32(length))
 	case 4:
+		return binary.Write(buf, BYTEORDER, uint32(length))
+	case 8:
 		return binary.Write(buf, BYTEORDER, uint64(length))
 	default:
 		return binary.Write(buf, BYTEORDER, uint8(length))
@@ -737,11 +737,11 @@ func readByteLen(buf *bytes.Reader, numByte int) (int, error) {
 		var temp uint16
 		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)
-	case 3:
+	case 4:
 		var temp uint32
 		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)
-	case 4:
+	case 8:
 		var temp uint64
 		err = binary.Read(buf, BYTEORDER, &temp)
 		length = int(temp)

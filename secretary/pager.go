@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/dgraph-io/ristretto/v2"
 )
 
@@ -59,15 +60,15 @@ func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, e
 
 // Opens or creates a file and sets up the Pager
 func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
-	pageSize := int64(float64(tree.BaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
+	itemSize := int64(float64(tree.BaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
 
 	var headerSize int64 = 0
 
-	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, pageSize)
+	path := fmt.Sprintf("SECRETARY/%s/%s_%d_%d.bin", tree.CollectionName, fileType, level, itemSize)
 	if fileType == "index" {
 
 		headerSize = SECRETARY_HEADER_LENGTH
-		pageSize = 1024 * 1024
+		itemSize = int64(tree.nodeSize)
 
 		path = fmt.Sprintf("SECRETARY/%s/%s.bin", tree.CollectionName, fileType)
 	}
@@ -104,7 +105,7 @@ func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[
 		file:       file,
 		level:      level,
 		headerSize: headerSize,
-		itemSize:   pageSize,
+		itemSize:   itemSize,
 		dirtyPages: map[int64]bool{},
 	}
 
@@ -226,6 +227,17 @@ func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 
 // ReadAt reads data from the specified offset in the file
 func (store *Pager[T]) ReadAt(offset int64, size int32) ([]byte, error) {
+	fileInfo, err := store.file.Stat()
+	if err != nil {
+		return nil, ErrorFileStat(err)
+	}
+	fileSize := fileInfo.Size()
+
+	if offset+int64(size) > fileSize {
+		utils.Log(store.itemSize)
+		return nil, ErrorDataExceedPageSize(int(size), store.itemSize, offset)
+	}
+
 	// Allocate a buffer to hold the data
 	data := make([]byte, size)
 

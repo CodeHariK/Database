@@ -10,6 +10,24 @@ import (
 	"github.com/codeharik/secretary/utils/file"
 )
 
+func calcNodeSize(order int) int {
+	node := Node{
+		Version:     1,
+		NodeID:      1,
+		Index:       1,
+		ParentIndex: 1,
+	}
+
+	node.KeyLocation = make([]uint64, order)
+	node.Keys = make([][]byte, order)
+
+	bin, err := binstruct.Serialize(&node)
+	if err != nil {
+		return -1
+	}
+	return len(bin)
+}
+
 func (s *Secretary) NewBTree(
 	collectionName string,
 	order uint8,
@@ -26,7 +44,7 @@ func (s *Secretary) NewBTree(
 		return nil, ErrorInvalidIncrement
 	}
 
-	nodeSize := uint32(order)*(KEY_SIZE+KEY_OFFSET_SIZE) + 3*POINTER_SIZE + 1
+	nodeSize := calcNodeSize(int(order))
 
 	safeCollectionName := utils.SafeCollectionString(collectionName)
 	if len(safeCollectionName) < 5 || len(safeCollectionName) > MAX_COLLECTION_NAME_LENGTH {

@@ -104,7 +104,7 @@ func TestPagerWriteAndReadAtOffset(t *testing.T) {
 
 	{ // Test: Write data that exceed batch size, Should Fail
 		offset := int64(float64(tree.nodePager.itemSize) * 5.8)
-		data := make([]byte, int64(float64(tree.nodePager.itemSize)*0.4))
+		data := make([]byte, int64(float64(tree.nodePager.itemSize)*0.8))
 
 		err := tree.nodePager.WriteAt(data, offset)
 		if err == nil {
