@@ -13,7 +13,6 @@ var (
 	ErrorNodeIsEitherLeaforInternal = errors.New("Node Is Either Leaf or Internal, Node can either have children or record")
 
 	ErrorTreeNotFound = errors.New("Tree not found")
-	ErrorTreeNil      = errors.New("Tree nil")
 
 	// Keys
 	ErrorKeyNotFound         = errors.New("Key not found")
@@ -33,6 +32,8 @@ var (
 	ErrorInvalidOrder          = fmt.Errorf("Order must be between %d and %d", MIN_ORDER, MAX_ORDER)
 	ErrorInvalidIncrement      = errors.New("Increment must be between 110 and 200")
 	ErrorInvalidCollectionName = errors.New("Collection name is not valid, should be a-z 0-9 and with >4 & <30 characters")
+
+	ErrorInvalidJson = errors.New("Invalid Json")
 
 	ErrorModeWASM = errors.New("Function disabled : WASM_MODE")
 

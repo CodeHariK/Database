@@ -35,47 +35,61 @@ type JsonResponse struct {
 	Logs string `json:"logs"`
 }
 
-func writeJson(w http.ResponseWriter, code int, data any) {
+func writeJson(w http.ResponseWriter, data []byte, err error) {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+
+	COMMAND_LOGS = ""
+}
+
+func makeJson(data any) ([]byte, error) {
 	response := JsonResponse{
 		Data: data,
 		Logs: COMMAND_LOGS,
 	}
 
-	jsonData, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(code)
-	w.Header().Set("Content-Type", "application/json")
-
-	w.Write(jsonData)
-
-	COMMAND_LOGS = ""
+	return json.Marshal(response)
 }
 
-func (s *Secretary) getAllTreeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) HandleGetAllTree() ([]byte, error) {
 	var trees []*BTree
 	for _, o := range s.trees {
 		trees = append(trees, o)
 	}
-	writeJson(w, http.StatusOK, trees)
+
+	return makeJson(trees)
+}
+
+func (s *Secretary) getAllTreeHandler(w http.ResponseWriter, r *http.Request) {
+	data, err := s.HandleGetAllTree()
+	writeJson(w, data, err)
+}
+
+func (s *Secretary) HandleGetTree(table string) ([]byte, error) {
+	tree, exists := s.trees[table]
+	if !exists {
+		return nil, ErrorTreeNotFound
+	}
+
+	jsonData, err := makeJson(tree.ToJSON())
+	if err != nil {
+		return nil, err
+	}
+
+	errs := tree.TreeVerify()
+	return jsonData, errors.Join(errs...)
 }
 
 func (s *Secretary) getTreeHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
-	tree, exists := s.trees[table]
-	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
-	}
-
-	if errs := tree.TreeVerify(); len(errs) != 0 {
-		writeJson(w, http.StatusConflict, tree.ToJSON())
-		return
-	}
-	writeJson(w, http.StatusOK, tree.ToJSON())
+	data, err := s.HandleGetTree(table)
+	writeJson(w, data, err)
 }
 
 type NewTreeRequest struct {
@@ -87,13 +101,7 @@ type NewTreeRequest struct {
 	CompactionBatchSize uint32 `json:"compactionBatchSize"`
 }
 
-func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
-	var req NewTreeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJson(w, http.StatusBadRequest, "Invalid Json")
-		return
-	}
-
+func (s *Secretary) HandleNewTree(req NewTreeRequest) ([]byte, error) {
 	tree, err := s.NewBTree(
 		req.CollectionName,
 		req.Order,
@@ -103,16 +111,24 @@ func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
 		req.CompactionBatchSize,
 	)
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err)
-		return
+		return nil, err
 	}
 	err = tree.SaveHeader()
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err)
+		return nil, err
+	}
+	return makeJson("New tree created")
+}
+
+func (s *Secretary) newTreeHandler(w http.ResponseWriter, r *http.Request) {
+	var req NewTreeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJson(w, nil, ErrorInvalidJson)
 		return
 	}
 
-	writeJson(w, http.StatusOK, "New tree created")
+	data, err := s.HandleNewTree(req)
+	writeJson(w, data, err)
 }
 
 type SetRequest struct {
@@ -120,71 +136,64 @@ type SetRequest struct {
 	Value string `json:"value"`
 }
 
-func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
-	table := r.PathValue("table")
-
-	var req SetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (len(strings.Trim(req.Value, " ")) == 0) {
-		writeJson(w, http.StatusBadRequest, err)
-		return
-	}
-
+func (s *Secretary) HandleSetRecord(table string, reqKey string, reqValue string) (key []byte, data []byte, err error) {
 	tree, exists := s.trees[table]
 	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
+		return nil, nil, ErrorTreeNotFound
 	}
 
-	var key []byte = []byte(req.Key)
-	var err error
-	if len(req.Key) == 0 || len(req.Key) != KEY_SIZE {
+	key = []byte(reqKey)
+	if len(reqKey) == 0 || len(reqKey) != KEY_SIZE {
 		key = []byte(utils.GenerateSeqString(&tree.KeySeq, KEY_SIZE, KEY_INCREMENT))
-		_, err = tree.SetKV(key, []byte(req.Value))
+		key, err = tree.SetKV(key, []byte(reqValue))
 	} else {
-		_, err = tree.SetKV(key, []byte(req.Value))
+		key, err = tree.SetKV(key, []byte(reqValue))
 	}
 
 	if err == ErrorDuplicateKey {
-		err := tree.Update(key, []byte(req.Value))
+		err := tree.Update(key, []byte(reqValue))
 		if err != nil {
-			writeJson(w, http.StatusNotFound, err)
-			return
+			return nil, nil, err
 		}
 	} else if err != nil {
-		writeJson(w, http.StatusNotFound, err)
-		return
+		return nil, nil, err
 	}
 
 	if errs := tree.TreeVerify(); len(errs) != 0 {
-		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
-		return
+		return nil, nil, errors.Join(errs...)
 	}
 
 	response := map[string]any{
 		"message": "Data set successfully",
 		"table":   table,
+		"key":     key,
 	}
 
-	writeJson(w, http.StatusOK, response)
+	data, err = makeJson(response)
+	return key, data, err
 }
 
-func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 
-	type SortedSetRequest struct {
-		Value int `json:"value"`
-	}
-
-	var req SortedSetRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Value < 1 {
-		writeJson(w, http.StatusBadRequest, err)
+	var req SetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (len(strings.Trim(req.Value, " ")) == 0) {
+		writeJson(w, nil, err)
 		return
 	}
 
+	_, data, err := s.HandleSetRecord(table, req.Key, req.Value)
+	writeJson(w, data, err)
+}
+
+type SortedSetRequest struct {
+	Value int `json:"value"`
+}
+
+func (s *Secretary) HandleSortedSetRecord(table string, req SortedSetRequest) ([]byte, error) {
 	tree, exists := s.trees[table]
 	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
+		return nil, ErrorTreeNotFound
 	}
 
 	tree.Erase()
@@ -194,8 +203,7 @@ func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Reques
 	tree.SortedRecordSet(sortedRecords)
 
 	if errs := tree.TreeVerify(); len(errs) != 0 {
-		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
-		return
+		return nil, errors.Join(errs...)
 	}
 
 	response := map[string]any{
@@ -203,56 +211,62 @@ func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Reques
 		"table":   table,
 	}
 
-	writeJson(w, http.StatusOK, response)
+	return makeJson(response)
+}
+
+func (s *Secretary) sortedSetRecordHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+
+	var req SortedSetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Value < 1 {
+		writeJson(w, nil, err)
+		return
+	}
+
+	data, err := s.HandleSortedSetRecord(table, req)
+	writeJson(w, data, err)
+}
+
+func (s *Secretary) HandleGetRecord(table string, key string) ([]byte, error) {
+	tree, exists := s.trees[table]
+	if !exists {
+		return nil, ErrorTreeNotFound
+	}
+
+	node, index, found := tree.getLeafNode([]byte(key))
+	if found {
+		response := map[string]any{
+			"table":  table,
+			"nodeID": node.NodeID,
+			"found":  found,
+			"record": node.records[index].Value,
+		}
+		return makeJson(response)
+	}
+
+	return nil, ErrorKeyNotFound
 }
 
 func (s *Secretary) getRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
 	id := r.PathValue("id")
 
-	tree, exists := s.trees[table]
-	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
-	}
-
-	node, index, found := tree.getLeafNode([]byte(id))
-	var record string
-	if found {
-		record = string(node.records[index].Value)
-	} else {
-		writeJson(w, http.StatusNoContent, "Key not found")
-		return
-	}
-
-	response := map[string]any{
-		"table":  table,
-		"nodeID": node.NodeID,
-		"found":  found,
-		"record": record,
-	}
-
-	writeJson(w, http.StatusOK, response)
+	data, err := s.HandleGetRecord(table, id)
+	writeJson(w, data, err)
 }
 
-func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) {
-	table := r.PathValue("table")
-	id := r.PathValue("id")
-
+func (s *Secretary) HandleDeleteRecord(table string, id string) ([]byte, error) {
 	tree, exists := s.trees[table]
 	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
+		return nil, ErrorTreeNotFound
 	}
 
 	err := tree.Delete([]byte(id))
 	if err != nil {
-		writeJson(w, http.StatusInternalServerError, err)
-		return
+		return nil, err
 	}
 	if errs := tree.TreeVerify(); len(errs) != 0 {
-		writeJson(w, http.StatusConflict, utils.ArrayToStrings(errs))
-		return
+		return nil, errors.Join(errs...)
 	}
 
 	response := map[string]any{
@@ -260,16 +274,21 @@ func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) 
 		"result": "Delete success " + id,
 	}
 
-	writeJson(w, http.StatusOK, response)
+	return makeJson(response)
 }
 
-func (s *Secretary) clearTreeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Secretary) deleteRecordHandler(w http.ResponseWriter, r *http.Request) {
 	table := r.PathValue("table")
+	id := r.PathValue("id")
 
+	data, err := s.HandleDeleteRecord(table, id)
+	writeJson(w, data, err)
+}
+
+func (s *Secretary) HanldeClearTree(table string) ([]byte, error) {
 	tree, exists := s.trees[table]
 	if !exists {
-		writeJson(w, http.StatusNotFound, "Tree not found")
-		return
+		return nil, ErrorTreeNotFound
 	}
 
 	tree.Erase()
@@ -279,7 +298,15 @@ func (s *Secretary) clearTreeHandler(w http.ResponseWriter, r *http.Request) {
 		"result": "Clear table success",
 	}
 
-	writeJson(w, http.StatusOK, response)
+	return makeJson(response)
+}
+
+func (s *Secretary) clearTreeHandler(w http.ResponseWriter, r *http.Request) {
+	table := r.PathValue("table")
+
+	data, err := s.HanldeClearTree(table)
+
+	writeJson(w, data, err)
 }
 
 func (s *Secretary) setupRouter(mux *http.ServeMux) http.Handler {

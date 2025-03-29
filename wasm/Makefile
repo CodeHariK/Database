@@ -1,7 +1,8 @@
-cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+build:
+	GOOS=js GOARCH=wasm go build -o wasm/secretary.wasm wasm/secretary.go
 
-GOOS=js GOARCH=wasm go build -o wasm/add.wasm wasm/add.go
+run:
+	go run server/main.go
 
-GOOS=js GOARCH=wasm go build -o secretary/secretary.wasm secretary/secretary.go
-
-go run server/main.go
+cp:
+	cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .

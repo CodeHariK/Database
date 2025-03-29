@@ -54,8 +54,8 @@ func TestServerGetBTreeHandler(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	resp := rec.Result()
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("expected status StatusNotFound; got %v", resp.Status)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected status StatusInternalServerError; got %v", resp.Status)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/gettree/users", nil)
@@ -171,8 +171,8 @@ func TestServerGetHandler(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	resp := rec.Result()
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("expected status StatusNoContent; got %v", resp.Status)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected status StatusInternalServerError; got %v", resp.Status)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/get/users/"+string(key), nil)

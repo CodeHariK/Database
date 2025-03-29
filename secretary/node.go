@@ -562,7 +562,7 @@ func (tree *BTree) RangeScan(startKey, endKey []byte) []*Record {
 // Delete deletes a key from the B+ Tree.
 func (tree *BTree) Delete(key []byte) error {
 	if tree == nil || tree.root == nil {
-		return ErrorTreeNil
+		return ErrorTreeNotFound
 	}
 
 	leaf, index, found := tree.getLeafNode(key)
