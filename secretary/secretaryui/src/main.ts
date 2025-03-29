@@ -4,8 +4,8 @@ import { BTree, BTreeNode, NodeDef, TreeDef } from './tree';
 import { canvasSection, modalOverlay, openModalBtn, themeToggle } from './dom';
 import { setupDraw } from './draw';
 import Split from 'split.js'
+import { Func, SetupWASM } from './wasm';
 
-// document.addEventListener('DOMContentLoaded', () => {
 Split(['#json-section', "#canvas-section", '#form-section'],
   {
     sizes: [15, 70, 15],
@@ -13,7 +13,6 @@ Split(['#json-section', "#canvas-section", '#form-section'],
   }
 );
 (document.querySelector('.container') as HTMLElement).style.visibility = 'visible';
-// });
 
 class Ui {
   graph: dia.Graph
@@ -25,6 +24,9 @@ class Ui {
   BOXHEIGHT = 200
 
   DARK: boolean
+
+  func!: Func
+  WASM: boolean = false
 
   router: "normal" | "orthogonal" = "orthogonal"
   connector: "straight" | "curve" = "straight"
@@ -66,7 +68,10 @@ class Ui {
 let dark = localStorage.getItem("theme") === "dark"
 export let ui = new Ui(dark)
 
-fetchAllBTree()
+SetupWASM()
+setTimeout(() => {
+  fetchAllBTree()
+}, 2000)
 setupCollectionRequest()
 setupDraw()
 

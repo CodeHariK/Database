@@ -52,3 +52,10 @@ gen:
 	buf dep update
 	buf format -w
 	buf generate
+
+.PHONY: wasm
+wasm:
+	GOOS=js GOARCH=wasm go build -o ./secretaryui/secretary.wasm ./wasm
+
+cpwasm:
+	cp $(shell go env GOROOT)/lib/wasm/wasm_exec.js ./secretaryui

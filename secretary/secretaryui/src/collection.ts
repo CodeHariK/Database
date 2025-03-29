@@ -117,7 +117,22 @@ export async function fetchAllBTree() {
     await makeRequest(
         `${ui.url}/getalltree`,
         undefined,
-        (data: any[]) => {
+        (data: any[], error: boolean) => {
+
+            console.log(data)
+
+            if (error) {
+                ui.WASM = true
+
+                // ui.func.allTree()
+
+                console.log(ui.func)
+
+                console.log("---> ", ui.func.allTree())
+
+                return
+            }
+
             const collectionsDiv = document.getElementById("collections")!;
             collectionsDiv.innerHTML = "";
 
@@ -259,16 +274,17 @@ async function makeRequest(
     parameters: RequestInit | undefined,
     after: (result: any, error: boolean) => void
 ) {
-    const response = await fetch(url, parameters);
+    let response;
     let result;
 
     try {
+        response = await fetch(url, parameters);
         result = await response.json();
     } catch {
         result = { data: null, logs: "Invalid JSON response" };
     }
 
-    const hasError = !response.ok || response.status !== 200;
+    const hasError = !response?.ok || response.status !== 200;
     appendResult(url, result.data, result.logs, hasError);
     after(result.data, hasError);
 }
