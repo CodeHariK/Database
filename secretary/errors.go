@@ -34,6 +34,8 @@ var (
 	ErrorInvalidIncrement      = errors.New("Increment must be between 110 and 200")
 	ErrorInvalidCollectionName = errors.New("Collection name is not valid, should be a-z 0-9 and with >4 & <30 characters")
 
+	ErrorModeWASM = errors.New("Function disabled : WASM_MODE")
+
 	// File I/O
 	ErrorFileNotAligned = func(fileInfo os.FileInfo) error {
 		return fmt.Errorf("Error : File %s not aligned", fileInfo.Name())

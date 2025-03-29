@@ -72,21 +72,23 @@ func (s *Secretary) NewBTree(
 		CompactionBatchSize: compactionBatchSize,
 	}
 
-	nodePager, err := tree.NewNodePager("index", 0)
-	if err != nil {
-		return nil, err
-	}
-	tree.nodePager = nodePager
-
-	recordPagers := make([]*RecordPager, numLevel)
-	for i := range recordPagers {
-		pager, err := tree.NewRecordPager("record", uint8(i))
+	if !MODE_WASM {
+		nodePager, err := tree.NewNodePager("index", 0)
 		if err != nil {
 			return nil, err
 		}
-		recordPagers[i] = pager
+		tree.nodePager = nodePager
+
+		recordPagers := make([]*RecordPager, numLevel)
+		for i := range recordPagers {
+			pager, err := tree.NewRecordPager("record", uint8(i))
+			if err != nil {
+				return nil, err
+			}
+			recordPagers[i] = pager
+		}
+		tree.recordPagers = recordPagers
 	}
-	tree.recordPagers = recordPagers
 
 	s.AddTree(tree)
 
@@ -94,6 +96,10 @@ func (s *Secretary) NewBTree(
 }
 
 func (tree *BTree) close() error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	errs := []error{}
 
 	if tree.nodePager != nil {
@@ -114,6 +120,10 @@ func (tree *BTree) close() error {
 }
 
 func (tree *BTree) SaveHeader() error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	headerBytes, err := binstruct.Serialize(tree)
 	if err != nil {
 		return err
@@ -129,11 +139,19 @@ func (tree *BTree) SaveHeader() error {
 }
 
 func (tree *BTree) ReadNodeAtIndex(index uint64) (*Node, error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	page, err := tree.nodePager.ReadPage(int64(index))
 	return page.Data, err
 }
 
 func (tree *BTree) readRoot() error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	node, err := tree.ReadNodeAtIndex(0)
 	if err != nil {
 		return err
@@ -143,6 +161,10 @@ func (tree *BTree) readRoot() error {
 }
 
 func (tree *BTree) WriteNodeAtIndex(node *Node, index uint64) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	node.Index = index
 	if node.parent != nil {
 		node.ParentIndex = node.parent.Index
@@ -158,6 +180,10 @@ func (tree *BTree) WriteNodeAtIndex(node *Node, index uint64) error {
 }
 
 func (tree *BTree) WriteNode(node *Node) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	if node.Index == 0 {
 		lastFileIndex, err := tree.nodePager.NumPages()
 		if err != nil {
@@ -205,6 +231,10 @@ func (tree *BTree) writeRoot() error {
 // }
 
 func (s *Secretary) NewBTreeReadHeader(collectionName string) (*BTree, error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	temptree := BTree{CollectionName: collectionName}
 	nodePager, err := temptree.NewNodePager("index", 0)
 	if err != nil {

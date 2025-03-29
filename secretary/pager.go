@@ -41,6 +41,10 @@ Buffer Pool Advantages:
 */
 
 func (tree *BTree) NewNodePager(fileType string, level uint8) (*NodePager, error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	pager, err := NewPager[*Node](tree, fileType, level)
 	if err != nil {
 		return nil, err
@@ -50,6 +54,10 @@ func (tree *BTree) NewNodePager(fileType string, level uint8) (*NodePager, error
 }
 
 func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	pager, err := NewPager[*Record](tree, fileType, level)
 	if err != nil {
 		return nil, err
@@ -60,6 +68,10 @@ func (tree *BTree) NewRecordPager(fileType string, level uint8) (*RecordPager, e
 
 // Opens or creates a file and sets up the Pager
 func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[T], error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	itemSize := int64(float64(tree.BaseSize) * math.Pow(float64(tree.Increment)/100, float64(level)))
 
 	var headerSize int64 = 0
@@ -130,6 +142,10 @@ func NewPager[T PageItem[T]](tree *BTree, fileType string, level uint8) (*Pager[
 
 // AllocatePage writes zeroed data in chunks of pageSize for alignment
 func (store *Pager[T]) AllocatePage(index int64) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -156,6 +172,10 @@ func (store *Pager[T]) AllocatePage(index int64) error {
 }
 
 func (store *Pager[T]) NumPages() (int64, error) {
+	if MODE_WASM {
+		return -1, ErrorModeWASM
+	}
+
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -191,6 +211,10 @@ func (store *Pager[T]) NumPages() (int64, error) {
 // WriteAt writes data at the specified offset in the file.
 // If there is not enough free space, it allocates a new batch.
 func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	// Ensure data size does not exceed pageSize
 	if ((int64(len(data)) + offset - store.headerSize) / store.itemSize) !=
 		((offset - store.headerSize) / store.itemSize) {
@@ -227,6 +251,10 @@ func (store *Pager[T]) WriteAt(data []byte, offset int64) error {
 
 // ReadAt reads data from the specified offset in the file
 func (store *Pager[T]) ReadAt(offset int64, size int32) ([]byte, error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	fileInfo, err := store.file.Stat()
 	if err != nil {
 		return nil, ErrorFileStat(err)
@@ -251,6 +279,10 @@ func (store *Pager[T]) ReadAt(offset int64, size int32) ([]byte, error) {
 }
 
 func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
+	if MODE_WASM {
+		return nil, ErrorModeWASM
+	}
+
 	store.mu.Lock()
 
 	// Check if page exists in Ristretto cache
@@ -285,6 +317,10 @@ func (store *Pager[T]) ReadPage(index int64) (*Page[T], error) {
 }
 
 func (store *Pager[T]) WritePage(data T, index int64) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	rootHeader, err := data.ToBytes()
 	if err != nil {
 		return err
@@ -294,6 +330,10 @@ func (store *Pager[T]) WritePage(data T, index int64) error {
 
 // SyncPage writes a page to disk if it's dirty.
 func (store *Pager[T]) SyncPage(index int64) error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	// Get page from cache
 	page, err := store.ReadPage(index)
 	if err != nil {
@@ -324,6 +364,10 @@ func (store *Pager[T]) SyncPage(index int64) error {
 
 // Sync writes all dirty pages to disk.
 func (store *Pager[T]) Sync() error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -339,6 +383,10 @@ func (store *Pager[T]) Sync() error {
 
 // Close syncs pages and closes the file.
 func (store *Pager[T]) Close() error {
+	if MODE_WASM {
+		return ErrorModeWASM
+	}
+
 	if err := store.Sync(); err != nil {
 		return err
 	}

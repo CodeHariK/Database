@@ -4,20 +4,38 @@ clean:
 	@([ -d "SECRETARY" ] && rm -rf SECRETARY/* || true)
 	@go clean -testcache
 
-one: clean
-	go test ./... -v -run $(test)
+one:
+	go test ./... -v -run $(test) -- TEST
 
-mul: clean
-	go test ./... -v -run "^$(test).*$$" 
+vul:
+	go test ./... -v -run "^$(test).*$$" -- TEST
+mul:
+	go test ./... -run "^$(test).*$$" -- TEST
+	echo ""
+wul:
+	go test ./... -run "^$(test).*$$" -- TEST WASM
+	echo ""
+
+wea: clean
+	make mul test=TestBTree
+	make mul test=TestNode
+
+tea: clean
+	make mul test=TestSecretary
+	make mul test=TestServer
+	make mul test=TestBTree
+	make mul test=TestNode
+	make mul test=TestPager
+	make testutils
 
 test: clean
-	go test ./... -cover -coverprofile=cover.txt
+	go test ./... -cover -coverprofile=cover.txt -- TEST
 
 vtest: clean
-	go test ./... -v -cover -coverprofile=cover.txt
+	go test ./... -v -cover -coverprofile=cover.txt -- TEST
 
 cover: clean
-	go test ./... -cover -coverprofile=cover.txt
+	go test ./... -cover -coverprofile=cover.txt -- TEST
 	go tool cover -func=cover.txt
 	go tool cover -html=cover.txt
 
@@ -28,14 +46,7 @@ ui:
 	cd secretaryui && bun run dev
 
 testutils:
-	go test -v utils/*.go
-
-callgraph:
-	go run utils/ast/main.go
-
-serf:
-	go run serf/main.go
-	go run serf/main.go node2
+	go test ./utils/... -- TEST
 
 gen:
 	buf dep update

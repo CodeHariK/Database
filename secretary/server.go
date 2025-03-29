@@ -24,12 +24,10 @@ import (
 var COMMAND_LOGS = ""
 
 func ServerLog(msgs ...any) {
-	msg, _ := utils.LogMessage(msgs...)
-	// fmt.Println(msg)
-	COMMAND_LOGS += fmt.Sprintf("<div style='color:%s;background:#000'>%s</div><br>", utils.LightColor().Hex, strings.ReplaceAll(msg, "\n", "<br>"))
-	// if len(COMMAND_LOGS) > 10000 {
-	// 	COMMAND_LOGS = ""
-	// }
+	if !MODE_TEST {
+		msg, _ := utils.LogMessage(msgs...)
+		COMMAND_LOGS += fmt.Sprintf("<div style='color:%s;background:#000'>%s</div><br>", utils.LightColor().Hex, strings.ReplaceAll(msg, "\n", "<br>"))
+	}
 }
 
 type JsonResponse struct {
@@ -141,9 +139,9 @@ func (s *Secretary) setRecordHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if len(req.Key) == 0 || len(req.Key) != KEY_SIZE {
 		key = []byte(utils.GenerateSeqString(&tree.KeySeq, KEY_SIZE, KEY_INCREMENT))
-		err = tree.SetKV(key, []byte(req.Value))
+		_, err = tree.SetKV(key, []byte(req.Value))
 	} else {
-		err = tree.SetKV(key, []byte(req.Value))
+		_, err = tree.SetKV(key, []byte(req.Value))
 	}
 
 	if err == ErrorDuplicateKey {
@@ -306,6 +304,10 @@ func (s *Secretary) setupRouter(mux *http.ServeMux) http.Handler {
 }
 
 func (s *Secretary) Serve() {
+	if MODE_WASM {
+		return
+	}
+
 	// Create a TCP listener on a random available port, OS assigns a free port
 	listener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {

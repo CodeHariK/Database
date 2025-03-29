@@ -12,10 +12,7 @@ import (
 
 // Test /getallbtree
 func TestServerGetAllBTreeHandler(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	mux := http.NewServeMux()
 	router := s.setupRouter(mux)
 
@@ -36,10 +33,7 @@ func TestServerGetAllBTreeHandler(t *testing.T) {
 
 // Test /getbtree with query params
 func TestServerGetBTreeHandler(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	mux := http.NewServeMux()
 	router := s.setupRouter(mux)
 
@@ -50,7 +44,7 @@ func TestServerGetBTreeHandler(t *testing.T) {
 
 	var keySeq uint64 = 0
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err = users.SetKV(key, key)
+	_, err = users.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Insert failed: %s", err)
 	}
@@ -78,10 +72,7 @@ func TestServerGetBTreeHandler(t *testing.T) {
 
 // Test /set with POST data
 func TestServerSetHandler(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	mux := http.NewServeMux()
 	router := s.setupRouter(mux)
 
@@ -104,10 +95,7 @@ func TestServerSetHandler(t *testing.T) {
 
 // Test /newtree with POST data
 func TestServerNewTreeHandler(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	mux := http.NewServeMux()
 	router := s.setupRouter(mux)
 
@@ -162,10 +150,7 @@ func TestServerNewTreeHandler(t *testing.T) {
 }
 
 func TestServerGetHandler(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	mux := http.NewServeMux()
 	router := s.setupRouter(mux)
 
@@ -176,7 +161,7 @@ func TestServerGetHandler(t *testing.T) {
 
 	var keySeq uint64 = 0
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err = u.SetKV(key, key)
+	_, err = u.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Insert failed: %s", err)
 	}

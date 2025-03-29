@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	s, err := secretary.New()
+	s, err := secretary.New(nil)
 	if err != nil {
 		utils.Log(err)
 		os.Exit(1)

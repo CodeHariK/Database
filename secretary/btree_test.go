@@ -36,10 +36,7 @@ func TestBTreeSerialization(t *testing.T) {
 }
 
 func TestBtreeInvalid(t *testing.T) {
-	s, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := dummySecretary(t)
 	_, invalidNameErr := s.NewBTree(
 		"Tes",
 		10,
@@ -108,7 +105,7 @@ func TestBTreeHeight(t *testing.T) {
 	// Set more keys to increase height
 	for i := 0; i < 9; i++ {
 		key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-		err := tree.SetKV(key, key)
+		_, err := tree.SetKV(key, key)
 		if err != nil {
 			t.Fatalf("Set failed: %s", err)
 		}
@@ -119,7 +116,7 @@ func TestBTreeHeight(t *testing.T) {
 	}
 
 	key := []byte(utils.GenerateSeqRandomString(&keySeq, 16, 5, 4))
-	err := tree.SetKV(key, key)
+	_, err := tree.SetKV(key, key)
 	if err != nil {
 		t.Fatalf("Set failed: %s", err)
 	}

@@ -1,0 +1,23 @@
+module github.com/codeharik/wasm
+
+go 1.24.0
+
+replace github.com/codeharik/secretary => ../secretary
+
+require github.com/codeharik/secretary v0.0.0-00010101000000-000000000000
+
+require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.5-20250307204501-0409229c3780.1 // indirect
+	connectrpc.com/connect v1.18.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgraph-io/ristretto/v2 v2.1.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rs/cors v1.11.1 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
+)

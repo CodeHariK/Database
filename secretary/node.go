@@ -297,16 +297,16 @@ func (tree *BTree) splitInternal(node *Node) {
 	tree.promoteKey(node, promotedKey, newRightInternal)
 }
 
-func (tree *BTree) Set(value []byte) error {
+func (tree *BTree) Set(value []byte) ([]byte, error) {
 	buf := make([]byte, 16)
 	binary.BigEndian.PutUint64(buf[8:], tree.KeySeq)
 	return tree.SetKV(buf, value)
 }
 
 // SetKV a Record key-value pair into the B+ Tree
-func (tree *BTree) SetKV(key []byte, value []byte) error {
+func (tree *BTree) SetKV(key []byte, value []byte) ([]byte, error) {
 	if len(key) != KEY_SIZE {
-		return ErrorInvalidKey
+		return nil, ErrorInvalidKey
 	}
 
 	if tree.root == nil {
@@ -316,12 +316,12 @@ func (tree *BTree) SetKV(key []byte, value []byte) error {
 		tree.root = tree.createLeafNode()
 		tree.root.setLeafKV(key, value)
 
-		return nil
+		return key, nil
 	}
 
 	leaf, index, found := tree.getLeafNode(key)
 	if found && bytes.Compare(leaf.Keys[index], key) == 0 {
-		return ErrorDuplicateKey
+		return nil, ErrorDuplicateKey
 	}
 
 	atomic.AddUint64(&tree.KeySeq, KEY_INCREMENT)
@@ -332,7 +332,7 @@ func (tree *BTree) SetKV(key []byte, value []byte) error {
 		tree.splitLeaf(leaf)
 	}
 
-	return nil
+	return key, nil
 }
 
 // Update a key-value pair in the B+ Tree

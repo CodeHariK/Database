@@ -1,8 +1,7 @@
 * ```go
 
-* convert byte[] to records and node
+* wal commands, ringbuffer commands, operate after time interval
 * traverse entire tree and store it in disk
-* Store entire node in same page
 * Put nodeId,nodeoffset in pagemetadata for records
 * Store continous node together
 * Split page when node is added more than nodecapacity of page

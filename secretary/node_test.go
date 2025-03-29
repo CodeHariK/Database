@@ -11,7 +11,7 @@ import (
 )
 
 func dummySecretary(t *testing.T) *Secretary {
-	s, err := New()
+	s, err := New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestNodeSet(t *testing.T) {
 
 	key := []byte(utils.GenerateRandomString(16))
 	value := []byte("Hello world!")
-	err = tree.SetKV(key, value)
+	_, err = tree.SetKV(key, value)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -269,7 +269,7 @@ func TestNodeSet(t *testing.T) {
 	}
 
 	// Duplicate Key error
-	err = tree.SetKV(key, append(value, []byte("world1")...))
+	_, err = tree.SetKV(key, append(value, []byte("world1")...))
 	if err == nil {
 		t.Fatalf("expected error but got nil %v", err)
 	}
@@ -297,7 +297,7 @@ func TestNodeUpdate(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = tree.SetKV(key, value)
+	_, err = tree.SetKV(key, value)
 	if err != nil {
 		t.Error(err)
 	}
@@ -477,7 +477,7 @@ func TestNodeDelete(t *testing.T) {
 
 				if i%2 == 1 {
 					for _, r := range sortedRecords {
-						err := tree.SetKV(r.Key, r.Value)
+						_, err := tree.SetKV(r.Key, r.Value)
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -542,11 +542,11 @@ func TestNodeSplitInternal(t *testing.T) {
 		tree.SetKV(r.Key, r.Value)
 	}
 
-	tree.SetKV([]byte("0000000000000196"), []byte("Hello:196"))
-	tree.SetKV([]byte("0000000000000197"), []byte("Hello:197"))
-	tree.SetKV([]byte("0000000000000198"), []byte("Hello:198"))
-	tree.SetKV([]byte("0000000000000199"), []byte("Hello:199"))
-	if errs := tree.TreeVerify(); len(errs) != 0 {
+	_, err1 := tree.SetKV([]byte("0000000000000196"), []byte("Hello:196"))
+	_, err2 := tree.SetKV([]byte("0000000000000197"), []byte("Hello:197"))
+	_, err3 := tree.SetKV([]byte("0000000000000198"), []byte("Hello:198"))
+	_, err4 := tree.SetKV([]byte("0000000000000199"), []byte("Hello:199"))
+	if errs := tree.TreeVerify(); len(errs) != 0 || err1 != nil || err2 != nil || err3 != nil || err4 != nil {
 		t.Fatal(errs)
 	}
 

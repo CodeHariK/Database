@@ -6,7 +6,13 @@ import (
 	"os"
 	"sync"
 
+	"github.com/codeharik/secretary/utils"
 	"github.com/dgraph-io/ristretto/v2"
+)
+
+var (
+	MODE_WASM = utils.ArrayContains(os.Args, "WASM")
+	MODE_TEST = utils.ArrayContains(os.Args, "TEST")
 )
 
 const (

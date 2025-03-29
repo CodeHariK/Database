@@ -35,3 +35,12 @@ func GenerateSeqRandomString(sequence *uint64, length int, increment uint64, pad
 	str := fmt.Sprintf("%0*d:%s:%s", pad, *sequence, value, GenerateRandomString(length))
 	return str[:length]
 }
+
+func ArrayContains[T string](arr []T, target T) bool {
+	for _, arg := range arr {
+		if arg == target {
+			return true
+		}
+	}
+	return false
+}

@@ -11,13 +11,21 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-func New() (*Secretary, error) {
+func New(MODEWASM *bool) (*Secretary, error) {
 	startMessage := "Hello Secretary!"
+
+	if MODEWASM != nil {
+		MODE_WASM = *MODEWASM
+	}
 
 	secretary := &Secretary{
 		trees: map[string]*BTree{},
 
 		quit: make(chan any),
+	}
+
+	if MODE_WASM {
+		return secretary, nil
 	}
 
 	dirPath := "./SECRETARY"
