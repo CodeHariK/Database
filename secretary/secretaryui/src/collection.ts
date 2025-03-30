@@ -89,91 +89,135 @@ export function displayNode(node: BTreeNode) {
     infoBox.appendChild(list);
 }
 
-async function fetchCurrentTree() {
-    await makeRequest(
-        `${ui.url}/gettree/${ui.currentTreeDef!.collectionName}`,
-        undefined,
-        (data) => {
-            const bTree = new BTree(ui.currentTreeDef!.collectionName, data)
+async function getCurrentTree() {
 
-            // if (ui.getTree()?.name != bTree.name) {
-            ui.TreeSnapshots = []
-            ui.currentTreeSnapshotIndex = 0
-            ui.NODEMAP = new Map()
-            ui.MouseCurrentNode = null
-            // }
-            ui.TreeSnapshots.push(bTree)
-            ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
+    let res: ResponseObject
 
-            let height = ui.currentTreeDef?.order ?? 4
-            ui.BOXHEIGHT = height * 36
+    let collectionName = ui.currentTreeDef!.collectionName
 
-            RedrawTree()
-        }
-    )
+    if (ui.WASM) {
+        res = toResponseObject("wasm:getTree", ui.func.getTree(collectionName))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/gettree/${collectionName}`,
+            undefined,
+        )
+    }
+
+    appendResult(res);
+
+    if (!res.error) {
+        const bTree = new BTree(collectionName, res.data)
+
+        // if (ui.getTree()?.name != bTree.name) {
+        ui.TreeSnapshots = []
+        ui.currentTreeSnapshotIndex = 0
+        ui.NODEMAP = new Map()
+        ui.MouseCurrentNode = null
+        // }
+        ui.TreeSnapshots.push(bTree)
+        ui.currentTreeSnapshotIndex = ui.TreeSnapshots.length - 1
+
+        let height = ui.currentTreeDef?.order ?? 4
+        ui.BOXHEIGHT = height * 36
+
+        RedrawTree()
+    }
 }
 
-export async function fetchAllBTree() {
-    await makeRequest(
+interface ResponseObject {
+    url: RequestInfo | URL;
+    data: any;
+    logs: any;
+    error: string | null;
+}
+
+function toResponseObject(url: RequestInfo | URL, response: { data: any, error: string }): ResponseObject {
+    let data: any
+    let logs: any
+
+    if (!response.error) {
+        try {
+            let jsondata = JSON.parse(response.data);
+            data = jsondata.data
+            logs = jsondata.logs
+        } catch (error) {
+        }
+    }
+
+    return {
+        url: url,
+        data: data,
+        logs: logs,
+        error: response.error,
+    }
+}
+
+export async function getAllTree() {
+    let res = await makeRequest(
         `${ui.url}/getalltree`,
         undefined,
-        (data: any[], error: boolean) => {
-
-            console.log(data)
-
-            if (error) {
-                ui.WASM = true
-
-                // ui.func.allTree()
-
-                console.log(ui.func)
-
-                console.log("---> ", ui.func.allTree())
-
-                return
-            }
-
-            const collectionsDiv = document.getElementById("collections")!;
-            collectionsDiv.innerHTML = "";
-
-            data.forEach((tree, _) => {
-                const card = document.createElement("div");
-                card.className = "card";
-                card.innerHTML = `<pre>${JSON.stringify(tree, null, 2)}</pre>`;
-                card.onclick = () => {
-                    Array.from(document.getElementsByClassName("highlight")).
-                        forEach((e) => {
-                            e.classList.remove("highlight")
-                        })
-                    card.classList.add("highlight");
-
-                    ui.currentTreeDef = tree
-                    fetchCurrentTree()
-                };
-
-                collectionsDiv.appendChild(card);
-            });
-        }
     )
+
+    if (res.error != "") {
+        ui.WASM = true
+
+        res = toResponseObject("wasm:getalltree", ui.func.getAllTree())
+    }
+
+    appendResult(res);
+
+    const collectionsDiv = document.getElementById("collections")!;
+    collectionsDiv.innerHTML = "";
+
+    (res.data as any[]).forEach((tree, _) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<pre>${JSON.stringify(tree, null, 2)}</pre>`;
+        card.onclick = () => {
+            Array.from(document.getElementsByClassName("highlight")).
+                forEach((e) => {
+                    e.classList.remove("highlight")
+                })
+            card.classList.add("highlight");
+
+            ui.currentTreeDef = tree
+            getCurrentTree()
+        };
+
+        collectionsDiv.appendChild(card);
+    });
 }
 
 async function setRecord(key: string | null, value: string | null) {
-    if (!ui.getTree()) return
+    if (!ui.getTree()) {
+        return
+    }
 
     key = key ?? setKey.value;
     value = value ?? setValue.value;
     const payload = { key, value };
-    await makeRequest(
-        `${ui.url}/set/${ui.currentTreeDef!.collectionName}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        },
-        () => {
-            fetchCurrentTree()
-        }
-    )
+
+    let res: ResponseObject
+
+    let collectionName = ui.currentTreeDef!.collectionName
+
+    if (ui.WASM) {
+        res = toResponseObject("wasm:setRecord", ui.func.setRecord(collectionName, key, value))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/set/${collectionName}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            },
+        )
+    }
+
+    appendResult(res);
+
+    getCurrentTree()
 }
 
 let SortedSetValue = 1
@@ -183,52 +227,80 @@ async function sortedSetRecord(add: number | null) {
     let value = add != null ? SortedSetValue + add : Number(sortedSetValue.value);
     if (value <= 0) { return }
     SortedSetValue = value
-    const payload = { value };
     sortedSetValue.value = String(value)
-    await makeRequest(
-        `${ui.url}/sortedset/${ui.currentTreeDef!.collectionName}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        },
-        () => {
-            fetchCurrentTree()
-        }
-    )
+
+    let res: ResponseObject
+    let collectionName = ui.currentTreeDef!.collectionName
+
+    if (ui.WASM) {
+        res = toResponseObject("wasm:sortedSetRecord", ui.func.sortedSetRecord(collectionName, value))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/sortedset/${collectionName}/${value}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            },
+        )
+    }
+
+    appendResult(res);
+
+    getCurrentTree()
 }
 
 async function deleteRecord(id: string | null) {
     if (!ui.getTree()) return
 
-    await makeRequest(
-        `${ui.url}/delete/${ui.currentTreeDef!.collectionName}/${id ?? deleteInput.value}`,
-        { method: "DELETE" },
-        () => {
-            fetchCurrentTree()
-        }
-    )
+    let key = id ?? deleteInput.value
+
+    let res: ResponseObject
+    let collectionName = ui.currentTreeDef!.collectionName
+
+    if (ui.WASM) {
+        res = toResponseObject("wasm:deleteRecord", ui.func.deleteRecord(collectionName, key))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/delete/${collectionName}/${key}`,
+            { method: "DELETE" },
+        )
+    }
+
+    appendResult(res);
+
+    getCurrentTree()
 }
 
-async function getRecord(getId: string | null) {
+async function getRecord(key: string | null) {
     if (!ui.getTree()) return
 
-    getId = getId ?? getInput.value
+    key = key ?? getInput.value
 
     ui.NODEMAP.forEach((n) => {
         n.selected = false
     })
-    if (getId) {
-        await makeRequest(
-            `${ui.url}/get/${ui.currentTreeDef!.collectionName}/${getId}`,
-            undefined, () => {
-                let result = ui.getTree().searchLeafNode(getId)
-                result.path.forEach((e) => {
-                    ui.NODEMAP.get(e.nodeID)!.selected = true
-                })
 
-            }
-        )
+    if (key) {
+
+        let res: ResponseObject
+        let collectionName = ui.currentTreeDef!.collectionName
+
+        if (ui.WASM) {
+            res = toResponseObject("wasm:getRecord", ui.func.getRecord(collectionName, key))
+        } else {
+            res = await makeRequest(
+                `${ui.url}/get/${collectionName}/${key}`,
+                undefined,
+            )
+        }
+
+        appendResult(res);
+
+        let result = ui.getTree().searchLeafNode(key)
+        result.path.forEach((e) => {
+            ui.NODEMAP.get(e.nodeID)!.selected = true
+        })
+
     }
     RedrawTree()
 }
@@ -236,57 +308,95 @@ async function getRecord(getId: string | null) {
 async function clearTree() {
     if (!ui.getTree()) return
 
-    await makeRequest(
-        `${ui.url}/clear/${ui.currentTreeDef!.collectionName}`,
-        { method: "DELETE", },
-        () => {
-            fetchCurrentTree()
-        }
-    )
+    let res: ResponseObject
+    let collectionName = ui.currentTreeDef!.collectionName
+
+    if (ui.WASM) {
+        res = toResponseObject("wasm:clearTree", ui.func.clearTree(collectionName))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/clear/${collectionName}`,
+            { method: "DELETE", },
+        )
+    }
+
+    appendResult(res);
+
+    getCurrentTree()
 }
 
 async function newTreeRequest(event: SubmitEvent) {
     event.preventDefault(); // Prevent page reload
 
+    let collectionName = (document.getElementById("collectionName") as HTMLInputElement).value
+    let order = Number((document.getElementById("order") as HTMLInputElement).value)
+    let numLevel = Number((document.getElementById("NumLevel") as HTMLInputElement).value)
+    let baseSize = Number((document.getElementById("BaseSize") as HTMLInputElement).value)
+    let increment = Number((document.getElementById("Increment") as HTMLInputElement).value)
+    let compactionBatchSize = 0
+
     const requestData = {
-        CollectionName: (document.getElementById("collectionName") as HTMLInputElement).value,
-        Order: Number((document.getElementById("order") as HTMLInputElement).value),
-        NumLevel: Number((document.getElementById("NumLevel") as HTMLInputElement).value),
-        BaseSize: Number((document.getElementById("BaseSize") as HTMLInputElement).value),
-        Increment: Number((document.getElementById("Increment") as HTMLInputElement).value),
+        CollectionName: collectionName,
+        Order: order,
+        NumLevel: numLevel,
+        BaseSize: baseSize,
+        Increment: increment,
+        compactionBatchSize: compactionBatchSize,
     };
 
-    await makeRequest(
-        `${ui.url}/newtree`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestData),
-        },
-        () => {
-            fetchAllBTree()
-        }
-    )
+    let res: ResponseObject
+
+    if (ui.WASM) {
+        res = toResponseObject("wasm:newTree", ui.func.newTree(collectionName, order, numLevel, baseSize, increment, compactionBatchSize))
+    } else {
+        res = await makeRequest(
+            `${ui.url}/newtree`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData),
+            },
+        )
+    }
+
+    appendResult(res);
+
+    getAllTree()
 }
 
 async function makeRequest(
     url: RequestInfo | URL,
     parameters: RequestInit | undefined,
-    after: (result: any, error: boolean) => void
-) {
+): Promise<ResponseObject> {
     let response;
     let result;
+    let error: string = ""
 
     try {
         response = await fetch(url, parameters);
+
+        if (!response.ok) {
+            const errorText = await response.text(); // Read body only once
+            throw new Error(`Error: ${response.status} - ${errorText}`);
+        }
+
         result = await response.json();
-    } catch {
-        result = { data: null, logs: "Invalid JSON response" };
+
+    } catch (err) {
+        return {
+            url,
+            data: null,
+            logs: null,
+            error: err instanceof Error ? err.message : "Unknown error",
+        };
     }
 
-    const hasError = !response?.ok || response.status !== 200;
-    appendResult(url, result.data, result.logs, hasError);
-    after(result.data, hasError);
+    return {
+        url: url,
+        data: result.data,
+        logs: result.logs,
+        error: error,
+    }
 }
 
 declare global {
@@ -299,20 +409,19 @@ window.toggleVisibility = function (id: string) {
     content.style.display = content.style.display === "none" ? "block" : "none";
 };
 
-function appendResult(url: RequestInfo | URL, data: any, logs: string, error: boolean) {
+function appendResult(res: ResponseObject) {
     const uniqueId = `json-content-${Date.now()}`;
-    const formattedData = JSON.stringify(data, null, 2);
-    const formattedLogs = logs ? `<pre style="color: gray;">${logs}</pre>` : "";
+    const formattedData = JSON.stringify(res.data, null, 2);
+    const formattedLogs = res.logs ? `<pre style="color: gray;">${res.logs}</pre>` : "";
 
     const newResultHTML = `
-        <div style="background-color:${error ? "#ffb9b9" : "#bdffbd"}; 
-                    color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
+        <div style="background-color:${res.error ? "#ffb9b9" : "#bdffbd"}; color: black; border:1px solid; padding:5px; margin-bottom: 10px;">
             <div onclick="window.toggleVisibility('${uniqueId}')"
                 style="cursor: pointer; font-weight: bold; padding: 4px;">
-                ${url.toString().split(ui.url)[1]}
+                ${res.url.toString().includes("wasm") ? res.url : res.url.toString().split(ui.url)[1]}
             </div>
             <div id="${uniqueId}" style="display: none; padding: 4px;">
-                <pre>${formattedData}</pre>
+                <pre>${res.error ? res.error : formattedData}</pre>
                 ${formattedLogs}
             </div>
         </div>

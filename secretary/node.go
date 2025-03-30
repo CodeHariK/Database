@@ -28,7 +28,7 @@ For a B+ tree of order  m :
 */
 func (tree *BTree) NodeVerify(node *Node) error {
 	// A node is either a leaf (has records) or an internal node (has children), not both
-	if (node.records != nil && node.children != nil) || (node.records == nil && node.children == nil) {
+	if tree.root != node && ((node.records != nil && node.children != nil) || (node.records == nil && node.children == nil)) {
 		return ErrorNodeIsEitherLeaforInternal
 	}
 

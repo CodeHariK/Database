@@ -31,3 +31,14 @@ func SetWASMLibaray(lib map[string]any) {
 	// Keep the program running
 	select {}
 }
+
+func jsResponse(data []byte, err error) any {
+	if err != nil {
+		return js.ValueOf(map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+	return js.ValueOf(map[string]interface{}{
+		"data": string(data),
+	})
+}
