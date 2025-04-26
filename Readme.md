@@ -9,6 +9,8 @@
 * [Build a NoSQL Database From Scratch in 1000 Lines of Code](https://medium.com/better-programming/build-a-nosql-database-from-the-scratch-in-1000-lines-of-code-8ed1c15ed924)
 * [Writing a SQL database from scratch in Go: 1. SELECT, INSERT, CREATE and a REPL](https://notes.eatonphil.com/database-basics.html)
 
+* [Database Engine Development](https://www.youtube.com/playlist?list=PLm7R-cUo29CXVu9a9TzBEwSQ9JPVGmISg)
+
 * https://github.com/cmu-db/bustub
 
 ##
@@ -47,13 +49,59 @@
 
 * [An introduction to Conflict-Free Replicated Data Types (CRDTs)](https://www.youtube.com/watch?v=gZP2VUmH05A)
 
+## Data Structure
+
+* [Heaps, heapsort, and priority queues - Inside code](https://www.youtube.com/watch?v=pLIajuc31qk)
+* [Trie data structure - Inside code](https://www.youtube.com/watch?v=qA8l8TAMyig)
+* [Compressed trie](https://www.youtube.com/watch?v=qakGXuOW1S8)
+
 ## Probablistic Data structures
 
-* [PapersWeLove : HyperLogLog](https://www.youtube.com/watch?v=y3fTaxA8PkU)
-* [A problem so hard even Google relies on Random Chance](https://www.youtube.com/watch?v=lJYufx0bfpw)
-* [The Algorithm with the Best Name - HyperLogLog Explained](https://www.youtube.com/watch?v=2PlrMCiUN_s)
+* [Hello Interview : Bloom Filters, Count-Min Sketch, HyperLogLog](https://www.youtube.com/watch?v=IgyU0iFIoqM)
 
+* [Probablistic data structure lectures](https://www.youtube.com/playlist?list=PL2mpR0RYFQsAR5RyB54FyEE9vUiGtCSZM)
+
+### Bloom filter 
+
+* [Wikipedia](https://en.wikipedia.org/wiki/Bloom_filter)
+* [mCoding : Bloom Filters](https://www.youtube.com/watch?v=qZNJTh2NEiU)
+* [Number0 : Bloom Filters](https://www.youtube.com/watch?v=eCUm4U3WDpM)
+* [ByteByteGo : Bloom Filters](https://www.youtube.com/watch?v=V3pzxngeLqw)
+* [Spanning Tree : What Are Bloom Filters?](https://www.youtube.com/watch?v=kfFacplFY4Y)
+* [ByteMonk : Bloom Filters](https://www.youtube.com/watch?v=GT0En1dGntY)
+
+Bloom filter is a space-efficient probabilistic data structure, that is used to test whether an element is a member of a set. False positive matches are possible, but false negatives are not - in other words, a query returns either "possibly in set" or "definitely not in set". Elements can be added to the set, but not removed.
+
+A Bloom filter is a representation of a set of _n_ items, where the main requirement is to make membership queries; _i.e._, whether an item is a member of a set.
+
+#### Uses
+##### Cache filtering
+Content delivery networks deploy web caches around the world to cache and serve web content to users with greater performance and reliability. A key application of Bloom filters is their use in efficiently determining which web objects to store in these web caches. To prevent caching one-hit-wonders, a Bloom filter is used to keep track of all URLs that are accessed by users.
+##### Web Crawler
+
+### HyperLogLog
+
+* [PapersWeLove : HyperLogLog](https://www.youtube.com/watch?v=y3fTaxA8PkU)
+* [The Algorithm with the Best Name - HyperLogLog Explained](https://www.youtube.com/watch?v=2PlrMCiUN_s)
+* [A problem so hard even Google relies on Random Chance](https://www.youtube.com/watch?v=lJYufx0bfpw)
+* [Counting BILLIONS with Just Kilobytes](https://www.youtube.com/watch?v=f69hh3KgFEk)
+* https://github.com/tylertreat/BoomFilters/blob/master/hyperloglog.go
+
+### Count–min sketch
+
+* [Wikepedia](https://en.wikipedia.org/wiki/Count%E2%80%93min_sketch)
+* https://github.com/tylertreat/BoomFilters/blob/master/countmin.go
 * [Count-min Sketch](https://www.youtube.com/watch?v=Okdjn7o4q8E)
+
+The goal of the basic version of the count–min sketch is to consume a stream of events, one at a time, and count the frequency of the different types of events in the stream.
+
+### HeavyKeeper TopK
+
+* [Understanding Probabilistic Data Structures](https://www.youtube.com/watch?v=2Dzc7fxA0us)
+
+### T Digest
+
+* [Sketching Data with T Digest](https://www.youtube.com/watch?v=ETUYhEZRtWE)
 
 ## Cache
 
