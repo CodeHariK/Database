@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/database/assets/logo-D-usoONv.png" />
+
+  <title>Secretary</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      width: 100vw;
+      height: 100vh;
+      visibility: hidden;
+      background-color: #f8f8f8;
+      border-right: none;
+    }
+
+    .gutter.gutter-horizontal {
+      cursor: col-resize;
+    }
+
+    .section {
+      height: 100%;
+      overflow: auto;
+    }
+
+    #canvas-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #paper {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+    }
+
+    input,
+    textarea,
+    button {
+      width: 100%;
+      /* flex: 1; */
+      min-width: 0;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      outline: none;
+      transition: border-color 0.3s ease-in-out;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+    }
+
+    .expand {
+      flex-grow: 1;
+      text-align: center;
+    }
+
+    input:focus {
+      border-color: #007bff;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      background: #b5e6fc;
+    }
+
+    button:hover {
+      background: #eee;
+    }
+
+    #form-section>div {
+      padding: 3px 0px;
+    }
+
+    form>div {
+      padding: 5px;
+    }
+
+    #collections {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .card {
+      width: 100%;
+      padding: 15px;
+      background: #ededed;
+      cursor: pointer;
+      transition: transform 0.2s;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .dark .container {
+      background-color: #111111;
+      color: #fff;
+    }
+
+    .dark input,
+    .dark textarea,
+    .dark .card {
+      background-color: #363636;
+      color: #fff;
+    }
+
+    .highlight {
+      background-color: #efdfff;
+    }
+
+    .dark .highlight {
+      background-color: #592d84;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+
+    .modal {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      min-width: 300px;
+      text-align: center;
+    }
+
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+  <script type="module" crossorigin src="/database/assets/index-CzaXbvJW.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div id="json-section" class="section">
+      <button type="button" id="SECRETARY">SECRETARY</button>
+
+      <form id="treeForm">
+        <input type="text" placeholder="Collection Name" id="collectionName" required>
+        <input type="number" placeholder="Order" id="order" min="3" max="200" required>
+        <input type="number" placeholder="Num Level" id="NumLevel" min="32" required>
+        <input type="number" placeholder="Batch Base Size" id="BaseSize" min="1024" required>
+        <input type="number" placeholder="Batch Increment" id="Increment" min="110" max="200" required>
+        <button type="submit">Create Tree</button>
+      </form>
+      <div id="collections"></div>
+
+    </div>
+
+    <div id="canvas-section" class="section">
+      <div id="paper"></div>
+    </div>
+
+    <div id="form-section" class="section">
+
+      <div class="btn-group">
+        <button type="button" id="zoom-btn">Zoom</button>
+        <button type="button" id="clear-btn">Clear</button>
+      </div>
+
+      <div class="btn-group">
+        <button type="button" id="prev-tree">Prev</button>
+        <button type="button" class="expand" id="run-test">Test</button>
+        <button type="button" id="next-tree">Next</button>
+      </div>
+
+      <div>
+        <input type="text" id="set-key" placeholder="Enter Key" />
+        <input type="text" id="set-value" placeholder="Enter value" />
+        <button type="button" id="set-btn">Set</button>
+      </div>
+
+      <div>
+        <input type="text" id="delete-id" placeholder="Enter ID to delete" />
+        <button type="button" id="delete-btn">Delete</button>
+      </div>
+
+      <div>
+        <input type="text" id="get-id" placeholder="Enter query id" />
+        <button type="button" id="get-btn">Query</button>
+      </div>
+
+      <div>
+        <input type="text" id="sortedset-value" placeholder="Enter Number of Keys" />
+        <div class="btn-group">
+          <button type="button" id="sortedset-sub-btn">-</button>
+          <button type="button" class="expand" id="sortedset-btn">SortSet</button>
+          <button type="button" id="sortedset-add-btn">+</button>
+        </div>
+      </div>
+
+      <div id="info-box"></div>
+
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay">
+    <div class="modal">
+      <p>This is a modal!</p>
+
+      <button id="themeToggle">🌟 Theme toggle</button>
+    </div>
+  </div>
+
+</body>
+
+<script>
+  function colorMode() {
+    let dark = localStorage.getItem("theme") === "dark"
+    if (dark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }
+  colorMode();
+</script>
+
+
+<script src="wasm_exec.js"></script>
+
+<script type="text/javascript">
+  (function (l) {
+    if (l.search[1] === '/') {
+      var decoded = l.search.slice(1).split('&').map(function (s) {
+        return s.replace(/~and~/g, '&')
+      }).join('?');
+      window.history.replaceState(null, null,
+        l.pathname.slice(0, -1) + decoded + l.hash
+      );
+    }
+  }(window.location))
+</script>
+
+</html>
